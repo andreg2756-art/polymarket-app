@@ -7,8 +7,8 @@ export async function GET() {
     take: 10,
   });
 
-  const latestRun = runs.find((r) => r.status === "completed");
-  const prevRun = runs.filter((r) => r.status === "completed")[1];
+  const latestRun = runs.find((r: { status: string }) => r.status === "completed");
+  const prevRun = runs.filter((r: { status: string }) => r.status === "completed")[1];
 
   if (!latestRun) {
     return NextResponse.json({ noData: true, runs });
