@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import type { SupplementalStockData } from "@/lib/stockSupplementalData";
 
 interface Props {
   ticker: string;
@@ -18,35 +19,79 @@ interface Props {
 
 interface NewsItem { title: string; publisher: string; link: string; publishedAt: string }
 
-function Row({ label, value, status }: { label: string; value: string; status: "ok" | "warn" | "neutral" }) {
+function val(metric: SupplementalStockData[keyof SupplementalStockData] | undefined): string {
+  if (!metric || metric.value === null || metric.value === undefined) {
+    return metric?.reason ? `N/A — ${metric.reason}` : "N/A";
+  }
+  return String(metric.value);
+}
+
+function sourceTag(metric: SupplementalStockData[keyof SupplementalStockData] | undefined) {
+  if (!metric || metric.source === "unavailable") return null;
+  const colors: Record<string, string> = {
+    yahoo: "text-blue-600",
+    sec: "text-purple-600",
+    calculated: "text-gray-600",
+  };
+  return <span className={`text-xs ${colors[metric.source] ?? "text-gray-700"}`}>[{metric.source}]</span>;
+}
+
+function Row({
+  label,
+  value,
+  status,
+  source,
+}: {
+  label: string;
+  value: string;
+  status: "ok" | "warn" | "neutral";
+  source?: React.ReactNode;
+}) {
   const color = status === "ok" ? "text-emerald-400" : status === "warn" ? "text-red-400" : "text-gray-400";
   const icon = status === "ok" ? "✓" : status === "warn" ? "⚠" : "—";
+  const isNA = value.startsWith("N/A");
   return (
     <div className="flex items-start justify-between gap-4 py-2 border-b border-gray-800 last:border-0">
       <span className="text-xs text-gray-400 w-36 shrink-0">{label}</span>
-      <span className={`text-xs font-medium text-right ${color}`}>{icon} {value}</span>
+      <div className="text-right">
+        <span className={`text-xs font-medium ${isNA ? "text-gray-600" : color}`}>
+          {!isNA && `${icon} `}{value}
+        </span>
+        {source && <div className="mt-0.5">{source}</div>}
+      </div>
     </div>
   );
 }
 
 export default function ResearchChecklist(props: Props) {
-  const { ticker, name, price, change1M, change3M, relativeVolume, marketCap,
-    bullishScore, lastEarningsDate, insiderBuying, shortInterest, revenueGrowth } = props;
+  const {
+    ticker, name, price, change1M, change3M, relativeVolume,
+    marketCap, bullishScore, lastEarningsDate, insiderBuying,
+    shortInterest, revenueGrowth,
+  } = props;
 
   const [open, setOpen] = useState(false);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [newsLoading, setNewsLoading] = useState(false);
+  const [supp, setSupp] = useState<SupplementalStockData | null>(null);
+  const [suppLoading, setSuppLoading] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
+
     setNewsLoading(true);
     fetch(`/api/stocks/news/${ticker}`)
-      .then((r) => r.json())
-      .then(setNews)
-      .catch(() => setNews([]))
+      .then((r) => r.json()).then(setNews).catch(() => setNews([]))
       .finally(() => setNewsLoading(false));
-  }, [open, ticker]);
+
+    if (!supp) {
+      setSuppLoading(true);
+      fetch(`/api/stocks/supplemental/${ticker}`)
+        .then((r) => r.json()).then(setSupp).catch(() => setSupp(null))
+        .finally(() => setSuppLoading(false));
+    }
+  }, [open, ticker, supp]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -57,9 +102,46 @@ export default function ResearchChecklist(props: Props) {
   }, [open]);
 
   const fmtCap = (n: number) => n >= 1e9 ? `$${(n / 1e9).toFixed(2)}B` : `$${(n / 1e6).toFixed(0)}M`;
+
+  // Determine status helpers
   const trendStatus = change1M > 0 && change3M > 0 ? "ok" : change1M < 0 && change3M < 0 ? "warn" : "neutral";
   const volStatus = relativeVolume > 1.5 ? "ok" : relativeVolume < 0.8 ? "warn" : "neutral";
   const capStatus = marketCap >= 500e6 ? "ok" : marketCap >= 200e6 ? "neutral" : "warn";
+
+  // Moving averages vs price
+  const ma50Val = supp?.ma50.value ? Number(supp.ma50.value) : null;
+  const ma200Val = supp?.ma200.value ? Number(supp.ma200.value) : null;
+  const ma50Status: "ok" | "warn" | "neutral" = ma50Val ? price > ma50Val ? "ok" : "warn" : "neutral";
+  const ma200Status: "ok" | "warn" | "neutral" = ma200Val ? price > ma200Val ? "ok" : "warn" : "neutral";
+
+  // Revenue growth
+  const revGrowthDisplay = supp?.revenueGrowth.value
+    ? String(supp.revenueGrowth.value)
+    : revenueGrowth !== 0
+    ? `${revenueGrowth > 0 ? "+" : ""}${revenueGrowth.toFixed(1)}%`
+    : null;
+  const revGrowthStatus: "ok" | "warn" | "neutral" = revGrowthDisplay
+    ? revGrowthDisplay.startsWith("+") || (!revGrowthDisplay.startsWith("-") && !revGrowthDisplay.startsWith("N/A")) ? "ok" : "warn"
+    : "neutral";
+
+  // Short interest
+  const shortInterestDisplay = supp?.shortInterest.value
+    ? String(supp.shortInterest.value)
+    : shortInterest != null
+    ? `${shortInterest.toFixed(1)}%`
+    : null;
+  const shortPct = parseFloat(shortInterestDisplay ?? "0");
+  const shortStatus: "ok" | "warn" | "neutral" = shortPct > 15 ? "warn" : shortPct > 0 ? "neutral" : "neutral";
+
+  // Debt risk
+  const debtVal = val(supp?.debtRisk);
+  const debtStatus: "ok" | "warn" | "neutral" = debtVal.toLowerCase().includes("low") ? "ok" : debtVal.toLowerCase().includes("elevated") ? "warn" : "neutral";
+
+  // Cash runway
+  const cashVal = val(supp?.cashRunway);
+  const cashStatus: "ok" | "warn" | "neutral" = cashVal.toLowerCase().includes("positive") ? "ok" : cashVal.includes("year") ? parseFloat(cashVal) < 1 ? "warn" : "ok" : "neutral";
+
+  const loading = suppLoading;
 
   return (
     <>
@@ -73,77 +155,141 @@ export default function ResearchChecklist(props: Props) {
       {open && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
           <div ref={modalRef} className="bg-gray-950 border border-gray-700 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 sticky top-0 bg-gray-950 z-10">
               <div>
                 <h2 className="text-base font-bold text-white">{ticker} — Research Checklist</h2>
-                <p className="text-xs text-gray-500">{name} · ${price.toFixed(2)}</p>
+                <p className="text-xs text-gray-500">{name} · ${price.toFixed(2)} · {fmtCap(marketCap)}</p>
               </div>
-              <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+              <div className="flex items-center gap-2">
+                {loading && <span className="text-xs text-gray-600 animate-pulse">Loading data...</span>}
+                <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+              </div>
             </div>
 
             <div className="px-5 py-4 space-y-5">
 
-              {/* Price & Trend */}
+              {/* Chart Trend */}
               <section>
-                <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Chart Trend</h3>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2 flex items-center gap-2">
+                  Chart Trend
+                </h3>
                 <Row label="1-Month Return" value={`${change1M >= 0 ? "+" : ""}${change1M.toFixed(1)}%`} status={change1M > 5 ? "ok" : change1M < -5 ? "warn" : "neutral"} />
                 <Row label="3-Month Return" value={`${change3M >= 0 ? "+" : ""}${change3M.toFixed(1)}%`} status={change3M > 10 ? "ok" : change3M < -15 ? "warn" : "neutral"} />
                 <Row label="Overall Trend" value={trendStatus === "ok" ? "Both timeframes positive" : trendStatus === "warn" ? "Both timeframes negative" : "Mixed signals"} status={trendStatus} />
-                {/* TODO: Add 50-day and 200-day MA from price history data */}
-                <Row label="50-Day MA" value="N/A — requires price history" status="neutral" />
-                <Row label="200-Day MA" value="N/A — requires price history" status="neutral" />
+                <Row
+                  label="50-Day MA"
+                  value={ma50Val ? `$${ma50Val.toFixed(2)} — price is ${price > ma50Val ? "above" : "below"}` : val(supp?.ma50)}
+                  status={ma50Status}
+                  source={sourceTag(supp?.ma50)}
+                />
+                <Row
+                  label="200-Day MA"
+                  value={ma200Val ? `$${ma200Val.toFixed(2)} — price is ${price > ma200Val ? "above" : "below"}` : val(supp?.ma200)}
+                  status={ma200Status}
+                  source={sourceTag(supp?.ma200)}
+                />
               </section>
 
               {/* Fundamentals */}
               <section>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Fundamentals</h3>
                 <Row label="Market Cap" value={fmtCap(marketCap)} status={capStatus} />
-                <Row label="Revenue Growth" value={revenueGrowth > 0 ? `+${revenueGrowth.toFixed(1)}%` : revenueGrowth === 0 ? "N/A" : `${revenueGrowth.toFixed(1)}%`} status={revenueGrowth > 15 ? "ok" : revenueGrowth < 0 ? "warn" : "neutral"} />
+                <Row
+                  label="Revenue Growth"
+                  value={revGrowthDisplay ?? val(supp?.revenueGrowth)}
+                  status={revGrowthStatus}
+                  source={sourceTag(supp?.revenueGrowth)}
+                />
                 <Row label="Bullish Score" value={`${bullishScore}/100`} status={bullishScore >= 60 ? "ok" : bullishScore < 30 ? "warn" : "neutral"} />
-                {/* TODO: Pull cash runway from balance sheet API */}
-                <Row label="Cash Runway" value="N/A — connect balance sheet API" status="neutral" />
-                {/* TODO: Pull debt-to-equity from financials API */}
-                <Row label="Debt Risk" value="N/A — connect financials API" status="neutral" />
+                <Row
+                  label="Cash Runway"
+                  value={cashVal}
+                  status={cashStatus}
+                  source={sourceTag(supp?.cashRunway)}
+                />
+                <Row
+                  label="Debt Risk"
+                  value={debtVal}
+                  status={debtStatus}
+                  source={sourceTag(supp?.debtRisk)}
+                />
               </section>
 
               {/* Earnings */}
               <section>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Earnings</h3>
-                <Row label="Last Earnings" value={lastEarningsDate ?? "N/A"} status="neutral" />
-                {/* TODO: Pull next earnings date from earnings calendar API */}
-                <Row label="Next Earnings" value="N/A — connect earnings calendar" status="neutral" />
+                <Row
+                  label="Last Earnings"
+                  value={lastEarningsDate ?? val(supp?.lastEarnings)}
+                  status="neutral"
+                  source={!lastEarningsDate ? sourceTag(supp?.lastEarnings) : undefined}
+                />
+                <Row
+                  label="Next Earnings"
+                  value={val(supp?.nextEarnings)}
+                  status="neutral"
+                  source={sourceTag(supp?.nextEarnings)}
+                />
               </section>
 
               {/* Liquidity */}
               <section>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Liquidity</h3>
                 <Row label="Relative Volume" value={`${relativeVolume.toFixed(1)}x avg`} status={volStatus} />
-                {/* TODO: Pull average daily volume from quote API */}
-                <Row label="Avg Daily Volume" value="N/A — connect quote API" status="neutral" />
-                <Row label="Short Interest" value={shortInterest != null ? `${shortInterest.toFixed(1)}%` : "N/A"} status={shortInterest != null && shortInterest > 15 ? "warn" : "neutral"} />
+                <Row
+                  label="Avg Daily Volume"
+                  value={val(supp?.avgDailyVolume)}
+                  status="neutral"
+                  source={sourceTag(supp?.avgDailyVolume)}
+                />
+                <Row
+                  label="Short Interest"
+                  value={shortInterestDisplay ?? val(supp?.shortInterest)}
+                  status={shortStatus}
+                  source={!shortInterestDisplay ? sourceTag(supp?.shortInterest) : undefined}
+                />
               </section>
 
               {/* Insider Activity */}
               <section>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Insider Activity</h3>
-                <Row label="Insider Buying" value={insiderBuying > 0 ? `$${(insiderBuying / 1000).toFixed(0)}K` : "None detected"} status={insiderBuying > 0 ? "ok" : "neutral"} />
-                {/* TODO: Pull insider selling from SEC filings */}
-                <Row label="Insider Selling" value="N/A — connect SEC filings" status="neutral" />
+                <Row
+                  label="Insider Buying"
+                  value={insiderBuying > 0 ? `$${(insiderBuying / 1000).toFixed(0)}K detected` : "None detected"}
+                  status={insiderBuying > 0 ? "ok" : "neutral"}
+                />
+                <Row
+                  label="Insider Selling"
+                  value={val(supp?.insiderSelling)}
+                  status={val(supp?.insiderSelling).toLowerCase().includes("sale") ? "warn" : "neutral"}
+                  source={sourceTag(supp?.insiderSelling)}
+                />
               </section>
 
-              {/* Analyst Coverage */}
+              {/* Analyst */}
               <section>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Analyst Coverage</h3>
-                {/* TODO: Connect analyst ratings API (requires paid FMP plan or similar) */}
-                <Row label="Analyst Rating" value="N/A — connect analyst API" status="neutral" />
-                <Row label="Recent Revisions" value="N/A — connect analyst API" status="neutral" />
+                <Row
+                  label="Analyst Rating"
+                  value={val(supp?.analystRating)}
+                  status={val(supp?.analystRating).toLowerCase().includes("bullish") ? "ok" : val(supp?.analystRating).toLowerCase().includes("bearish") ? "warn" : "neutral"}
+                  source={sourceTag(supp?.analystRating)}
+                />
+                <Row
+                  label="Recent Revisions"
+                  value={val(supp?.recentRevisions)}
+                  status={val(supp?.recentRevisions).toLowerCase().includes("upgrade") ? "ok" : val(supp?.recentRevisions).toLowerCase().includes("downgrade") ? "warn" : "neutral"}
+                  source={sourceTag(supp?.recentRevisions)}
+                />
               </section>
 
-              {/* Recent News */}
+              {/* News */}
               <section>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Recent Media</h3>
-                {newsLoading && <p className="text-xs text-gray-600">Loading headlines...</p>}
-                {!newsLoading && news.length === 0 && <p className="text-xs text-gray-600">No recent coverage found.</p>}
+                {newsLoading && <p className="text-xs text-gray-600 animate-pulse">Loading headlines...</p>}
+                {!newsLoading && !news.length && <p className="text-xs text-gray-600">No recent coverage found.</p>}
                 {news.map((n, i) => (
                   <a key={i} href={n.link} target="_blank" rel="noopener noreferrer"
                     className="block py-1.5 border-b border-gray-800 last:border-0 hover:text-white transition-colors">
@@ -153,7 +299,7 @@ export default function ResearchChecklist(props: Props) {
                 ))}
               </section>
 
-              {/* Final Warning */}
+              {/* Warning */}
               <div className="bg-orange-950/40 border border-orange-800 rounded-lg px-4 py-3">
                 <p className="text-xs text-orange-300 font-semibold">⚠ Do not buy from the screener alone.</p>
                 <p className="text-xs text-orange-400 mt-1 leading-relaxed">
@@ -161,6 +307,7 @@ export default function ResearchChecklist(props: Props) {
                   independently before committing capital. Momentum can reverse sharply in small caps.
                 </p>
               </div>
+
             </div>
           </div>
         </div>
