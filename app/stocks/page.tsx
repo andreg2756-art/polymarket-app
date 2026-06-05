@@ -192,7 +192,10 @@ export default function StocksPage() {
                 <tr key={s.id} className="hover:bg-gray-900/40 transition-colors align-top">
                   <td className="px-3 py-3 text-gray-500 text-xs">#{s.rank}</td>
                   <td className="px-3 py-3">
-                    <Link href={`/stocks/${s.ticker}`} className="text-emerald-400 font-bold hover:underline">{s.ticker}</Link>
+                    <div className="flex flex-col gap-0.5">
+                      <Link href={`/stocks/${s.ticker}`} className="text-emerald-400 font-bold hover:underline">{s.ticker}</Link>
+                      <a href={`https://finance.yahoo.com/quote/${s.ticker}`} target="_blank" rel="noopener noreferrer" className="text-xs text-gray-600 hover:text-gray-400">Yahoo ↗</a>
+                    </div>
                   </td>
                   <td className="px-3 py-3 max-w-[180px]">
                     <p className="truncate text-gray-200">{s.name}</p>
