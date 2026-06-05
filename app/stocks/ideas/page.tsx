@@ -15,17 +15,57 @@ function fmtCap(n: number) {
   return `$${(n / 1e6).toFixed(0)}M`;
 }
 
-function convictionRating(s: Stock): { label: string; color: string } {
-  if (s.bullishScore >= 70 && s.revenueGrowth > 20) return { label: "Very High", color: "text-emerald-300 bg-emerald-900" };
-  if (s.bullishScore >= 55) return { label: "High", color: "text-green-300 bg-green-900" };
-  if (s.bullishScore >= 40) return { label: "Medium", color: "text-yellow-300 bg-yellow-900" };
-  return { label: "Low", color: "text-gray-300 bg-gray-800" };
+function convictionRating(s: Stock): { label: string; color: string; tooltip: string } {
+  if (s.bullishScore >= 70 && s.revenueGrowth > 20) return {
+    label: "Very High",
+    color: "text-emerald-300 bg-emerald-900",
+    tooltip: `Very High conviction — bullish score of ${s.bullishScore}/100 combined with strong revenue growth of +${s.revenueGrowth.toFixed(1)}% signals a high-probability setup. Price momentum is strong across both 1-month and 3-month timeframes with above-average volume confirming institutional interest.`,
+  };
+  if (s.bullishScore >= 55) return {
+    label: "High",
+    color: "text-green-300 bg-green-900",
+    tooltip: `High conviction — bullish score of ${s.bullishScore}/100 reflects solid price momentum and favorable technicals. The stock is trending above key moving averages with consistent buying pressure. Suitable for a full-size position within your risk parameters.`,
+  };
+  if (s.bullishScore >= 40) return {
+    label: "Medium",
+    color: "text-yellow-300 bg-yellow-900",
+    tooltip: `Medium conviction — bullish score of ${s.bullishScore}/100 shows mixed signals. Some positive momentum exists but lacks the volume confirmation or sustained trend strength seen in higher-conviction ideas. Consider a smaller initial position with room to add on confirmation.`,
+  };
+  return {
+    label: "Low",
+    color: "text-gray-300 bg-gray-800",
+    tooltip: `Low conviction — bullish score of ${s.bullishScore}/100 indicates weak or inconsistent signals. Price action is not yet trending clearly, and volume does not confirm accumulation. Monitor for improving momentum before committing capital.`,
+  };
 }
 
-function riskRating(s: Stock): { label: string; color: string } {
-  if (s.marketCap < 200_000_000) return { label: "High Risk", color: "text-red-300 bg-red-900" };
-  if (s.marketCap < 500_000_000) return { label: "Med Risk", color: "text-orange-300 bg-orange-900" };
-  return { label: "Lower Risk", color: "text-blue-300 bg-blue-900" };
+function riskRating(s: Stock): { label: string; color: string; tooltip: string } {
+  if (s.marketCap < 200_000_000) return {
+    label: "High Risk",
+    color: "text-red-300 bg-red-900",
+    tooltip: `High Risk — market cap of $${(s.marketCap / 1e6).toFixed(0)}M places this in micro-cap territory. Micro-caps are subject to high volatility, low liquidity, and wide bid-ask spreads. A single adverse event can cause outsized moves. Position sizing should be kept small (0.5–1% of portfolio max) and stop-losses are strongly recommended.`,
+  };
+  if (s.marketCap < 500_000_000) return {
+    label: "Med Risk",
+    color: "text-orange-300 bg-orange-900",
+    tooltip: `Medium Risk — market cap of $${(s.marketCap / 1e6).toFixed(0)}M is in small-cap range. Liquidity is moderate and the stock can experience sharp swings on earnings or sector news. Suitable for risk-tolerant investors. Suggested position: 1–2% of portfolio with defined exit levels.`,
+  };
+  return {
+    label: "Lower Risk",
+    color: "text-blue-300 bg-blue-900",
+    tooltip: `Lower Risk — market cap of $${(s.marketCap / 1e9).toFixed(2)}B provides better liquidity and more institutional coverage than micro or nano caps. While still subject to small-cap volatility, the larger float reduces the risk of extreme gap moves. A standard 2–4% position size is reasonable for qualified investors.`,
+  };
+}
+
+function Tooltip({ children, text }: { children: React.ReactNode; text: string }) {
+  return (
+    <div className="relative group inline-block">
+      {children}
+      <div className="absolute bottom-full left-0 mb-2 w-72 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+        {text}
+        <div className="absolute top-full left-4 border-4 border-transparent border-t-gray-700" />
+      </div>
+    </div>
+  );
 }
 
 function positionSizing(s: Stock): string {
@@ -69,8 +109,12 @@ export default function IdeasPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <Link href={`/stocks/${s.ticker}`} className="text-xl font-bold text-emerald-400 hover:underline">{s.ticker}</Link>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${conviction.color}`}>{conviction.label}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${risk.color}`}>{risk.label}</span>
+                        <Tooltip text={conviction.tooltip}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full cursor-help ${conviction.color}`}>{conviction.label}</span>
+                        </Tooltip>
+                        <Tooltip text={risk.tooltip}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full cursor-help ${risk.color}`}>{risk.label}</span>
+                        </Tooltip>
                       </div>
                       <p className="text-gray-400 text-sm">{s.name} · {s.sector || "—"}</p>
                     </div>
