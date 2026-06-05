@@ -7,7 +7,8 @@ interface Stock {
   id: string; ticker: string; name: string; sector: string | null;
   marketCap: number; price: number; bullishScore: number;
   revenueGrowth: number; epsGrowth: number; analystRating: string | null;
-  insiderBuying: number; change1M: number; earningsBeat: boolean; revenueBeat: boolean;
+  insiderBuying: number; change1M: number; change3M: number;
+  relativeVolume: number; earningsBeat: boolean; revenueBeat: boolean;
 }
 
 function fmtCap(n: number) {
@@ -15,44 +16,75 @@ function fmtCap(n: number) {
   return `$${(n / 1e6).toFixed(0)}M`;
 }
 
+function fmtCapShort(n: number) {
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(0)}M`;
+  return "N/A";
+}
+
+function sectorContext(sector: string | null): string {
+  const map: Record<string, string> = {
+    Technology: "The technology sector is driven by innovation cycles, interest rate sensitivity, and earnings growth. Small-cap tech names can see rapid multiple expansion when growth accelerates.",
+    Healthcare: "Healthcare stocks are influenced by clinical trial results, FDA approvals, and pricing policy. Small-cap biotechs carry binary event risk but can deliver outsized returns on catalysts.",
+    Energy: "Energy names are highly correlated to commodity prices and macroeconomic conditions. Clean energy small-caps are additionally driven by policy tailwinds and capital deployment cycles.",
+    Financials: "Financial small-caps are sensitive to interest rate changes and credit conditions. Fintech disruptors in this space can scale quickly but face regulatory and competition risk.",
+    "Consumer Discretionary": "Consumer discretionary names follow consumer spending trends, credit cycles, and sentiment. Small-cap names here can be volatile around earnings and macro data.",
+    Industrials: "Industrials are tied to capex cycles, infrastructure spending, and global trade. Defense and aerospace small-caps can benefit from government contract pipelines.",
+    Materials: "Materials stocks — especially metals and miners — are driven by commodity supply/demand, currency moves, and geopolitical events. High beta to risk-on/risk-off cycles.",
+    "Communication Services": "Communication services small-caps are platform-driven businesses where user growth and monetization are key. Can re-rate quickly on engagement metrics.",
+    "Real Estate": "Real estate small-caps are sensitive to interest rates, credit availability, and regional housing dynamics. REITs offer yield but compress when rates rise.",
+    Utilities: "Utilities including clean energy are defensive with predictable cash flows. Growth-oriented clean energy utilities can attract premium valuations on long-term contracts.",
+  };
+  return map[sector ?? ""] ?? "This sector experiences cyclical trends driven by macro conditions and sector-specific catalysts.";
+}
+
 function convictionRating(s: Stock): { label: string; color: string; tooltip: string } {
-  if (s.bullishScore >= 70 && s.revenueGrowth > 20) return {
+  const mom = `${s.ticker} has moved ${s.change1M >= 0 ? "+" : ""}${s.change1M.toFixed(1)}% over the past month and ${s.change3M >= 0 ? "+" : ""}${s.change3M.toFixed(1)}% over 3 months`;
+  const vol = s.relativeVolume > 1.5 ? `Volume is running at ${s.relativeVolume.toFixed(1)}x its 20-day average, suggesting accumulation.` : s.relativeVolume < 0.8 ? `Volume is below average at ${s.relativeVolume.toFixed(1)}x, indicating limited interest.` : `Volume is near average at ${s.relativeVolume.toFixed(1)}x.`;
+  const capCtx = `At ${fmtCapShort(s.marketCap)}, ${s.ticker} is a ${s.marketCap >= 2e9 ? "mid-cap" : s.marketCap >= 300e6 ? "small-cap" : "micro-cap"} in the ${s.sector ?? "market"}.`;
+  const secCtx = sectorContext(s.sector);
+
+  if (s.bullishScore >= 70) return {
     label: "Very High",
     color: "text-emerald-300 bg-emerald-900",
-    tooltip: `Very High conviction — bullish score of ${s.bullishScore}/100 combined with strong revenue growth of +${s.revenueGrowth.toFixed(1)}% signals a high-probability setup. Price momentum is strong across both 1-month and 3-month timeframes with above-average volume confirming institutional interest.`,
+    tooltip: `Very High Conviction (${s.bullishScore}/100) — ${mom}, placing it among the top momentum names scanned. ${vol} ${capCtx} ${secCtx} All three scoring factors — 1M momentum, 3M trend, and volume — are firing simultaneously, a rare alignment that historically precedes continued outperformance.`,
   };
   if (s.bullishScore >= 55) return {
     label: "High",
     color: "text-green-300 bg-green-900",
-    tooltip: `High conviction — bullish score of ${s.bullishScore}/100 reflects solid price momentum and favorable technicals. The stock is trending above key moving averages with consistent buying pressure. Suitable for a full-size position within your risk parameters.`,
+    tooltip: `High Conviction (${s.bullishScore}/100) — ${mom}. ${vol} ${capCtx} ${secCtx} The trend is intact with most bullish signals aligned. One or two factors are slightly below peak levels but the overall setup remains favorable for a staged entry.`,
   };
   if (s.bullishScore >= 40) return {
     label: "Medium",
     color: "text-yellow-300 bg-yellow-900",
-    tooltip: `Medium conviction — bullish score of ${s.bullishScore}/100 shows mixed signals. Some positive momentum exists but lacks the volume confirmation or sustained trend strength seen in higher-conviction ideas. Consider a smaller initial position with room to add on confirmation.`,
+    tooltip: `Medium Conviction (${s.bullishScore}/100) — ${mom}. ${vol} ${capCtx} ${secCtx} The setup shows promise but lacks full confirmation. Either short-term momentum or 3-month trend is mixed. Watch for a breakout on volume before adding a full position.`,
   };
   return {
     label: "Low",
     color: "text-gray-300 bg-gray-800",
-    tooltip: `Low conviction — bullish score of ${s.bullishScore}/100 indicates weak or inconsistent signals. Price action is not yet trending clearly, and volume does not confirm accumulation. Monitor for improving momentum before committing capital.`,
+    tooltip: `Low Conviction (${s.bullishScore}/100) — ${mom}. ${vol} ${capCtx} ${secCtx} Signals are weak or conflicting. The stock is on the watchlist but does not yet meet the criteria for an actionable entry. Revisit after next scan.`,
   };
 }
 
 function riskRating(s: Stock): { label: string; color: string; tooltip: string } {
+  const capCtx = `${s.ticker} has a market cap of ${fmtCapShort(s.marketCap)}`;
+  const drawdownRisk = s.change3M > 50 ? `The stock is up ${s.change3M.toFixed(1)}% over 3 months — a sharp pullback or mean reversion is a real near-term risk.` : s.change3M < -20 ? `The stock is down ${Math.abs(s.change3M).toFixed(1)}% over 3 months — further downside is possible if the trend doesn't reverse.` : "";
+  const secCtx = sectorContext(s.sector);
+
   if (s.marketCap < 200_000_000) return {
     label: "High Risk",
     color: "text-red-300 bg-red-900",
-    tooltip: `High Risk — market cap of $${(s.marketCap / 1e6).toFixed(0)}M places this in micro-cap territory. Micro-caps are subject to high volatility, low liquidity, and wide bid-ask spreads. A single adverse event can cause outsized moves. Position sizing should be kept small (0.5–1% of portfolio max) and stop-losses are strongly recommended.`,
+    tooltip: `High Risk — ${capCtx}, classifying it as a micro-cap. Micro-caps carry elevated liquidity risk — wide spreads and thin order books mean exits can be costly during selloffs. ${s.sector ? `Within the ${s.sector} sector: ${secCtx}` : ""} ${drawdownRisk} Recommended position size: 0.5–1% of portfolio max. Always use a defined stop-loss.`,
   };
   if (s.marketCap < 500_000_000) return {
     label: "Med Risk",
     color: "text-orange-300 bg-orange-900",
-    tooltip: `Medium Risk — market cap of $${(s.marketCap / 1e6).toFixed(0)}M is in small-cap range. Liquidity is moderate and the stock can experience sharp swings on earnings or sector news. Suitable for risk-tolerant investors. Suggested position: 1–2% of portfolio with defined exit levels.`,
+    tooltip: `Medium Risk — ${capCtx}, placing it in small-cap territory. Small-caps offer higher return potential than large-caps but experience sharper drawdowns during risk-off periods. ${s.sector ? `In the ${s.sector} sector: ${secCtx}` : ""} ${drawdownRisk} Suggested position size: 1–2% of portfolio with a clear exit plan.`,
   };
   return {
     label: "Lower Risk",
     color: "text-blue-300 bg-blue-900",
-    tooltip: `Lower Risk — market cap of $${(s.marketCap / 1e9).toFixed(2)}B provides better liquidity and more institutional coverage than micro or nano caps. While still subject to small-cap volatility, the larger float reduces the risk of extreme gap moves. A standard 2–4% position size is reasonable for qualified investors.`,
+    tooltip: `Lower Risk — ${capCtx}, making it one of the larger names in this screener. Better liquidity and broader institutional ownership reduce gap-down risk compared to micro-caps. ${s.sector ? `In the ${s.sector} sector: ${secCtx}` : ""} ${drawdownRisk} A standard 2–4% position is appropriate for qualified investors with appropriate risk tolerance.`,
   };
 }
 
@@ -60,7 +92,7 @@ function Tooltip({ children, text }: { children: React.ReactNode; text: string }
   return (
     <div className="relative group inline-block">
       {children}
-      <div className="absolute bottom-full left-0 mb-2 w-72 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+      <div className="absolute bottom-full left-0 mb-2 w-96 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
         {text}
         <div className="absolute top-full left-4 border-4 border-transparent border-t-gray-700" />
       </div>
