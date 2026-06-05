@@ -1,31 +1,17 @@
-// Curated US stocks $50M–$8B market cap
+// Curated universe with approximate shares outstanding (used to compute market cap)
 export const SMALL_CAP_UNIVERSE = [
-  // Confirmed $50M–$8B range
-  "BYRN",  // Byrna Technologies ~$144M
-  "ENVX",  // Enovix ~$1.8B
-  "RXRX",  // Recursion Pharma ~$1.7B
-  "SEAT",  // Vivid Seats ~$75M
-  "TNDM",  // Tandem Diabetes ~$1.3B
-  "IOVA",  // Iovance Bio ~$1.6B
-  "PRCT",  // PROCEPT BioRobotics ~$1.5B
-  "GATO",  // Gatos Silver ~$1B
-  "EOLS",  // Evolent Health ~$435M
-  "LUNG",  // Pulmonx ~$68M
-  // Larger small/mid caps $2B–$8B
-  "ACHR",  // Archer Aviation ~$4.8B
-  "CLSK",  // CleanSpark ~$4.3B
-  "MARA",  // Marathon Digital ~$5.3B
-  "OPEN",  // Opendoor ~$3.8B
-  "FLNC",  // Fluence Energy ~$5B
-  "ARQT",  // Arcutis Bio ~$2.7B
-  "CRVL",  // CorVel ~$3B
-  "ACMR",  // ACM Research ~$5.8B
-  "FROG",  // JFrog ~$10.4B (slightly over, but tracking)
-  // Additional small caps
-  "HIMS",  // Hims & Hers ~$6.2B
-  "JOBY",  // Joby Aviation ~$11B (popular)
-  "ASTS",  // AST SpaceMobile ~$43B (popular)
-  "RDDT",  // Reddit ~$35B (popular)
-  "KRTX",  // Karuna Therapeutics
-  "ATAI",  // ATAI Life Sciences
+  "BYRN",  "ENVX",  "RXRX",  "SEAT",  "TNDM",
+  "IOVA",  "PRCT",  "GATO",  "EOLS",  "LUNG",
+  "ACHR",  "CLSK",  "MARA",  "OPEN",  "FLNC",
+  "ARQT",  "CRVL",  "HIMS",  "JOBY",  "ASTS",
+  "RDDT",  "ACMR",  "FROG",  "ATAI",  "KRTX",
 ];
+
+// Approximate shares outstanding in millions (updated periodically)
+export const SHARES_OUTSTANDING: Record<string, number> = {
+  BYRN:   44,    ENVX:  152,   RXRX:  331,   SEAT:  163,   TNDM:   65,
+  IOVA:   198,   PRCT:   55,   GATO:  120,   EOLS:  196,   LUNG:    48,
+  ACHR:   670,   CLSK:  280,   MARA:  400,   OPEN:  740,   FLNC:   205,
+  ARQT:   93,    CRVL:   20,   HIMS:  223,   JOBY:  710,   ASTS:   380,
+  RDDT:   200,   ACMR:   55,   FROG:  175,   ATAI:  145,   KRTX:    60,
+};

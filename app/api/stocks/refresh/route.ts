@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getProfile } from "@/lib/fmp";
 import { getYahooChart } from "@/lib/yahoo-finance";
-import { SMALL_CAP_UNIVERSE } from "@/lib/small-cap-universe";
+import { SMALL_CAP_UNIVERSE, SHARES_OUTSTANDING } from "@/lib/small-cap-universe";
 
 export const maxDuration = 60;
 
@@ -57,7 +57,8 @@ export async function POST() {
       if (!y) continue;
 
       const p = profileMap.get(ticker);
-      const marketCap = p?.marketCap ?? y.marketCap ?? 0;
+      const shares = SHARES_OUTSTANDING[ticker] ?? 0;
+      const marketCap = p?.marketCap || (shares > 0 ? Math.round(y.price * shares * 1_000_000) : y.marketCap) || 0;
 
       const bullishScore = computeScore(y.change1M, y.change3M, y.relativeVolume);
 
