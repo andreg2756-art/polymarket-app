@@ -8,19 +8,16 @@ import { getEarningsRiskScore } from "./earningsRisk";
 import { getRevenueGrowthScore } from "./revenueGrowth";
 import { getRelativeStrengthRank } from "./relativeStrength";
 
-// Updated weights — news reduced, volume increased
+// Weights sum to 0.95 — remaining 0.05 is news sentiment
+// RS Rank replaces the duplicate volatility component
 const FINAL_WEIGHTS = {
-  momentum:              0.25,
-  riskQuality:           0.20,
-  analystOrRiskQuality:  0.20,
-  upside:                0.15,
-  volume:                0.15,
-  news:                  0.05,
+  momentum:    0.20,
+  rsRank:      0.20,
+  riskQuality: 0.20,
+  upside:      0.15,
+  volume:      0.15,
+  news:        0.05,
 };
-
-function clamp(v: number, min = 0, max = 100): number {
-  return Math.max(min, Math.min(max, v));
-}
 
 function clampScore(score: number): number {
   return Math.max(0, Math.min(100, Math.round(score)));
@@ -44,7 +41,7 @@ function buildMomentumScore(change1M: number, change3M: number): ScoredMetric {
   const score = Math.round(mom1 * 0.4 + mom3 * 0.6);
   return {
     value: `1M: ${change1M >= 0 ? "+" : ""}${change1M.toFixed(1)}% / 3M: ${change3M >= 0 ? "+" : ""}${change3M.toFixed(1)}%`,
-    score: clamp(score),
+    score: clampScore(score),
     source: "yahoo",
     reason: score >= 70 ? "Strong sustained momentum across both timeframes" : score >= 50 ? "Moderate positive momentum" : "Weak or negative momentum",
   };
@@ -54,17 +51,54 @@ function buildVolumeScore(relativeVolume: number): ScoredMetric {
   const score = relativeVolume > 3 ? 95 : relativeVolume > 2 ? 82 : relativeVolume > 1.5 ? 68 : relativeVolume > 1.2 ? 55 : relativeVolume > 1 ? 42 : relativeVolume > 0.7 ? 28 : 15;
   return {
     value: `${relativeVolume.toFixed(1)}x`,
-    score: clamp(score),
+    score: clampScore(score),
     source: "yahoo",
     reason: score >= 68 ? "Volume significantly above average — buying pressure confirmed" : score >= 50 ? "Volume slightly above average" : "Volume below average — weak conviction",
   };
 }
 
+// Combine beta + annualized vol + 52w range into a single Risk Quality score
+function buildRiskQualityScore(
+  betaMetric: ScoredMetric | null | undefined,
+  analystMetric: ScoredMetric | null | undefined
+): ScoredMetric {
+  const betaScore    = betaMetric?.score ?? null;
+  const rangeScore   = analystMetric?.score ?? null;
+
+  const betaVal      = betaMetric?.value  ?? null;
+  const betaReason   = betaMetric?.reason ?? null;
+  const rangeVal     = analystMetric?.value ?? null;
+
+  // Blend: 60% beta/vol, 40% 52w range position
+  let score: number | null = null;
+  if (betaScore !== null && rangeScore !== null) {
+    score = clampScore(betaScore * 0.6 + rangeScore * 0.4);
+  } else if (betaScore !== null) {
+    score = betaScore;
+  } else if (rangeScore !== null) {
+    score = rangeScore;
+  }
+
+  const betaDisplay  = betaVal  ? `β ${betaVal}`  : null;
+  const rangeDisplay = rangeVal ? String(rangeVal) : null;
+  const displayParts = [betaDisplay, rangeDisplay].filter(Boolean);
+
+  return {
+    value: displayParts.length ? displayParts.join(" · ") : null,
+    score,
+    source: "calculated",
+    reason: [
+      "Risk Quality includes beta, historical volatility, and 52-week range position.",
+      betaReason,
+    ].filter(Boolean).join(" "),
+  };
+}
+
 function finalRating(score: number | null): EnhancedStockScore["finalRating"] {
   if (score === null) return "Insufficient Data";
-  if (score >= 72) return "Strong Watch";
-  if (score >= 55) return "Watch";
-  if (score >= 38) return "Neutral";
+  if (score >= 80) return "Strong Watch";
+  if (score >= 68) return "Watch";
+  if (score >= 55) return "Neutral";
   return "Avoid";
 }
 
@@ -76,7 +110,6 @@ export async function computeEnhancedScore(
   existingRevenueGrowth: number | null = null
 ): Promise<EnhancedStockScore> {
 
-  // All fetches in parallel — each has its own null fallback
   const [analystFactors, newsSentiment, earningsRisk, revenueGrowth, rsRank] = await Promise.all([
     getAnalystFactors(ticker).catch(() => null),
     getNewsSentimentScore(ticker).catch((): ScoredMetric => ({
@@ -93,36 +126,36 @@ export async function computeEnhancedScore(
     })),
   ]);
 
-  const momentumScore  = buildMomentumScore(change1M, change3M);
-  const volumeScore    = buildVolumeScore(relativeVolume);
+  const momentumScore = buildMomentumScore(change1M, change3M);
+  const volumeScore   = buildVolumeScore(relativeVolume);
 
-  // Volatility = beta metric from analystFactors
+  // Single combined risk quality — replaces separate volatility + analystScore
+  const riskQualityScore = buildRiskQualityScore(
+    analystFactors?.beta,
+    analystFactors?.analystScore
+  );
+
+  // Volatility kept as supporting detail only (not weighted separately)
   const volatilityScore: ScoredMetric = analystFactors?.beta ?? {
     value: null, score: null, source: "unavailable", reason: "Beta unavailable",
   };
 
-  // Risk quality = analystScore from analystFactors (derived from beta + range)
-  const riskQualityScore: ScoredMetric = analystFactors?.analystScore ?? {
-    value: null, score: null, source: "unavailable", reason: "Risk quality unavailable",
-  };
-
-  // Upside = range-based distance to 52w high (clearly labeled in UI as such)
+  // Upside = distance to 52w high (clearly labeled)
   const upsideScore: ScoredMetric = analystFactors?.targetUpside ?? {
     value: null, score: null, source: "unavailable", reason: "52W distance unavailable",
   };
 
-  // These are always false until a real analyst API is connected
   const hasRealAnalystConsensus = false;
   const hasRealAnalystTarget    = false;
 
-  // Weighted composite — skips null components proportionally
+  // Weighted components — null scores are skipped with proportional rebalancing
   const components: { score: number | null; weight: number }[] = [
-    { score: momentumScore.score,    weight: FINAL_WEIGHTS.momentum },
-    { score: volatilityScore.score,  weight: FINAL_WEIGHTS.riskQuality },
-    { score: riskQualityScore.score, weight: FINAL_WEIGHTS.analystOrRiskQuality },
-    { score: upsideScore.score,      weight: FINAL_WEIGHTS.upside },
-    { score: volumeScore.score,      weight: FINAL_WEIGHTS.volume },
-    { score: newsSentiment.score,    weight: FINAL_WEIGHTS.news },
+    { score: momentumScore.score,    weight: FINAL_WEIGHTS.momentum    },
+    { score: rsRank.score,           weight: FINAL_WEIGHTS.rsRank      },
+    { score: riskQualityScore.score, weight: FINAL_WEIGHTS.riskQuality },
+    { score: upsideScore.score,      weight: FINAL_WEIGHTS.upside      },
+    { score: volumeScore.score,      weight: FINAL_WEIGHTS.volume      },
+    { score: newsSentiment.score,    weight: FINAL_WEIGHTS.news        },
   ];
 
   const available = components.filter((c) => c.score !== null);
@@ -131,22 +164,19 @@ export async function computeEnhancedScore(
   if (available.length >= 2) {
     const totalWeight = available.reduce((s, c) => s + c.weight, 0);
     const weightedSum = available.reduce((s, c) => s + (c.score! * c.weight), 0);
-    let base = clamp(weightedSum / totalWeight);
+    let base = clampScore(weightedSum / totalWeight);
 
-    // Apply revenue growth modifier
     base = applyRevenueGrowthModifier(base, revenueGrowth?.modifier ?? 0);
-
-    // Apply earnings risk penalty
     base = applyEarningsRiskPenalty(base, earningsRisk?.daysUntilEarnings ?? null);
 
-    riskAdjustedScore = clampScore(base);
+    riskAdjustedScore = base;
   }
 
   return {
     ticker,
     momentumScore,
-    volatilityScore,
-    riskQualityScore,
+    volatilityScore,       // kept for supporting detail display only
+    riskQualityScore,      // the single weighted risk component
     upsideScore,
     newsSentiment,
     volumeScore,

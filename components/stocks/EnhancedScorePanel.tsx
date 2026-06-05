@@ -25,13 +25,7 @@ function ScoreBar({ score, color }: { score: number | null; color: string }) {
 }
 
 function MetricRow({
-  label,
-  sublabel,
-  value,
-  score,
-  color,
-  reason,
-  tag,
+  label, sublabel, value, score, color, reason, tag, weight,
 }: {
   label: string;
   sublabel?: string;
@@ -40,13 +34,15 @@ function MetricRow({
   color: string;
   reason?: string;
   tag?: React.ReactNode;
+  weight?: string;
 }) {
   return (
     <div className="relative group">
-      <div className="flex items-center justify-between gap-3 py-1.5">
-        <div className="w-36 shrink-0">
+      <div className="flex items-center justify-between gap-2 py-1.5">
+        <div className="w-40 shrink-0">
           <span className="text-xs text-gray-400">{label}</span>
           {sublabel && <span className="text-xs text-gray-600 ml-1">({sublabel})</span>}
+          {weight && <span className="text-xs text-gray-700 ml-1">{weight}</span>}
         </div>
         <div className="flex items-center gap-1 flex-1 min-w-0">
           <span className="text-xs text-gray-300 truncate">{value ?? "N/A"}</span>
@@ -54,6 +50,7 @@ function MetricRow({
         </div>
         <ScoreBar score={score} color={color} />
       </div>
+      {/* Supporting detail sub-row — shown inline when present */}
       {reason && (
         <div className="absolute left-0 bottom-full mb-1 w-80 bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-400 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 leading-relaxed">
           {reason}
@@ -63,14 +60,23 @@ function MetricRow({
   );
 }
 
-function PenaltyRow({ label, value, penalty, reason }: { label: string; value: string | null; penalty: number | null; reason?: string }) {
-  const penaltyDisplay = penalty && penalty > 0 ? `-${penalty} pts` : penalty === 0 ? "No penalty" : "N/A";
-  const color = penalty && penalty > 0 ? "text-red-400" : "text-gray-500";
+function ModifierRow({
+  label, value, amount, reason,
+}: {
+  label: string;
+  value: string | null;
+  amount: number | null;
+  reason?: string;
+}) {
+  const isPositive = amount !== null && amount > 0;
+  const isNegative = amount !== null && amount < 0;
+  const display = amount === null ? "N/A" : amount === 0 ? "No change" : `${isPositive ? "+" : ""}${amount} pts`;
+  const color = isPositive ? "text-emerald-400" : isNegative ? "text-red-400" : "text-gray-500";
   return (
-    <div className="relative group flex items-center justify-between gap-3 py-1.5">
-      <span className="text-xs text-gray-400 w-36 shrink-0">{label}</span>
-      <span className="text-xs text-gray-300 flex-1">{value ?? "N/A"}</span>
-      <span className={`text-xs font-medium w-16 text-right shrink-0 ${color}`}>{penaltyDisplay}</span>
+    <div className="relative group flex items-center justify-between gap-2 py-1.5">
+      <span className="text-xs text-gray-400 w-40 shrink-0">{label}</span>
+      <span className="text-xs text-gray-500 flex-1 truncate">{value ?? "N/A"}</span>
+      <span className={`text-xs font-medium w-14 text-right shrink-0 ${color}`}>{display}</span>
       {reason && (
         <div className="absolute left-0 bottom-full mb-1 w-80 bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-400 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 leading-relaxed">
           {reason}
@@ -80,10 +86,8 @@ function PenaltyRow({ label, value, penalty, reason }: { label: string; value: s
   );
 }
 
-function CalculatedTag() {
-  return (
-    <span className="text-xs bg-gray-800 text-gray-600 px-1 py-0.5 rounded shrink-0 ml-1">calc</span>
-  );
+function CalcTag() {
+  return <span className="text-xs bg-gray-800 text-gray-600 px-1 py-0.5 rounded shrink-0">calc</span>;
 }
 
 export default function EnhancedScorePanel({ ticker }: Props) {
@@ -93,7 +97,7 @@ export default function EnhancedScorePanel({ ticker }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   async function load() {
-    if (data) { setOpen(!open); return; }
+    if (data) { setOpen((o) => !o); return; }
     setOpen(true);
     setLoading(true);
     setError(null);
@@ -108,13 +112,16 @@ export default function EnhancedScorePanel({ ticker }: Props) {
     }
   }
 
-  const ratingStyle = data ? (RATING_STYLES[data.finalRating] ?? RATING_STYLES["Neutral"]) : null;
+  const ratingStyle  = data ? (RATING_STYLES[data.finalRating] ?? RATING_STYLES.Neutral) : null;
+  const upsideLabel  = data?.hasRealAnalystTarget ? "Analyst Target Upside" : "Distance to 52W High";
+  const upsideSub    = data?.hasRealAnalystTarget ? undefined : "52w range";
 
-  // Correct labels based on data availability flags
-  const analystLabel  = data?.hasRealAnalystConsensus ? "Analyst Rating"        : "Risk Quality";
-  const upsideLabel   = data?.hasRealAnalystTarget    ? "Analyst Target Upside" : "Distance to 52W High";
-  const analystSub    = data?.hasRealAnalystConsensus ? undefined                : "derived";
-  const upsideSub     = data?.hasRealAnalystTarget    ? undefined                : "52w range";
+  // Revenue modifier display (+/- amount)
+  const revMod = data?.revenueGrowthScore?.modifier ?? null;
+  // Earnings penalty display (stored as positive magnitude, applied as subtraction)
+  const earnPenalty = data?.earningsRiskScore?.score != null && data.earningsRiskScore.daysUntilEarnings != null
+    ? -(data.earningsRiskScore.score)
+    : null;
 
   return (
     <div>
@@ -146,58 +153,87 @@ export default function EnhancedScorePanel({ ticker }: Props) {
               {/* Risk-adjusted score */}
               <div className="flex items-center justify-between py-1 border-b border-gray-800">
                 <span className="text-xs text-gray-400 font-semibold">Risk-Adjusted Score</span>
-                <span className={`text-sm font-bold ${(data.riskAdjustedScore ?? 0) >= 65 ? "text-emerald-400" : (data.riskAdjustedScore ?? 0) >= 45 ? "text-blue-400" : "text-red-400"}`}>
+                <span className={`text-sm font-bold ${(data.riskAdjustedScore ?? 0) >= 68 ? "text-emerald-400" : (data.riskAdjustedScore ?? 0) >= 55 ? "text-blue-400" : "text-red-400"}`}>
                   {data.riskAdjustedScore ?? "N/A"}
                   {data.riskAdjustedScore !== null && <span className="text-gray-600 text-xs font-normal">/100</span>}
                 </span>
               </div>
 
-              {/* Component scores */}
+              {/* Weighted components */}
               <div className="space-y-0">
-                <MetricRow label="Momentum"       value={data.momentumScore.value}           score={data.momentumScore.score}    color="bg-emerald-500" reason={data.momentumScore.reason} />
-                <MetricRow label="Volatility"     value={data.volatilityScore.value ? `β ${data.volatilityScore.value}` : null}  score={data.volatilityScore.score}  color="bg-blue-500"    reason={data.volatilityScore.reason}   tag={<CalculatedTag />} />
-                <MetricRow label={analystLabel}   sublabel={analystSub}  value={data.riskQualityScore.value}  score={data.riskQualityScore.score}  color="bg-purple-500"  reason={data.riskQualityScore.reason}  tag={!data.hasRealAnalystConsensus ? <CalculatedTag /> : undefined} />
-                <MetricRow label={upsideLabel}    sublabel={upsideSub}   value={data.upsideScore.value}       score={data.upsideScore.score}       color="bg-orange-500"  reason={data.upsideScore.reason}       tag={!data.hasRealAnalystTarget ? <CalculatedTag /> : undefined} />
-                <MetricRow label="Volume"         value={data.volumeScore.value}             score={data.volumeScore.score}      color="bg-cyan-500"    reason={data.volumeScore.reason} />
-                <MetricRow label="News Sentiment" value={data.newsSentiment.value ? `${data.newsSentiment.source === "polygon" ? "Polygon" : "Yahoo"}` : null} score={data.newsSentiment.score} color="bg-yellow-500" reason={data.newsSentiment.reason} />
-              </div>
-
-              {/* RS Rank */}
-              <div className="border-t border-gray-800 pt-2">
                 <MetricRow
-                  label="RS Rank"
+                  label="Momentum"       weight="20%"
+                  value={data.momentumScore.value}
+                  score={data.momentumScore.score}
+                  color="bg-emerald-500"
+                  reason={data.momentumScore.reason}
+                />
+                <MetricRow
+                  label="RS Rank"        weight="20%"
                   value={data.rsRank.value}
                   score={data.rsRank.score}
                   color="bg-teal-500"
                   reason={data.rsRank.reason}
-                  tag={<CalculatedTag />}
+                  tag={<CalcTag />}
+                />
+                <MetricRow
+                  label="Risk Quality"   weight="20%"
+                  sublabel="β · vol · 52w"
+                  value={data.riskQualityScore.value}
+                  score={data.riskQualityScore.score}
+                  color="bg-purple-500"
+                  reason={data.riskQualityScore.reason}
+                  tag={<CalcTag />}
+                />
+                <MetricRow
+                  label={upsideLabel}    weight="15%"
+                  sublabel={upsideSub}
+                  value={data.upsideScore.value}
+                  score={data.upsideScore.score}
+                  color="bg-orange-500"
+                  reason={data.upsideScore.reason}
+                  tag={!data.hasRealAnalystTarget ? <CalcTag /> : undefined}
+                />
+                <MetricRow
+                  label="Volume"         weight="15%"
+                  value={data.volumeScore.value}
+                  score={data.volumeScore.score}
+                  color="bg-cyan-500"
+                  reason={data.volumeScore.reason}
+                />
+                <MetricRow
+                  label="News Sentiment" weight="5%"
+                  value={data.newsSentiment.score !== null ? `${data.newsSentiment.source === "polygon" ? "Polygon" : "Yahoo"} (${data.newsSentiment.score})` : null}
+                  score={data.newsSentiment.score}
+                  color="bg-yellow-500"
+                  reason={data.newsSentiment.reason}
                 />
               </div>
 
-              {/* Modifiers / Penalties */}
+              {/* Modifiers */}
               <div className="border-t border-gray-800 pt-2 space-y-0">
-                <p className="text-xs text-gray-600 mb-1">Score Modifiers</p>
-                <PenaltyRow
+                <p className="text-xs text-gray-600 mb-1 font-medium">Score Modifiers</p>
+                <ModifierRow
                   label="Revenue Growth"
                   value={data.revenueGrowthScore?.value?.toString() ?? null}
-                  penalty={data.revenueGrowthScore?.modifier !== undefined
-                    ? (data.revenueGrowthScore.modifier > 0 ? -(data.revenueGrowthScore.modifier) * -1 : data.revenueGrowthScore.modifier * -1)
-                    : null}
+                  amount={revMod ?? null}
                   reason={data.revenueGrowthScore?.reason}
                 />
-                <PenaltyRow
+                <ModifierRow
                   label="Earnings Risk"
                   value={data.earningsRiskScore?.value?.toString() ?? null}
-                  penalty={data.earningsRiskScore?.score ?? null}
+                  amount={earnPenalty}
                   reason={data.earningsRiskScore?.reason}
                 />
               </div>
 
               {/* Footer */}
-              <p className="text-xs text-gray-700 pt-1 border-t border-gray-800">
-                Weights: momentum 25% · risk quality 20% · {analystLabel.toLowerCase()} 20% · {upsideLabel.toLowerCase()} 15% · volume 15% · sentiment 5%
+              <p className="text-xs text-gray-700 pt-1 border-t border-gray-800 leading-relaxed">
+                Weights: momentum 20% · RS rank 20% · risk quality 20% · upside/range 15% · volume 15% · sentiment 5%
               </p>
               <p className="text-xs text-gray-700">
+                Risk Quality includes beta, historical volatility, and 52-week range position.
+                <br />
                 <span className="text-gray-600">calc</span> = calculated from price history · not financial advice
               </p>
             </>
