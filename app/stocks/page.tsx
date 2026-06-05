@@ -104,7 +104,7 @@ export default function StocksPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-emerald-400">Small-Cap Bullish Intelligence</h1>
-          <p className="text-gray-500 text-sm mt-1">Top 50 most bullish small-cap stocks · $50M–$2B market cap</p>
+          <p className="text-gray-500 text-sm mt-1">Most bullish stocks · $50M–$8B market cap</p>
           {updatedAt && <p className="text-gray-600 text-xs">Last updated: {new Date(updatedAt).toLocaleString()}</p>}
         </div>
         <div className="flex items-center gap-3">

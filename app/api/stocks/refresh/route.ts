@@ -58,9 +58,9 @@ export async function POST() {
         const p = profileRes.status === "fulfilled" ? profileRes.value : null;
         const prices = pricesRes.status === "fulfilled" ? pricesRes.value : [];
 
-        if (!p) return null;
+        if (!p || !p.marketCap) return null;
 
-        const cap = p.marketCap ?? 0;
+        const cap = p.marketCap;
         const change1M = Math.round(pctChange(prices, 21) * 10) / 10;
         const change3M = Math.round(pctChange(prices, 63) * 10) / 10;
 
