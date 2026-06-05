@@ -113,18 +113,22 @@ export interface FMPNews {
 export interface FMPProfile {
   symbol: string;
   price: number;
-  mktCap: number;
+  marketCap: number;
+  companyName: string;
   description: string;
   sector: string;
   industry: string;
   exchange: string;
-  float: number;
-  beta: number;
-  ipoDate: string;
-  ceo: string;
-  website: string;
-  image: string;
-  fullTimeEmployees: number;
+  float?: number;
+  beta?: number;
+  ipoDate?: string;
+  ceo?: string;
+  website?: string;
+  image?: string;
+  fullTimeEmployees?: number;
+  isEtf?: boolean;
+  isFund?: boolean;
+  isActivelyTrading?: boolean;
 }
 
 export interface FMPEarnings {
@@ -137,14 +141,37 @@ export interface FMPEarnings {
 }
 
 export async function screenSmallCaps(): Promise<FMPScreenerResult[]> {
-  return get<FMPScreenerResult[]>("/stock-screener", {
-    marketCapMoreThan: "50000000",
-    marketCapLowerThan: "2000000000",
-    exchange: "NYSE,NASDAQ,AMEX",
-    country: "US",
-    isActivelyTrading: "true",
-    limit: "200",
-  });
+  const { SMALL_CAP_UNIVERSE } = await import("./small-cap-universe");
+  const batches: FMPProfile[][] = [];
+  for (let i = 0; i < SMALL_CAP_UNIVERSE.length; i += 20) {
+    const chunk = SMALL_CAP_UNIVERSE.slice(i, i + 20);
+    try {
+      const profiles = await get<FMPProfile[]>("/profile", { symbol: chunk.join(",") });
+      batches.push(profiles);
+    } catch {
+      // skip failed batch
+    }
+  }
+  const profiles = batches.flat();
+  return profiles
+    .filter((p) => p.marketCap >= 50_000_000 && p.marketCap <= 2_000_000_000 && !p.isEtf && !p.isFund)
+    .map((p) => ({
+      symbol: p.symbol,
+      companyName: p.companyName,
+      marketCap: p.marketCap,
+      price: p.price,
+      beta: p.beta ?? 0,
+      volume: 0,
+      lastAnnualDividend: 0,
+      exchange: p.exchange ?? "",
+      exchangeShortName: p.exchange ?? "",
+      sector: p.sector ?? "",
+      industry: p.industry ?? "",
+      country: "US",
+      isEtf: p.isEtf ?? false,
+      isFund: p.isFund ?? false,
+      isActivelyTrading: p.isActivelyTrading ?? true,
+    }));
 }
 
 export async function getQuotes(tickers: string[]): Promise<FMPQuote[]> {
