@@ -2,25 +2,41 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const links = [
+const whaleLinks = [
   { href: "/", label: "Dashboard" },
   { href: "/markets", label: "Markets" },
   { href: "/traders", label: "Traders" },
   { href: "/history", label: "History" },
 ];
 
+const stockLinks = [
+  { href: "/stocks", label: "Top 50" },
+  { href: "/stocks/screener", label: "Screener" },
+  { href: "/stocks/ideas", label: "Ideas" },
+  { href: "/stocks/watchlist", label: "Watchlist" },
+];
+
 export default function Nav() {
   const path = usePathname();
   return (
-    <nav className="border-b border-gray-800 bg-gray-950 px-6 py-3 flex items-center gap-8">
-      <span className="text-blue-400 font-bold text-lg tracking-tight">🐋 Whale Tracker</span>
-      <div className="flex gap-6">
-        {links.map((l) => (
-          <Link
-            key={l.href}
-            href={l.href}
-            className={`text-sm transition-colors ${path === l.href ? "text-white font-semibold" : "text-gray-400 hover:text-white"}`}
-          >
+    <nav className="border-b border-gray-800 bg-gray-950 px-6 py-3 flex items-center gap-2 overflow-x-auto">
+      <span className="text-blue-400 font-bold text-base tracking-tight whitespace-nowrap">🐋 Whale Tracker</span>
+      <div className="flex gap-5 ml-2">
+        {whaleLinks.map((l) => (
+          <Link key={l.href} href={l.href}
+            className={`text-sm whitespace-nowrap transition-colors ${path === l.href ? "text-white font-semibold" : "text-gray-400 hover:text-white"}`}>
+            {l.label}
+          </Link>
+        ))}
+      </div>
+
+      <div className="w-px h-5 bg-gray-700 mx-3 shrink-0" />
+
+      <span className="text-emerald-400 font-bold text-base tracking-tight whitespace-nowrap">📈 Small Cap Stocks</span>
+      <div className="flex gap-5 ml-2">
+        {stockLinks.map((l) => (
+          <Link key={l.href} href={l.href}
+            className={`text-sm whitespace-nowrap transition-colors ${path === l.href ? "text-white font-semibold" : "text-gray-400 hover:text-white"}`}>
             {l.label}
           </Link>
         ))}

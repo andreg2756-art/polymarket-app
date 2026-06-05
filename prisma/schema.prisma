@@ -18,13 +18,13 @@ model Trader {
 }
 
 model RefreshRun {
-  id               String              @id @default(cuid())
-  status           String              @default("running")
-  startedAt        DateTime            @default(now())
+  id               String                @id @default(cuid())
+  status           String                @default("running")
+  startedAt        DateTime              @default(now())
   completedAt      DateTime?
-  topTraderCount   Int                 @default(0)
-  totalPositions   Int                 @default(0)
-  failedUsers      Int                 @default(0)
+  topTraderCount   Int                   @default(0)
+  totalPositions   Int                   @default(0)
+  failedUsers      Int                   @default(0)
   errorMessage     String?
   positions        PositionSnapshot[]
   marketGroups     MarketPositionGroup[]
@@ -71,4 +71,80 @@ model MarketPositionGroup {
 
   @@index([refreshRunId])
   @@index([conditionId])
+}
+
+// ── Small-Cap Stock Models ─────────────────────────────────────────
+
+model Stock {
+  id                  String         @id @default(cuid())
+  ticker              String         @unique
+  name                String
+  exchange            String?
+  sector              String?
+  industry            String?
+  description         String?
+  marketCap           Float          @default(0)
+  price               Float          @default(0)
+  change1M            Float          @default(0)
+  change3M            Float          @default(0)
+  revenueGrowth       Float          @default(0)
+  epsGrowth           Float          @default(0)
+  analystRating       String?
+  analystCount        Int            @default(0)
+  bullishScore        Float          @default(0)
+  lastEarningsDate    String?
+  float               Float?
+  shortInterest       Float?
+  institutionalOwn    Float?
+  insiderBuying       Float          @default(0)
+  relativeVolume      Float          @default(0)
+  earningsBeat        Boolean        @default(false)
+  revenueBeat         Boolean        @default(false)
+  guidanceUp          Boolean        @default(false)
+  rank                Int            @default(0)
+  updatedAt           DateTime       @updatedAt
+  createdAt           DateTime       @default(now())
+  snapshots           StockSnapshot[]
+  news                StockNews[]
+  watchlistItems      WatchlistItem[]
+
+  @@index([bullishScore])
+  @@index([rank])
+}
+
+model StockSnapshot {
+  id           String   @id @default(cuid())
+  ticker       String
+  stock        Stock    @relation(fields: [ticker], references: [ticker], onDelete: Cascade)
+  bullishScore Float    @default(0)
+  price        Float    @default(0)
+  marketCap    Float    @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([ticker])
+}
+
+model StockNews {
+  id          String   @id @default(cuid())
+  ticker      String
+  stock       Stock    @relation(fields: [ticker], references: [ticker], onDelete: Cascade)
+  headline    String
+  publisher   String?
+  publishedAt DateTime?
+  url         String
+  summary     String?
+  sentiment   Float    @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([ticker])
+}
+
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  ticker    String
+  stock     Stock    @relation(fields: [ticker], references: [ticker], onDelete: Cascade)
+  listName  String   @default("default")
+  createdAt DateTime @default(now())
+
+  @@unique([ticker, listName])
 }
