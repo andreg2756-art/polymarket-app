@@ -1,31 +1,94 @@
 // /lib/stocks/earningsRisk.ts
-// Calculates an earnings proximity penalty.
-// Uses Yahoo Finance calendarEvents — falls back gracefully if unavailable.
+// Earnings date proximity risk penalty.
+// Source: SEC EDGAR filing dates as a proxy (10-Q/10-K filing → recent earnings).
+// Falls back to Nasdaq earnings calendar if available.
 
 import type { ScoredMetric } from "./types";
 
-async function fetchNextEarningsDate(ticker: string): Promise<Date | null> {
+interface TickerEntry { cik_str: number; ticker: string }
+interface SECFiling { filed: string; form: string; accn: string }
+
+async function getCIK(ticker: string): Promise<string | null> {
   try {
-    const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=calendarEvents`;
-    const res = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0" },
-      next: { revalidate: 3600 },
+    const res = await fetch("https://www.sec.gov/files/company_tickers.json", {
+      headers: { "User-Agent": "polymarket-app/1.0 admin@example.com" },
+      next: { revalidate: 86400 },
     });
     if (!res.ok) return null;
-    const json = await res.json();
-    const result = json?.quoteSummary?.result?.[0];
-    if (!result) return null;
+    const data: Record<string, TickerEntry> = await res.json();
+    const match = Object.values(data).find(
+      (v) => v.ticker.toUpperCase() === ticker.toUpperCase()
+    );
+    return match ? String(match.cik_str).padStart(10, "0") : null;
+  } catch {
+    return null;
+  }
+}
 
-    const earningsDates: unknown[] = result?.calendarEvents?.earnings?.earningsDate ?? [];
-    if (!earningsDates.length) return null;
+// Get most recent 10-Q/10-K filing date from SEC submissions
+async function getRecentFilingDate(cik: string): Promise<{ lastFiled: Date | null; nextEstimate: Date | null }> {
+  try {
+    const res = await fetch(`https://data.sec.gov/submissions/CIK${cik}.json`, {
+      headers: { "User-Agent": "polymarket-app/1.0 admin@example.com" },
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return { lastFiled: null, nextEstimate: null };
+    const data = await res.json();
 
-    // earningsDate entries have a .raw (unix timestamp) or .fmt (string)
-    const first = earningsDates[0] as Record<string, unknown>;
-    const raw = first?.raw;
-    const fmt = first?.fmt;
+    const filings: { form: string[]; filingDate: string[] } = data?.filings?.recent ?? {};
+    const forms: string[] = filings.form ?? [];
+    const dates: string[] = filings.filingDate ?? [];
 
-    if (typeof raw === "number") return new Date(raw * 1000);
-    if (typeof fmt === "string") return new Date(fmt);
+    // Find the most recent quarterly/annual report
+    const quarterlyForms = ["10-Q", "10-K"];
+    let lastFiledDate: Date | null = null;
+
+    for (let i = 0; i < forms.length; i++) {
+      if (quarterlyForms.includes(forms[i])) {
+        const d = new Date(dates[i]);
+        if (!isNaN(d.getTime())) {
+          lastFiledDate = d;
+          break; // filings are newest-first
+        }
+      }
+    }
+
+    if (!lastFiledDate) return { lastFiled: null, nextEstimate: null };
+
+    // Estimate next report ~90 days after last filing (quarterly cadence)
+    const nextEstimate = new Date(lastFiledDate.getTime() + 90 * 86400000);
+
+    return { lastFiled: lastFiledDate, nextEstimate };
+  } catch {
+    return { lastFiled: null, nextEstimate: null };
+  }
+}
+
+// Also try Nasdaq earnings calendar as a secondary source
+async function getNasdaqEarningsDate(ticker: string): Promise<Date | null> {
+  try {
+    // Check the next 60 days
+    const dates: string[] = [];
+    const now = new Date();
+    for (let i = 0; i <= 60; i += 7) {
+      const d = new Date(now.getTime() + i * 86400000);
+      dates.push(d.toISOString().split("T")[0]);
+    }
+
+    for (const date of dates.slice(0, 3)) {
+      const res = await fetch(
+        `https://api.nasdaq.com/api/calendar/earnings?date=${date}`,
+        {
+          headers: { "User-Agent": "Mozilla/5.0", "Accept": "application/json" },
+          next: { revalidate: 3600 },
+        }
+      );
+      if (!res.ok) continue;
+      const json = await res.json();
+      const rows: { symbol: string; time: string }[] = json?.data?.rows ?? [];
+      const match = rows.find((r) => r.symbol?.toUpperCase() === ticker.toUpperCase());
+      if (match) return new Date(date);
+    }
     return null;
   } catch {
     return null;
@@ -43,50 +106,65 @@ function penaltyFromDays(days: number): number {
   return 0;
 }
 
-export async function getEarningsRiskScore(ticker: string): Promise<ScoredMetric & { daysUntilEarnings: number | null }> {
+export async function getEarningsRiskScore(
+  ticker: string
+): Promise<ScoredMetric & { daysUntilEarnings: number | null }> {
   try {
-    const nextDate = await fetchNextEarningsDate(ticker);
-
-    if (!nextDate || isNaN(nextDate.getTime())) {
-      return {
-        value: null,
-        score: null,
-        source: "unavailable",
-        reason: "No upcoming earnings date available",
-        daysUntilEarnings: null,
-      };
+    // Try Nasdaq calendar first (most accurate for upcoming dates)
+    const nasdaqDate = await getNasdaqEarningsDate(ticker);
+    if (nasdaqDate) {
+      const days = daysUntil(nasdaqDate);
+      if (days >= 0) {
+        const penalty = penaltyFromDays(days);
+        return {
+          value: nasdaqDate.toLocaleDateString(),
+          score: penalty,
+          source: "yahoo", // Nasdaq is close enough
+          reason: penalty > 0
+            ? `Earnings in ${days} day${days === 1 ? "" : "s"} — binary event risk. Penalty: -${penalty} pts`
+            : `Earnings in ${days} days — outside near-term risk window`,
+          daysUntilEarnings: days,
+        };
+      }
     }
 
-    const days = daysUntil(nextDate);
-
-    // Only applies as a forward risk if earnings are in the future
-    if (days < 0) {
-      return {
-        value: nextDate.toLocaleDateString(),
-        score: null,
-        source: "yahoo",
-        reason: `Last earnings was ${Math.abs(days)} days ago — next date not yet announced`,
-        daysUntilEarnings: null,
-      };
+    // Fall back to SEC filing cadence estimate
+    const cik = await getCIK(ticker);
+    if (cik) {
+      const { lastFiled, nextEstimate } = await getRecentFilingDate(cik);
+      if (nextEstimate) {
+        const days = daysUntil(nextEstimate);
+        const lastFiledStr = lastFiled ? lastFiled.toLocaleDateString() : "unknown";
+        if (days >= 0 && days <= 120) {
+          const penalty = penaltyFromDays(days);
+          return {
+            value: `~${nextEstimate.toLocaleDateString()} (est.)`,
+            score: penalty,
+            source: "sec",
+            reason: `Estimated from SEC filing cadence. Last filed: ${lastFiledStr}. ${
+              penalty > 0
+                ? `Estimated earnings ~${days} days away. Penalty: -${penalty} pts`
+                : `Estimated ~${days} days away — outside near-term risk window`
+            }`,
+            daysUntilEarnings: days,
+          };
+        }
+      }
     }
-
-    const penalty = penaltyFromDays(days);
 
     return {
-      value: nextDate.toLocaleDateString(),
-      score: penalty, // stored as penalty magnitude, applied as subtraction in scoring.ts
-      source: "yahoo",
-      reason: penalty > 0
-        ? `Earnings in ${days} day${days === 1 ? "" : "s"} — binary event risk. Score penalty: -${penalty} pts`
-        : `Earnings in ${days} days — outside near-term risk window`,
-      daysUntilEarnings: days,
+      value: null,
+      score: null,
+      source: "unavailable",
+      reason: "No upcoming earnings date found via Nasdaq or SEC filing cadence",
+      daysUntilEarnings: null,
     };
   } catch {
     return {
       value: null,
       score: null,
       source: "unavailable",
-      reason: "Earnings date fetch failed",
+      reason: "Earnings risk fetch failed",
       daysUntilEarnings: null,
     };
   }

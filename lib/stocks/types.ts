@@ -2,7 +2,7 @@
 // Shared types for the enhanced scoring layer.
 // Additive only — does not replace existing stock types.
 
-export type DataSource = "yahoo" | "polygon" | "calculated" | "unavailable";
+export type DataSource = "yahoo" | "polygon" | "calculated" | "sec" | "unavailable";
 
 export interface ScoredMetric {
   value: number | string | null;
