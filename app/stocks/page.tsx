@@ -25,6 +25,24 @@ interface NewsItem {
   publishedAt: string;
 }
 
+const POSITIVE_KEYWORDS = ["beat","surpass","record","growth","upgrade","bullish","strong","raise","accelerat","partnership","win","contract","expand","rally","surge","soar","breakout","outperform","buy","positive","profit","revenue","opportunity","momentum","gain"];
+const NEGATIVE_KEYWORDS = ["miss","disappoint","downgrade","bearish","weak","cut","decline","loss","dilut","lawsuit","recall","warning","risk","concern","fall","drop","plunge","sell","negative","debt","bankruptcy","investigation","probe","fine"];
+
+function classifyNews(items: NewsItem[]) {
+  const positives: NewsItem[] = [];
+  const negatives: NewsItem[] = [];
+  const neutral: NewsItem[] = [];
+  for (const n of items) {
+    const text = n.title.toLowerCase();
+    const posHits = POSITIVE_KEYWORDS.filter((w) => text.includes(w)).length;
+    const negHits = NEGATIVE_KEYWORDS.filter((w) => text.includes(w)).length;
+    if (posHits > negHits) positives.push(n);
+    else if (negHits > posHits) negatives.push(n);
+    else neutral.push(n);
+  }
+  return { positives, negatives, neutral };
+}
+
 function fmt(n: number) {
   if (!isFinite(n)) return "N/A";
   return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
@@ -33,6 +51,7 @@ function fmt(n: number) {
 function fmtCap(n: number) {
   if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
   if (n >= 1e6) return `$${(n / 1e6).toFixed(0)}M`;
+  if (n === 0) return "N/A";
   return `$${n.toLocaleString()}`;
 }
 
@@ -47,18 +66,17 @@ function scoreSummary(score: number, s: Stock): string {
   else if (s.change3M < 0) parts.push(`declining 3-month trend (${s.change3M.toFixed(1)}%)`);
   if (s.relativeVolume > 2) parts.push(`elevated volume (${s.relativeVolume.toFixed(1)}x avg)`);
   else if (s.relativeVolume > 1.2) parts.push(`above-average volume (${s.relativeVolume.toFixed(1)}x)`);
-  const detail = parts.length ? parts.join(", ") : "no strong price signals detected";
-  return `${label} (${score}/100). Score is based on: ${detail}. Scoring weights: 1M momentum 30pts, 3M trend 35pts, relative volume 20pts, trend alignment bonus 15pts.`;
+  const detail = parts.length ? parts.join(", ") : "no strong price signals";
+  return `${label} (${score}/100). Based on: ${detail}. Weights: 1M momentum 30pts · 3M trend 35pts · volume 20pts · trend alignment 15pts.`;
 }
 
 function ScoreBadge({ score, stock }: { score: number; stock: Stock }) {
   const color = score >= 70 ? "bg-emerald-900 text-emerald-300" : score >= 45 ? "bg-blue-900 text-blue-300" : "bg-gray-800 text-gray-400";
-  const tooltip = scoreSummary(score, stock);
   return (
     <div className="relative group inline-block">
       <span className={`text-xs px-2 py-0.5 rounded-full font-semibold cursor-help ${color}`}>{score}</span>
       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-        {tooltip}
+        {scoreSummary(score, stock)}
         <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-700" />
       </div>
     </div>
@@ -88,68 +106,101 @@ function MediaOutlook({ ticker }: { ticker: string }) {
     }
   }
 
+  const classified = news ? classifyNews(news) : null;
+
   return (
     <div>
       <button onClick={loadNews} className="text-xs text-blue-400 hover:text-blue-300 underline underline-offset-2">
-        {open ? "Hide" : "Media Outlook"}
+        {open ? "Hide" : "Media Outlook ▾"}
       </button>
       {open && (
-        <div className="mt-2 space-y-2 max-w-sm">
+        <div className="mt-2 space-y-3 max-w-sm">
           {loading && <p className="text-xs text-gray-500">Loading...</p>}
-          {news && news.length === 0 && <p className="text-xs text-gray-600">No recent coverage found.</p>}
-          {news && news.map((n, i) => (
-            <a key={i} href={n.link} target="_blank" rel="noopener noreferrer"
-              className="block border-l-2 border-blue-800 pl-2 hover:border-blue-500 transition-colors">
-              <p className="text-xs text-gray-200 leading-snug hover:text-white">"{n.title}"</p>
-              <p className="text-xs text-gray-600 mt-0.5">{n.publisher} · {n.publishedAt}</p>
-            </a>
-          ))}
+          {classified && (
+            <>
+              {classified.positives.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-emerald-400 mb-1">✓ Positives</p>
+                  <div className="space-y-1.5">
+                    {classified.positives.map((n, i) => (
+                      <a key={i} href={n.link} target="_blank" rel="noopener noreferrer"
+                        className="block border-l-2 border-emerald-700 pl-2 hover:border-emerald-400 transition-colors">
+                        <p className="text-xs text-gray-200 leading-snug hover:text-white">"{n.title}"</p>
+                        <p className="text-xs text-gray-600 mt-0.5">{n.publisher} · {n.publishedAt}</p>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {classified.negatives.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-red-400 mb-1">✗ Negatives</p>
+                  <div className="space-y-1.5">
+                    {classified.negatives.map((n, i) => (
+                      <a key={i} href={n.link} target="_blank" rel="noopener noreferrer"
+                        className="block border-l-2 border-red-800 pl-2 hover:border-red-500 transition-colors">
+                        <p className="text-xs text-gray-200 leading-snug hover:text-white">"{n.title}"</p>
+                        <p className="text-xs text-gray-600 mt-0.5">{n.publisher} · {n.publishedAt}</p>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {classified.neutral.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 mb-1">— Neutral</p>
+                  <div className="space-y-1.5">
+                    {classified.neutral.map((n, i) => (
+                      <a key={i} href={n.link} target="_blank" rel="noopener noreferrer"
+                        className="block border-l-2 border-gray-700 pl-2 hover:border-gray-500 transition-colors">
+                        <p className="text-xs text-gray-200 leading-snug hover:text-white">"{n.title}"</p>
+                        <p className="text-xs text-gray-600 mt-0.5">{n.publisher} · {n.publishedAt}</p>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {classified.positives.length === 0 && classified.negatives.length === 0 && classified.neutral.length === 0 && (
+                <p className="text-xs text-gray-600">No recent coverage found.</p>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-const SORT_OPTIONS = [
-  { value: "rank", label: "Rank" },
-  { value: "bullishScore", label: "Bullish Score" },
-  { value: "marketCap", label: "Market Cap" },
-];
-
 export default function StocksPage() {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [msg, setMsg] = useState("");
-  const [sortBy, setSortBy] = useState("rank");
-  const [search, setSearch] = useState("");
-  const [sector, setSector] = useState("");
-  const [minScore, setMinScore] = useState(0);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ sortBy, search, sector, minScore: String(minScore) });
-      const res = await fetch(`/api/stocks/screener?${params}`);
+      const res = await fetch(`/api/stocks/screener?sortBy=rank`);
       const data = await res.json();
-      setStocks(data);
+      // Top 50 only on this page
+      setStocks(data.filter((s: Stock) => s.rank <= 50));
       if (data[0]?.updatedAt) setUpdatedAt(data[0].updatedAt);
     } finally {
       setLoading(false);
     }
-  }, [sortBy, search, sector, minScore]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
   async function handleRefresh() {
     setRefreshing(true);
-    setMsg("Scanning market...");
+    setMsg("Scanning all sectors...");
     try {
       const res = await fetch("/api/stocks/refresh", { method: "POST" });
       const data = await res.json();
       if (data.success) {
-        setMsg(`Done — ${data.count} stocks ranked`);
+        setMsg(`Done — ${data.count} stocks across ${data.sectors} sectors`);
         load();
       } else {
         setMsg(`Error: ${data.error}`);
@@ -159,18 +210,16 @@ export default function StocksPage() {
     }
   }
 
-  const sectors = Array.from(new Set(stocks.map((s) => s.sector).filter(Boolean)));
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-emerald-400">Small-Cap Bullish Intelligence</h1>
-          <p className="text-gray-500 text-sm mt-1">Most bullish stocks · $50M–$8B market cap</p>
+          <h1 className="text-2xl font-bold text-emerald-400">Top 50 Bullish Stocks</h1>
+          <p className="text-gray-500 text-sm mt-1">Best 50 across 10 sectors · scored by momentum, volume &amp; trend</p>
           {updatedAt && <p className="text-gray-600 text-xs">Last updated: {new Date(updatedAt).toLocaleString()}</p>}
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => exportCSV(stocks as unknown as Record<string, unknown>[], "stocks.csv")}
+          <button onClick={() => exportCSV(stocks as unknown as Record<string, unknown>[], "top50-stocks.csv")}
             className="text-xs text-emerald-400 border border-emerald-800 px-3 py-1 rounded hover:bg-emerald-900/30">
             Export CSV
           </button>
@@ -182,31 +231,12 @@ export default function StocksPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 bg-gray-900 p-4 rounded-xl border border-gray-800">
-        <input className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm flex-1 min-w-[160px] focus:outline-none focus:border-emerald-500"
-          placeholder="Search ticker or name..."
-          value={search} onChange={(e) => setSearch(e.target.value)} />
-        <select className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
-          value={sector} onChange={(e) => setSector(e.target.value)}>
-          <option value="">All Sectors</option>
-          {sectors.map((s) => <option key={s} value={s!}>{s}</option>)}
-        </select>
-        <input type="number" className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm w-36 focus:outline-none focus:border-emerald-500"
-          placeholder="Min score" value={minScore || ""} onChange={(e) => setMinScore(Number(e.target.value))} />
-        <select className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
-          value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-          {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      </div>
-
-      <p className="text-gray-500 text-sm">{stocks.length} stocks</p>
-
-      {loading ? <TableSkeleton rows={10} cols={7} /> : (
+      {loading ? <TableSkeleton rows={10} cols={8} /> : (
         <div className="rounded-xl border border-gray-800 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-900 text-gray-400 text-xs uppercase">
               <tr>
-                {["#", "Ticker", "Company", "Mkt Cap", "Price", "1M", "3M", "Rel. Vol", "Score", "Media Outlook"].map((h) => (
+                {["#","Ticker","Company","Sector","Mkt Cap","Price","1M","3M","Rel. Vol","Score","Media Outlook"].map((h) => (
                   <th key={h} className="px-3 py-3 text-left whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -221,9 +251,11 @@ export default function StocksPage() {
                       <a href={`https://finance.yahoo.com/quote/${s.ticker}`} target="_blank" rel="noopener noreferrer" className="text-xs text-gray-600 hover:text-gray-400">Yahoo ↗</a>
                     </div>
                   </td>
-                  <td className="px-3 py-3 max-w-[180px]">
+                  <td className="px-3 py-3 max-w-[160px]">
                     <p className="truncate text-gray-200">{s.name}</p>
-                    <p className="text-xs text-gray-600">{s.sector || "—"}</p>
+                  </td>
+                  <td className="px-3 py-3">
+                    <span className="text-xs bg-gray-800 px-2 py-0.5 rounded text-gray-400 whitespace-nowrap">{s.sector || "—"}</span>
                   </td>
                   <td className="px-3 py-3 text-gray-300 whitespace-nowrap">{fmtCap(s.marketCap)}</td>
                   <td className="px-3 py-3 text-white font-medium">${fmt(s.price)}</td>
@@ -231,17 +263,15 @@ export default function StocksPage() {
                   <td className="px-3 py-3"><Change v={s.change3M} /></td>
                   <td className="px-3 py-3 text-gray-300">{s.relativeVolume?.toFixed(1) ?? "—"}x</td>
                   <td className="px-3 py-3"><ScoreBadge score={s.bullishScore} stock={s} /></td>
-                  <td className="px-3 py-3 min-w-[200px]">
-                    <MediaOutlook ticker={s.ticker} />
-                  </td>
+                  <td className="px-3 py-3 min-w-[200px]"><MediaOutlook ticker={s.ticker} /></td>
                 </tr>
               ))}
             </tbody>
           </table>
           {stocks.length === 0 && (
             <div className="py-24 text-center space-y-3">
-              <p className="text-gray-400">No stocks yet.</p>
-              <p className="text-gray-600 text-sm">Click <strong>Scan Market</strong> to analyze the universe.</p>
+              <p className="text-gray-400">No data yet.</p>
+              <p className="text-gray-600 text-sm">Click <strong>Scan Market</strong> to scan all sectors.</p>
             </div>
           )}
         </div>

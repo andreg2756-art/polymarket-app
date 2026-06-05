@@ -1,3 +1,13 @@
+import { SECTOR_UNIVERSE } from "./small-cap-universe";
+
+// Build a ticker -> sector lookup
+export const TICKER_SECTOR: Record<string, string> = {};
+for (const [sector, tickers] of Object.entries(SECTOR_UNIVERSE)) {
+  for (const ticker of tickers) {
+    if (!TICKER_SECTOR[ticker]) TICKER_SECTOR[ticker] = sector;
+  }
+}
+
 export interface YahooChart {
   price: number;
   change1M: number;
@@ -35,10 +45,9 @@ export async function getYahooChart(ticker: string): Promise<YahooChart | null> 
       : volumes.reduce((a, b) => a + b, 0) / (volumes.length || 1);
     const relativeVolume = avg20Vol > 0 ? Math.round((recentVol / avg20Vol) * 10) / 10 : 1;
 
-    const marketCap = meta.marketCap ?? 0;
     const name = meta.longName ?? meta.shortName ?? ticker;
 
-    return { price, change1M, change3M, relativeVolume, marketCap, name };
+    return { price, change1M, change3M, relativeVolume, marketCap: 0, name };
   } catch {
     return null;
   }

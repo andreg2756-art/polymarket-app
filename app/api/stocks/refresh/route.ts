@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getProfile } from "@/lib/fmp";
-import { getYahooChart } from "@/lib/yahoo-finance";
-import { SMALL_CAP_UNIVERSE, SHARES_OUTSTANDING } from "@/lib/small-cap-universe";
+import { getYahooChart, TICKER_SECTOR } from "@/lib/yahoo-finance";
+import { SMALL_CAP_UNIVERSE, SHARES_OUTSTANDING, SECTOR_UNIVERSE } from "@/lib/small-cap-universe";
 
 export const maxDuration = 60;
 
@@ -25,76 +24,59 @@ type StockRow = {
 
 export async function POST() {
   try {
-    // Step 1: fetch all price data from Yahoo (no API key, no rate limits)
+    // Fetch all Yahoo data in parallel — no API key needed
     const yahooResults = await Promise.allSettled(
-      SMALL_CAP_UNIVERSE.map((ticker) => getYahooChart(ticker).then((d) => ({ ticker, data: d })))
+      SMALL_CAP_UNIVERSE.map((ticker) =>
+        getYahooChart(ticker).then((d) => ({ ticker, data: d }))
+      )
     );
 
-    const yahooMap = new Map<string, NonNullable<Awaited<ReturnType<typeof getYahooChart>>>>();
+    const yahooMap = new Map<string, YahooChart>();
     for (const r of yahooResults) {
-      if (r.status === "fulfilled" && r.value.data) {
+      if (r.status === "fulfilled" && r.value.data && r.value.data.price > 0) {
         yahooMap.set(r.value.ticker, r.value.data);
       }
     }
 
-    // Step 2: fetch FMP profiles only for tickers where Yahoo succeeded (saves API calls)
-    const validTickers = Array.from(yahooMap.keys());
-    const profileResults = await Promise.allSettled(
-      validTickers.map((ticker) => getProfile(ticker).then((d) => ({ ticker, data: d })))
-    );
+    // Build per-sector top 15 by score, then take top 50 overall
+    const allScored: StockRow[] = [];
 
-    const profileMap = new Map<string, Awaited<ReturnType<typeof getProfile>>>();
-    for (const r of profileResults) {
-      if (r.status === "fulfilled" && r.value.data) {
-        profileMap.set(r.value.ticker, r.value.data);
+    for (const [sector, tickers] of Object.entries(SECTOR_UNIVERSE)) {
+      const sectorStocks: StockRow[] = [];
+      for (const ticker of tickers) {
+        const y = yahooMap.get(ticker);
+        if (!y) continue;
+        const shares = SHARES_OUTSTANDING[ticker] ?? 0;
+        const marketCap = shares > 0 ? Math.round(y.price * shares * 1_000_000) : 0;
+        const bullishScore = computeScore(y.change1M, y.change3M, y.relativeVolume);
+        sectorStocks.push({
+          ticker, name: y.name, exchange: "", sector,
+          industry: sector, description: "", marketCap,
+          price: y.price, change1M: y.change1M, change3M: y.change3M,
+          revenueGrowth: 0, epsGrowth: 0, analystRating: "N/A", analystCount: 0,
+          bullishScore, lastEarningsDate: null, float: null, shortInterest: null,
+          institutionalOwn: null, insiderBuying: 0, relativeVolume: y.relativeVolume,
+          earningsBeat: false, revenueBeat: false, guidanceUp: false, rank: 0,
+        });
       }
+      // Top 15 per sector
+      sectorStocks.sort((a, b) => b.bullishScore - a.bullishScore);
+      allScored.push(...sectorStocks.slice(0, 15));
     }
 
-    // Step 3: combine and score
-    const stocks: StockRow[] = [];
-    for (const ticker of validTickers) {
-      const y = yahooMap.get(ticker);
-      if (!y) continue;
+    // Deduplicate (some tickers appear in multiple sectors)
+    const seen = new Set<string>();
+    const deduped = allScored.filter((s) => {
+      if (seen.has(s.ticker)) return false;
+      seen.add(s.ticker);
+      return true;
+    });
 
-      const p = profileMap.get(ticker);
-      const shares = SHARES_OUTSTANDING[ticker] ?? 0;
-      const marketCap = p?.marketCap || (shares > 0 ? Math.round(y.price * shares * 1_000_000) : y.marketCap) || 0;
+    // Top 50 overall get rank 1-50, rest get rank 51+
+    deduped.sort((a, b) => b.bullishScore - a.bullishScore);
+    const ranked = deduped.map((s, i) => ({ ...s, rank: i + 1 }));
 
-      const bullishScore = computeScore(y.change1M, y.change3M, y.relativeVolume);
-
-      stocks.push({
-        ticker,
-        name: p?.companyName ?? y.name,
-        exchange: p?.exchange ?? "",
-        sector: p?.sector ?? "",
-        industry: p?.industry ?? "",
-        description: p?.description?.slice(0, 1000) ?? "",
-        marketCap,
-        price: y.price,
-        change1M: y.change1M,
-        change3M: y.change3M,
-        revenueGrowth: 0,
-        epsGrowth: 0,
-        analystRating: "N/A",
-        analystCount: 0,
-        bullishScore,
-        lastEarningsDate: null,
-        float: null,
-        shortInterest: null,
-        institutionalOwn: null,
-        insiderBuying: 0,
-        relativeVolume: y.relativeVolume,
-        earningsBeat: false,
-        revenueBeat: false,
-        guidanceUp: false,
-        rank: 0,
-      });
-    }
-
-    const ranked = stocks
-      .sort((a, b) => b.bullishScore - a.bullishScore)
-      .map((s, i) => ({ ...s, rank: i + 1 }));
-
+    // Upsert all into DB
     for (const s of ranked) {
       await prisma.stock.upsert({
         where: { ticker: s.ticker },
@@ -106,14 +88,16 @@ export async function POST() {
       });
     }
 
-    // Remove any stale tickers not in current universe
+    // Remove stale tickers not in current universe
     await prisma.stock.deleteMany({
       where: { ticker: { notIn: SMALL_CAP_UNIVERSE } },
     });
 
-    return NextResponse.json({ success: true, count: ranked.length });
+    return NextResponse.json({ success: true, count: ranked.length, sectors: Object.keys(SECTOR_UNIVERSE).length });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
+
+type YahooChart = NonNullable<Awaited<ReturnType<typeof getYahooChart>>>;
