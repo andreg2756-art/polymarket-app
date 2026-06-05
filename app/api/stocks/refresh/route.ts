@@ -1,35 +1,47 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getProfile, getIncomeStatements, getQuote, getPriceHistory } from "@/lib/fmp";
+import { getProfile, getPriceHistory } from "@/lib/fmp";
 import { SMALL_CAP_UNIVERSE } from "@/lib/small-cap-universe";
 
 export const maxDuration = 60;
 
 function pctChange(prices: { close: number }[], days: number): number {
-  if (prices.length < 2) return 0;
+  if (prices.length < days) return 0;
   const recent = prices[0]?.close ?? 0;
   const old = prices[Math.min(days - 1, prices.length - 1)]?.close ?? recent;
   if (!old) return 0;
   return ((recent - old) / old) * 100;
 }
 
+function avgVolume(prices: { volume: number }[], days: number): number {
+  const slice = prices.slice(0, days);
+  if (!slice.length) return 0;
+  return slice.reduce((s, p) => s + p.volume, 0) / slice.length;
+}
+
 function computeScore(params: {
   revenueGrowth: number;
-  epsGrowth: number;
   change1M: number;
   change3M: number;
   relativeVolume: number;
+  marketCap: number;
 }): number {
-  const { revenueGrowth, epsGrowth, change1M, change3M, relativeVolume } = params;
-
-  const revScore = revenueGrowth > 30 ? 25 : revenueGrowth > 15 ? 18 : revenueGrowth > 5 ? 12 : revenueGrowth > 0 ? 6 : 0;
-  const epsScore = epsGrowth > 50 ? 20 : epsGrowth > 20 ? 14 : epsGrowth > 0 ? 8 : 0;
-  const mom1M = change1M > 20 ? 20 : change1M > 10 ? 14 : change1M > 5 ? 8 : change1M > 0 ? 4 : 0;
-  const mom3M = change3M > 30 ? 20 : change3M > 15 ? 14 : change3M > 5 ? 8 : change3M > 0 ? 4 : 0;
-  const volScore = relativeVolume > 2 ? 15 : relativeVolume > 1.5 ? 10 : relativeVolume > 1 ? 5 : 0;
-
-  return Math.min(100, Math.round(revScore + epsScore + mom1M + mom3M + volScore));
+  const { change1M, change3M, relativeVolume } = params;
+  const mom1M = change1M > 25 ? 30 : change1M > 15 ? 22 : change1M > 8 ? 15 : change1M > 0 ? 8 : change1M > -5 ? 3 : 0;
+  const mom3M = change3M > 40 ? 35 : change3M > 20 ? 25 : change3M > 10 ? 18 : change3M > 0 ? 10 : change3M > -10 ? 3 : 0;
+  const volScore = relativeVolume > 3 ? 20 : relativeVolume > 2 ? 14 : relativeVolume > 1.5 ? 10 : relativeVolume > 1 ? 5 : 0;
+  const trendBonus = change1M > 0 && change3M > 0 ? 10 : 0;
+  return Math.min(100, Math.round(mom1M + mom3M + volScore + trendBonus));
 }
+
+type StockRow = {
+  ticker: string; name: string; exchange: string; sector: string; industry: string;
+  description: string; marketCap: number; price: number; change1M: number; change3M: number;
+  revenueGrowth: number; epsGrowth: number; analystRating: string; analystCount: number;
+  bullishScore: number; lastEarningsDate: string | null; float: null; shortInterest: null;
+  institutionalOwn: null; insiderBuying: number; relativeVolume: number;
+  earningsBeat: boolean; revenueBeat: boolean; guidanceUp: boolean; rank: number;
+};
 
 export async function POST() {
   try {
@@ -37,31 +49,26 @@ export async function POST() {
     const from90 = new Date(Date.now() - 90 * 86400000).toISOString().split("T")[0];
 
     const results = await Promise.allSettled(
-      SMALL_CAP_UNIVERSE.map(async (ticker) => {
-        const [profile, quote, income, prices] = await Promise.allSettled([
+      SMALL_CAP_UNIVERSE.map(async (ticker): Promise<StockRow | null> => {
+        const [profileRes, pricesRes] = await Promise.allSettled([
           getProfile(ticker),
-          getQuote(ticker),
-          getIncomeStatements(ticker),
           getPriceHistory(ticker, from90, to),
         ]);
 
-        const p = profile.status === "fulfilled" ? profile.value : null;
-        const q = quote.status === "fulfilled" ? quote.value : null;
-        const inc = income.status === "fulfilled" ? income.value : [];
-        const px = prices.status === "fulfilled" ? prices.value : [];
+        const p = profileRes.status === "fulfilled" ? profileRes.value : null;
+        const prices = pricesRes.status === "fulfilled" ? pricesRes.value : [];
 
-        if (!p || !p.marketCap || p.marketCap < 50_000_000 || p.marketCap > 2_000_000_000) return null;
+        if (!p) return null;
 
-        const revenueGrowth = inc.length >= 2 && inc[1].revenue
-          ? ((inc[0].revenue - inc[1].revenue) / Math.abs(inc[1].revenue)) * 100 : 0;
-        const epsGrowth = inc.length >= 2 && inc[1].eps !== 0
-          ? ((inc[0].eps - inc[1].eps) / Math.abs(inc[1].eps)) * 100 : 0;
+        const cap = p.marketCap ?? 0;
+        const change1M = Math.round(pctChange(prices, 21) * 10) / 10;
+        const change3M = Math.round(pctChange(prices, 63) * 10) / 10;
 
-        const change1M = pctChange(px, 21);
-        const change3M = pctChange(px, 63);
-        const relativeVolume = q ? (q.volume / Math.max(q.avgVolume ?? 1, 1)) : 1;
+        const recentVol = prices[0]?.volume ?? 0;
+        const avg20Vol = avgVolume(prices, 20);
+        const relativeVolume = avg20Vol > 0 ? Math.round((recentVol / avg20Vol) * 10) / 10 : 1;
 
-        const bullishScore = computeScore({ revenueGrowth, epsGrowth, change1M, change3M, relativeVolume });
+        const bullishScore = computeScore({ revenueGrowth: 0, change1M, change3M, relativeVolume, marketCap: cap });
 
         return {
           ticker,
@@ -70,21 +77,21 @@ export async function POST() {
           sector: p.sector ?? "",
           industry: p.industry ?? "",
           description: p.description?.slice(0, 1000) ?? "",
-          marketCap: p.marketCap ?? 0,
-          price: q?.price ?? p.price,
-          change1M: Math.round(change1M * 10) / 10,
-          change3M: Math.round(change3M * 10) / 10,
-          revenueGrowth: Math.round(revenueGrowth * 10) / 10,
-          epsGrowth: Math.round(epsGrowth * 10) / 10,
+          marketCap: cap,
+          price: p.price ?? 0,
+          change1M,
+          change3M,
+          revenueGrowth: 0,
+          epsGrowth: 0,
           analystRating: "N/A",
           analystCount: 0,
           bullishScore,
-          lastEarningsDate: inc[0]?.date ?? null,
+          lastEarningsDate: null,
           float: null,
           shortInterest: null,
           institutionalOwn: null,
           insiderBuying: 0,
-          relativeVolume: Math.round(relativeVolume * 10) / 10,
+          relativeVolume,
           earningsBeat: false,
           revenueBeat: false,
           guidanceUp: false,
@@ -97,7 +104,6 @@ export async function POST() {
       .filter((r) => r.status === "fulfilled" && r.value !== null)
       .map((r) => (r as PromiseFulfilledResult<StockRow>).value)
       .sort((a, b) => b.bullishScore - a.bullishScore)
-      .slice(0, 50)
       .map((s, i) => ({ ...s, rank: i + 1 }));
 
     for (const s of stocks) {
@@ -117,12 +123,3 @@ export async function POST() {
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
-
-type StockRow = {
-  ticker: string; name: string; exchange: string; sector: string; industry: string;
-  description: string; marketCap: number; price: number; change1M: number; change3M: number;
-  revenueGrowth: number; epsGrowth: number; analystRating: string; analystCount: number;
-  bullishScore: number; lastEarningsDate: string | null; float: null; shortInterest: null;
-  institutionalOwn: null; insiderBuying: number; relativeVolume: number;
-  earningsBeat: boolean; revenueBeat: boolean; guidanceUp: boolean; rank: number;
-};

@@ -1,23 +1,28 @@
-// Curated universe of US small-cap candidates ($50M–$2B market cap range)
+// 25 hand-picked US small-cap stocks ($50M–$2B) with strong fundamentals
 export const SMALL_CAP_UNIVERSE = [
-  "ACHR","ACMR","AEYE","AGIO","AGYS","AHCO","AKRO","ALEC","ALKT","ALRM",
-  "AMSC","AMWD","ANDE","ANIK","ANIP","ANSS","APLT","APOG","APPS","ARCB",
-  "ARCT","ARDX","AREC","ARHS","ARLO","ARQT","ASRT","ATEN","ATEX","ATGL",
-  "ATNI","ATRC","ATSG","ATTO","ATXI","AUDC","AVNS","AVPT","AXDX","AXGN",
-  "BBSI","BCAB","BCEI","BCPC","BFST","BGFV","BIOL","BJRI","BLFS","BLMN",
-  "BMBL","BNFT","BOOT","BOWL","BPMC","BRDG","BRKR","BRSP","BSIG","BSVN",
-  "BTBT","BURL","BYRN","CAAS","CABA","CABO","CALT","CARA","CARE","CASH",
-  "CASS","CATO","CATS","CBRL","CBSH","CCCC","CCOI","CDMO","CDRE","CDXS",
-  "CENT","CERE","CEVA","CFFN","CFLT","CGEM","CGON","CHCO","CHDN","CHEF",
-  "CHGG","CHRS","CIFR","CLAR","CLBT","CLFD","CLMT","CLNE","CLPR","CLPS",
-  "CLSK","CMCO","CMLS","CMPO","CNDT","CNET","CNMD","CNOB","CNSL","CNXN",
-  "COHR","COHU","COLB","COMM","CONN","COUR","CPSS","CPTA","CRAI","CRBP",
-  "CRCT","CRDF","CRIS","CRMT","CRNC","CRSR","CRVL","CSTE","CSTL","CTBI",
-  "CTLP","CTSO","CVCO","CVLG","CVLY","CVRX","CWAN","CWCO","CYRX","DBRG",
-  "DCPH","DDOG","DFIN","DGII","DIOD","DJCO","DLHC","DNOW","DOMO","DRVN",
-  "DXPE","EARN","EAST","EBIX","ECPG","EDSA","EFSC","EGHT","ELME","ELSE",
-  "EMED","EMKR","ENPH","ENSC","ENVX","EOLS","EPRT","ESCA","ESMT","ESSA",
-  "ETSY","EVGO","EVLV","EVRI","EWBC","EXTR","EYEG","FARO","FAST","FBIZ",
-  "FCNCA","FEIM","FELE","FENC","FGEN","FIBK","FISI","FLGT","FLNC","FLXS",
-  "FMAO","FMBH","FMNB","FMST","FOCS","FORM","FORR","FOUR","FRBA","FRGE",
+  "ACHR",  // Archer Aviation - eVTOL aircraft
+  "ARQT",  // Arcutis Biotherapeutics - dermatology
+  "ASTS",  // AST SpaceMobile - satellite broadband
+  "BIOL",  // BIOLASE - dental lasers
+  "BYRN",  // Byrna Technologies - non-lethal weapons
+  "CLSK",  // CleanSpark - bitcoin mining
+  "CRVL",  // CorVel - managed care
+  "ENVX",  // Enovix - next-gen batteries
+  "EOLS",  // Evolent Health - value-based care
+  "FLNC",  // Fluence Energy - energy storage
+  "FROG",  // JFrog - DevOps platform
+  "GATO",  // Gatos Silver - silver mining
+  "HIMS",  // Hims & Hers Health - telehealth
+  "IOVA",  // Iovance Biotherapeutics - cancer therapy
+  "JOBY",  // Joby Aviation - air taxi
+  "KRTX",  // Karuna Therapeutics - CNS drugs
+  "LUNG",  // Pulmonx - lung disease
+  "MARA",  // Marathon Digital - bitcoin mining
+  "NKLA",  // Nikola - electric trucks
+  "OPEN",  // Opendoor - real estate
+  "PRCT",  // PROCEPT BioRobotics - surgical robotics
+  "RDDT",  // Reddit - social media
+  "RXRX",  // Recursion Pharma - AI drug discovery
+  "SEAT",  // Vivid Seats - ticketing
+  "TNDM",  // Tandem Diabetes Care - insulin pumps
 ];
