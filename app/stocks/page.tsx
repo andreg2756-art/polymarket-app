@@ -12,20 +12,22 @@ interface Stock {
   price: number;
   change1M: number;
   change3M: number;
-  revenueGrowth: number;
-  epsGrowth: number;
-  analystRating: string | null;
   bullishScore: number;
-  lastEarningsDate: string | null;
   rank: number;
-  earningsBeat: boolean;
-  revenueBeat: boolean;
   sector: string | null;
+  relativeVolume: number;
 }
 
-function fmt(n: number, prefix = "") {
+interface NewsItem {
+  title: string;
+  publisher: string;
+  link: string;
+  publishedAt: string;
+}
+
+function fmt(n: number) {
   if (!isFinite(n)) return "N/A";
-  return prefix + n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
 function fmtCap(n: number) {
@@ -45,13 +47,49 @@ function Change({ v }: { v: number }) {
   return <span className={color}>{v > 0 ? "+" : ""}{v.toFixed(1)}%</span>;
 }
 
+function MediaOutlook({ ticker }: { ticker: string }) {
+  const [news, setNews] = useState<NewsItem[] | null>(null);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function loadNews() {
+    if (news !== null) { setOpen(!open); return; }
+    setOpen(true);
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/stocks/news/${ticker}`);
+      setNews(await res.json());
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div>
+      <button onClick={loadNews} className="text-xs text-blue-400 hover:text-blue-300 underline underline-offset-2">
+        {open ? "Hide" : "Media Outlook"}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2 max-w-sm">
+          {loading && <p className="text-xs text-gray-500">Loading...</p>}
+          {news && news.length === 0 && <p className="text-xs text-gray-600">No recent coverage found.</p>}
+          {news && news.map((n, i) => (
+            <a key={i} href={n.link} target="_blank" rel="noopener noreferrer"
+              className="block border-l-2 border-blue-800 pl-2 hover:border-blue-500 transition-colors">
+              <p className="text-xs text-gray-200 leading-snug hover:text-white">"{n.title}"</p>
+              <p className="text-xs text-gray-600 mt-0.5">{n.publisher} · {n.publishedAt}</p>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const SORT_OPTIONS = [
   { value: "rank", label: "Rank" },
   { value: "bullishScore", label: "Bullish Score" },
-  { value: "revenueGrowth", label: "Revenue Growth" },
-  { value: "epsGrowth", label: "EPS Growth" },
   { value: "marketCap", label: "Market Cap" },
-  { value: "insiderBuying", label: "Insider Buying" },
 ];
 
 export default function StocksPage() {
@@ -82,7 +120,7 @@ export default function StocksPage() {
 
   async function handleRefresh() {
     setRefreshing(true);
-    setMsg("Scanning small-cap universe...");
+    setMsg("Scanning market...");
     try {
       const res = await fetch("/api/stocks/refresh", { method: "POST" });
       const data = await res.json();
@@ -108,10 +146,12 @@ export default function StocksPage() {
           {updatedAt && <p className="text-gray-600 text-xs">Last updated: {new Date(updatedAt).toLocaleString()}</p>}
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => exportCSV(stocks as unknown as Record<string, unknown>[], "small-cap-stocks.csv")} className="text-xs text-emerald-400 border border-emerald-800 px-3 py-1 rounded hover:bg-emerald-900/30">
+          <button onClick={() => exportCSV(stocks as unknown as Record<string, unknown>[], "stocks.csv")}
+            className="text-xs text-emerald-400 border border-emerald-800 px-3 py-1 rounded hover:bg-emerald-900/30">
             Export CSV
           </button>
-          <button onClick={handleRefresh} disabled={refreshing} className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 rounded-lg text-sm font-medium transition-colors">
+          <button onClick={handleRefresh} disabled={refreshing}
+            className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 rounded-lg text-sm font-medium transition-colors">
             {refreshing ? "Scanning..." : "Scan Market"}
           </button>
           {msg && <span className="text-sm text-gray-400">{msg}</span>}
@@ -137,19 +177,19 @@ export default function StocksPage() {
 
       <p className="text-gray-500 text-sm">{stocks.length} stocks</p>
 
-      {loading ? <TableSkeleton rows={10} cols={12} /> : (
+      {loading ? <TableSkeleton rows={10} cols={7} /> : (
         <div className="rounded-xl border border-gray-800 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-900 text-gray-400 text-xs uppercase">
               <tr>
-                {["#","Ticker","Company","Mkt Cap","Price","1M","3M","Rev Growth","EPS Growth","Rating","Score","Last Earnings"].map((h) => (
+                {["#", "Ticker", "Company", "Mkt Cap", "Price", "1M", "3M", "Rel. Vol", "Score", "Media Outlook"].map((h) => (
                   <th key={h} className="px-3 py-3 text-left whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
               {stocks.map((s) => (
-                <tr key={s.id} className="hover:bg-gray-900/60 transition-colors">
+                <tr key={s.id} className="hover:bg-gray-900/40 transition-colors align-top">
                   <td className="px-3 py-3 text-gray-500 text-xs">#{s.rank}</td>
                   <td className="px-3 py-3">
                     <Link href={`/stocks/${s.ticker}`} className="text-emerald-400 font-bold hover:underline">{s.ticker}</Link>
@@ -162,15 +202,11 @@ export default function StocksPage() {
                   <td className="px-3 py-3 text-white font-medium">${fmt(s.price)}</td>
                   <td className="px-3 py-3"><Change v={s.change1M} /></td>
                   <td className="px-3 py-3"><Change v={s.change3M} /></td>
-                  <td className="px-3 py-3"><Change v={s.revenueGrowth} /></td>
-                  <td className="px-3 py-3"><Change v={s.epsGrowth} /></td>
-                  <td className="px-3 py-3">
-                    <span className={`text-xs ${s.analystRating?.includes("Buy") ? "text-emerald-400" : s.analystRating?.includes("Sell") ? "text-red-400" : "text-gray-400"}`}>
-                      {s.analystRating || "N/A"}
-                    </span>
-                  </td>
+                  <td className="px-3 py-3 text-gray-300">{s.relativeVolume?.toFixed(1) ?? "—"}x</td>
                   <td className="px-3 py-3"><ScoreBadge score={s.bullishScore} /></td>
-                  <td className="px-3 py-3 text-gray-500 text-xs">{s.lastEarningsDate || "—"}</td>
+                  <td className="px-3 py-3 min-w-[200px]">
+                    <MediaOutlook ticker={s.ticker} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -178,7 +214,7 @@ export default function StocksPage() {
           {stocks.length === 0 && (
             <div className="py-24 text-center space-y-3">
               <p className="text-gray-400">No stocks yet.</p>
-              <p className="text-gray-600 text-sm">Click <strong>Scan Market</strong> to analyze the small-cap universe.</p>
+              <p className="text-gray-600 text-sm">Click <strong>Scan Market</strong> to analyze the universe.</p>
             </div>
           )}
         </div>
