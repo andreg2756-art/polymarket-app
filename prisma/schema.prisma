@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Trader {
+  id            String   @id @default(cuid())
+  proxyWallet   String   @unique
+  username      String?
+  monthlyPnl    Float    @default(0)
+  monthlyVolume Float    @default(0)
+  rank          Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model RefreshRun {
+  id               String              @id @default(cuid())
+  status           String              @default("running")
+  startedAt        DateTime            @default(now())
+  completedAt      DateTime?
+  topTraderCount   Int                 @default(0)
+  totalPositions   Int                 @default(0)
+  failedUsers      Int                 @default(0)
+  errorMessage     String?
+  positions        PositionSnapshot[]
+  marketGroups     MarketPositionGroup[]
+}
+
+model PositionSnapshot {
+  id           String     @id @default(cuid())
+  refreshRunId String
+  refreshRun   RefreshRun @relation(fields: [refreshRunId], references: [id], onDelete: Cascade)
+  proxyWallet  String
+  username     String?
+  conditionId  String
+  marketTitle  String
+  slug         String?
+  outcome      String
+  category     String?
+  currentValue Float      @default(0)
+  size         Float      @default(0)
+  cashPnl      Float      @default(0)
+  volume       Float      @default(0)
+  createdAt    DateTime   @default(now())
+
+  @@index([refreshRunId])
+  @@index([conditionId])
+  @@index([proxyWallet])
+}
+
+model MarketPositionGroup {
+  id                String     @id @default(cuid())
+  refreshRunId      String
+  refreshRun        RefreshRun @relation(fields: [refreshRunId], references: [id], onDelete: Cascade)
+  conditionId       String
+  marketTitle       String
+  outcome           String
+  category          String?
+  holderCount       Int        @default(0)
+  totalCurrentValue Float      @default(0)
+  totalSize         Float      @default(0)
+  totalCashPnl      Float      @default(0)
+  avgCashPnl        Float      @default(0)
+  totalVolume       Float      @default(0)
+  consensusScore    Float      @default(0)
+  createdAt         DateTime   @default(now())
+
+  @@index([refreshRunId])
+  @@index([conditionId])
+}
