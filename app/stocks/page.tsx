@@ -7,6 +7,7 @@ import Disclaimer from "@/components/stocks/Disclaimer";
 import BacktestSummary from "@/components/stocks/BacktestSummary";
 import ScoreBreakdown from "@/components/stocks/ScoreBreakdown";
 import ResearchChecklist from "@/components/stocks/ResearchChecklist";
+import EnhancedScorePanel from "@/components/stocks/EnhancedScorePanel";
 
 interface Stock {
   id: string;
@@ -348,6 +349,7 @@ export default function StocksPage() {
                         revenueGrowth={s.revenueGrowth}
                       />
                       <MediaOutlook ticker={s.ticker} />
+                      <EnhancedScorePanel ticker={s.ticker} />
                     </div>
                   </td>
                 </tr>
