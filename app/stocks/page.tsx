@@ -36,9 +36,33 @@ function fmtCap(n: number) {
   return `$${n.toLocaleString()}`;
 }
 
-function ScoreBadge({ score }: { score: number }) {
+function scoreSummary(score: number, s: Stock): string {
+  const label = score >= 70 ? "Strong bullish signal" : score >= 45 ? "Moderate bullish signal" : score >= 20 ? "Weak bullish signal" : "No bullish signal";
+  const parts: string[] = [];
+  if (s.change1M > 20) parts.push(`strong 1-month momentum (+${s.change1M.toFixed(1)}%)`);
+  else if (s.change1M > 5) parts.push(`positive 1-month momentum (+${s.change1M.toFixed(1)}%)`);
+  else if (s.change1M < 0) parts.push(`negative 1-month momentum (${s.change1M.toFixed(1)}%)`);
+  if (s.change3M > 30) parts.push(`strong 3-month trend (+${s.change3M.toFixed(1)}%)`);
+  else if (s.change3M > 10) parts.push(`positive 3-month trend (+${s.change3M.toFixed(1)}%)`);
+  else if (s.change3M < 0) parts.push(`declining 3-month trend (${s.change3M.toFixed(1)}%)`);
+  if (s.relativeVolume > 2) parts.push(`elevated volume (${s.relativeVolume.toFixed(1)}x avg)`);
+  else if (s.relativeVolume > 1.2) parts.push(`above-average volume (${s.relativeVolume.toFixed(1)}x)`);
+  const detail = parts.length ? parts.join(", ") : "no strong price signals detected";
+  return `${label} (${score}/100). Score is based on: ${detail}. Scoring weights: 1M momentum 30pts, 3M trend 35pts, relative volume 20pts, trend alignment bonus 15pts.`;
+}
+
+function ScoreBadge({ score, stock }: { score: number; stock: Stock }) {
   const color = score >= 70 ? "bg-emerald-900 text-emerald-300" : score >= 45 ? "bg-blue-900 text-blue-300" : "bg-gray-800 text-gray-400";
-  return <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${color}`}>{score}</span>;
+  const tooltip = scoreSummary(score, stock);
+  return (
+    <div className="relative group inline-block">
+      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold cursor-help ${color}`}>{score}</span>
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-300 leading-relaxed shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+        {tooltip}
+        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-700" />
+      </div>
+    </div>
+  );
 }
 
 function Change({ v }: { v: number }) {
@@ -206,7 +230,7 @@ export default function StocksPage() {
                   <td className="px-3 py-3"><Change v={s.change1M} /></td>
                   <td className="px-3 py-3"><Change v={s.change3M} /></td>
                   <td className="px-3 py-3 text-gray-300">{s.relativeVolume?.toFixed(1) ?? "—"}x</td>
-                  <td className="px-3 py-3"><ScoreBadge score={s.bullishScore} /></td>
+                  <td className="px-3 py-3"><ScoreBadge score={s.bullishScore} stock={s} /></td>
                   <td className="px-3 py-3 min-w-[200px]">
                     <MediaOutlook ticker={s.ticker} />
                   </td>
