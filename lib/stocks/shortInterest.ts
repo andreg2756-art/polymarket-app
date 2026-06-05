@@ -1,95 +1,113 @@
 // /lib/stocks/shortInterest.ts
-// Short interest data from Polygon.io.
-// Server-side only. Returns structured result with plan-limit detection.
+// Short interest data from Polygon.io /stocks/v1/short-interest endpoint.
+// Server-side only. POLYGON_API_KEY never exposed to browser.
+// NOTE: Short interest ≠ short volume. This is reported ~twice monthly.
 
-import { fetchShortInterest, type PolygonShortInterest } from "./massive";
+import { fetchShortInterest } from "./massive";
+import { fmtLargeNum } from "./technicals";
 
-export interface ShortInterestResult {
-  shortInterestPct: number | null;
-  daysToCover:      number | null;
-  sharesShort:      number | null;
-  reportDate:       string | null;
-  available:        boolean;
-  planLimited:      boolean;
-  displayShortPct:  string;
+export type ShortInterestMetrics = {
+  sharesShort:            number | null;
+  shortInterestPctFloat:  number | null;  // derived if not in API response
+  daysToCover:            number | null;  // derived if not in API response
+  averageDailyVolume:     number | null;
+  settlementDate:         string | null;
+  source:                 "polygon" | "unavailable";
+};
+
+// Legacy shape kept for backwards compat with EnhancedScorePanel / dataConfidence
+export interface ShortInterestResult extends ShortInterestMetrics {
+  available:          boolean;
+  planLimited:        boolean;
+  displayShortPct:    string;
   displayDaysToCover: string;
-  riskLevel:        "high" | "moderate" | "low" | "unknown";
-  reason:           string;
+  displaySharesShort: string;
+  displaySettlement:  string;
+  riskLevel:          "high" | "moderate" | "low" | "unknown";
+  reason:             string;
 }
 
-function assessRisk(shortPct: number | null, daysToCover: number | null): ShortInterestResult["riskLevel"] {
-  if (shortPct === null) return "unknown";
-  if (shortPct > 20 || (daysToCover !== null && daysToCover > 10)) return "high";
-  if (shortPct > 10 || (daysToCover !== null && daysToCover > 5))  return "moderate";
+function assessRisk(pct: number | null, dtc: number | null): ShortInterestResult["riskLevel"] {
+  if (pct === null) return "unknown";
+  if (pct > 20 || (dtc !== null && dtc > 10)) return "high";
+  if (pct > 10 || (dtc !== null && dtc > 5))  return "moderate";
   return "low";
 }
 
-export async function getShortInterest(ticker: string): Promise<ShortInterestResult> {
+export async function getShortInterestData(symbol: string, floatShares?: number | null): Promise<ShortInterestResult> {
   if (!process.env.POLYGON_API_KEY) {
-    return {
-      shortInterestPct: null, daysToCover: null, sharesShort: null, reportDate: null,
-      available: false, planLimited: false,
-      displayShortPct: "N/A — POLYGON_API_KEY not configured",
-      displayDaysToCover: "N/A",
-      riskLevel: "unknown",
-      reason: "Polygon API key not configured",
-    };
+    return nullResult("POLYGON_API_KEY not configured", false, false);
   }
 
   try {
-    const data: PolygonShortInterest = await fetchShortInterest(ticker);
+    const raw = await fetchShortInterest(symbol);
 
-    if (data.planLimited) {
-      return {
-        shortInterestPct: null, daysToCover: null, sharesShort: null, reportDate: null,
-        available: false, planLimited: true,
-        displayShortPct: "Unavailable on current plan",
-        displayDaysToCover: "Unavailable on current plan",
-        riskLevel: "unknown",
-        reason: "Short interest endpoint requires a higher Polygon.io subscription",
-      };
+    if (raw.planLimited) {
+      return nullResult("Short interest endpoint requires a higher Polygon plan", false, true);
     }
 
-    if (data.shortInterestPct === null && data.sharesShort === null) {
-      return {
-        shortInterestPct: null, daysToCover: null, sharesShort: null, reportDate: null,
-        available: false, planLimited: false,
-        displayShortPct: "N/A",
-        displayDaysToCover: "N/A",
-        riskLevel: "unknown",
-        reason: "No short interest data returned for this ticker",
-      };
+    if (raw.sharesShort === null && raw.shortInterestPct === null) {
+      return nullResult("No short interest data returned for this ticker", false, false);
     }
 
-    const riskLevel = assessRisk(data.shortInterestPct, data.daysToCover);
+    // Derive shortInterestPctFloat if API doesn't return it but we have floatShares from FMP
+    let shortInterestPctFloat = raw.shortInterestPct;
+    if (shortInterestPctFloat === null && raw.sharesShort !== null && floatShares && floatShares > 0) {
+      shortInterestPctFloat = Math.round((raw.sharesShort / floatShares) * 10000) / 100;
+    }
+
+    // Derive daysToCover if API doesn't return it
+    let daysToCover = raw.daysToCover;
+    if (daysToCover === null && raw.sharesShort !== null && raw.averageDailyVolume && raw.averageDailyVolume > 0) {
+      daysToCover = Math.round((raw.sharesShort / raw.averageDailyVolume) * 10) / 10;
+    }
+
+    const riskLevel = assessRisk(shortInterestPctFloat, daysToCover);
+
+    const riskParts = [
+      raw.sharesShort          !== null ? `Shares short: ${fmtLargeNum(raw.sharesShort)}`       : null,
+      shortInterestPctFloat    !== null ? `Short % of float: ${shortInterestPctFloat.toFixed(1)}%` : null,
+      daysToCover              !== null ? `Days to cover: ${daysToCover.toFixed(1)}`              : null,
+      raw.settlementDate       ? `Settlement: ${raw.settlementDate}` : null,
+      riskLevel === "high"     ? "⚠ Elevated short interest" : null,
+      riskLevel === "moderate" ? "Moderate short interest"   : null,
+    ].filter(Boolean);
 
     return {
-      shortInterestPct: data.shortInterestPct,
-      daysToCover: data.daysToCover,
-      sharesShort: data.sharesShort,
-      reportDate: data.reportDate,
-      available: true,
-      planLimited: false,
-      displayShortPct: data.shortInterestPct !== null ? `${data.shortInterestPct.toFixed(1)}%` : "N/A",
-      displayDaysToCover: data.daysToCover !== null ? `${data.daysToCover.toFixed(1)} days` : "N/A",
+      sharesShort:           raw.sharesShort,
+      shortInterestPctFloat,
+      daysToCover,
+      averageDailyVolume:    raw.averageDailyVolume,
+      settlementDate:        raw.settlementDate,
+      source:                "polygon",
+      available:             true,
+      planLimited:           false,
+      displayShortPct:       shortInterestPctFloat !== null ? `${shortInterestPctFloat.toFixed(1)}%` : "N/A",
+      displayDaysToCover:    daysToCover           !== null ? `${daysToCover.toFixed(1)} days`       : "N/A",
+      displaySharesShort:    raw.sharesShort        !== null ? fmtLargeNum(raw.sharesShort)          : "N/A",
+      displaySettlement:     raw.settlementDate     ?? "N/A",
       riskLevel,
-      reason: [
-        data.shortInterestPct !== null ? `Short interest: ${data.shortInterestPct.toFixed(1)}%` : null,
-        data.daysToCover !== null ? `Days to cover: ${data.daysToCover.toFixed(1)}` : null,
-        data.reportDate ? `Report date: ${data.reportDate}` : null,
-        riskLevel === "high" ? "Elevated short interest — squeeze potential or bearish positioning" : null,
-        riskLevel === "moderate" ? "Moderate short interest" : null,
-        riskLevel === "low" ? "Low short interest" : null,
-      ].filter(Boolean).join(" · "),
+      reason:                riskParts.join(" · "),
     };
-  } catch {
-    return {
-      shortInterestPct: null, daysToCover: null, sharesShort: null, reportDate: null,
-      available: false, planLimited: false,
-      displayShortPct: "N/A",
-      displayDaysToCover: "N/A",
-      riskLevel: "unknown",
-      reason: "Short interest fetch failed",
-    };
+  } catch (err) {
+    console.warn(`[shortInterest] failed for ${symbol}:`, err);
+    return nullResult("Short interest fetch failed", false, false);
   }
+}
+
+// Keep old export name for backwards compat
+export const getShortInterest = getShortInterestData;
+
+function nullResult(reason: string, available: boolean, planLimited: boolean): ShortInterestResult {
+  return {
+    sharesShort: null, shortInterestPctFloat: null, daysToCover: null,
+    averageDailyVolume: null, settlementDate: null,
+    source: "unavailable", available, planLimited,
+    displayShortPct: planLimited ? "Unavailable on current plan" : "N/A",
+    displayDaysToCover: planLimited ? "Unavailable on current plan" : "N/A",
+    displaySharesShort: "N/A",
+    displaySettlement: "N/A",
+    riskLevel: "unknown",
+    reason,
+  };
 }

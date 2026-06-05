@@ -70,43 +70,56 @@ export async function fetchPolygonNews(ticker: string, limit = 20): Promise<Poly
 }
 
 // ── Short Interest ─────────────────────────────────────────────────────────
+// Endpoint: GET https://api.polygon.io/stocks/v1/short-interest
+// Fields vary by subscription. We map defensively.
 
-export interface PolygonShortInterest {
-  ticker: string;
-  shortInterestPct: number | null;
-  daysToCover: number | null;
-  sharesShort: number | null;
-  reportDate: string | null;
-  planLimited: boolean;
+export interface PolygonShortInterestRaw {
+  ticker:               string;
+  sharesShort:          number | null;
+  shortInterestPct:     number | null;  // short_interest_percent or derived
+  daysToCover:          number | null;
+  averageDailyVolume:   number | null;
+  settlementDate:       string | null;
+  planLimited:          boolean;
 }
 
-export async function fetchShortInterest(ticker: string): Promise<PolygonShortInterest> {
-  const key = getKey();
-  if (!key) {
-    return { ticker, shortInterestPct: null, daysToCover: null, sharesShort: null, reportDate: null, planLimited: false };
-  }
+interface PolygonSIRecord {
+  ticker?:                    string;
+  shares_short?:              number;
+  short_interest?:            number;      // some plans return raw count here
+  short_interest_percent?:    number;
+  days_to_cover?:             number;
+  average_daily_volume?:      number;
+  settlement_date?:           string;
+  report_date?:               string;
+  [key: string]: unknown;
+}
 
-  // Polygon short interest endpoint (requires appropriate subscription)
-  const data = await polygonGet<{ results?: { short_interest?: number; days_to_cover?: number; shares_short?: number; report_date?: string }[] }>(
-    `/v3/reference/short-interest`,
-    { ticker, limit: "1", order: "desc" }
+export async function fetchShortInterest(ticker: string): Promise<PolygonShortInterestRaw> {
+  const key = getKey();
+  const empty: PolygonShortInterestRaw = {
+    ticker, sharesShort: null, shortInterestPct: null,
+    daysToCover: null, averageDailyVolume: null, settlementDate: null, planLimited: false,
+  };
+
+  if (!key) return empty;
+
+  const data = await polygonGet<{ results?: PolygonSIRecord[] }>(
+    "/stocks/v1/short-interest",
+    { ticker, limit: "1" }
   );
 
-  if (!data) {
-    return { ticker, shortInterestPct: null, daysToCover: null, sharesShort: null, reportDate: null, planLimited: true };
-  }
+  // 403/null = plan limited
+  if (!data) return { ...empty, planLimited: true };
 
   const r = data?.results?.[0];
-  if (!r) {
-    return { ticker, shortInterestPct: null, daysToCover: null, sharesShort: null, reportDate: null, planLimited: false };
-  }
+  if (!r) return empty;
 
-  return {
-    ticker,
-    shortInterestPct: typeof r.short_interest === "number" ? r.short_interest : null,
-    daysToCover: typeof r.days_to_cover === "number" ? r.days_to_cover : null,
-    sharesShort: typeof r.shares_short === "number" ? r.shares_short : null,
-    reportDate: r.report_date ?? null,
-    planLimited: false,
-  };
+  const sharesShort        = typeof r.shares_short        === "number" ? r.shares_short        : typeof r.short_interest === "number" ? r.short_interest : null;
+  const shortInterestPct   = typeof r.short_interest_percent === "number" ? r.short_interest_percent : null;
+  const daysToCover        = typeof r.days_to_cover       === "number" ? r.days_to_cover        : null;
+  const averageDailyVolume = typeof r.average_daily_volume === "number" ? r.average_daily_volume : null;
+  const settlementDate     = r.settlement_date ?? r.report_date ?? null;
+
+  return { ticker, sharesShort, shortInterestPct, daysToCover, averageDailyVolume, settlementDate, planLimited: false };
 }
