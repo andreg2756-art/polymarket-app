@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import type { MarketPositionGroup } from "@prisma/client";
+
+type MarketGroup = Awaited<ReturnType<typeof prisma.marketPositionGroup.findMany>>[number];
 
 export async function GET() {
   const runs = await prisma.refreshRun.findMany({
@@ -26,17 +27,17 @@ export async function GET() {
   ]);
 
   const mostCrowded = topMarkets[0] ?? null;
-  const highestConsensus = [...topMarkets].sort((a: MarketPositionGroup, b: MarketPositionGroup) => b.consensusScore - a.consensusScore)[0] ?? null;
-  const totalCapital = topMarkets.reduce((s: number, m: MarketPositionGroup) => s + m.totalCurrentValue, 0);
+  const highestConsensus = [...topMarkets].sort((a: MarketGroup, b: MarketGroup) => b.consensusScore - a.consensusScore)[0] ?? null;
+  const totalCapital = topMarkets.reduce((s: number, m: MarketGroup) => s + m.totalCurrentValue, 0);
 
-  let changes: (MarketPositionGroup & { holderCountDelta: number; currentValueDelta: number })[] = [];
+  let changes: (MarketGroup & { holderCountDelta: number; currentValueDelta: number })[] = [];
   if (prevRun) {
     const [prevGroups, nextGroups] = await Promise.all([
       prisma.marketPositionGroup.findMany({ where: { refreshRunId: prevRun.id } }),
       prisma.marketPositionGroup.findMany({ where: { refreshRunId: latestRun.id } }),
     ]);
-    const prevMap = new Map(prevGroups.map((g: MarketPositionGroup) => [`${g.conditionId}||${g.outcome}`, g]));
-    changes = nextGroups.map((g: MarketPositionGroup) => {
+    const prevMap = new Map(prevGroups.map((g: MarketGroup) => [`${g.conditionId}||${g.outcome}`, g]));
+    changes = nextGroups.map((g: MarketGroup) => {
       const p = prevMap.get(`${g.conditionId}||${g.outcome}`);
       return {
         ...g,
