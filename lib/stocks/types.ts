@@ -1,6 +1,6 @@
 // /lib/stocks/types.ts
 // Shared types for the enhanced scoring layer.
-// Does not replace or extend existing stock types — additive only.
+// Additive only — does not replace existing stock types.
 
 export type DataSource = "yahoo" | "polygon" | "calculated" | "unavailable";
 
@@ -8,25 +8,34 @@ export interface ScoredMetric {
   value: number | string | null;
   score: number | null;      // 0–100 contribution score, null if data unavailable
   source: DataSource;
-  reason?: string;           // why the score is what it is
+  reason?: string;
+  modifier?: number;         // optional score modifier (revenue growth, etc.)
+  daysUntilEarnings?: number | null;
 }
 
 export interface EnhancedStockScore {
   ticker: string;
 
-  // Component scores (each 0–100, null = data unavailable)
+  // Component scores (each 0–100, null = unavailable)
   momentumScore:     ScoredMetric;
-  volatilityScore:   ScoredMetric;   // higher = less volatile (better)
-  analystScore:      ScoredMetric;
-  targetUpside:      ScoredMetric;   // % upside to analyst mean target
-  newsSentiment:     ScoredMetric;   // -1 to 1 raw, 0–100 scored
+  volatilityScore:   ScoredMetric;
+  riskQualityScore:  ScoredMetric;   // analyst if real, else beta/range derived
+  upsideScore:       ScoredMetric;   // analyst target if real, else 52w distance
+  newsSentiment:     ScoredMetric;
   volumeScore:       ScoredMetric;
+  revenueGrowthScore: ScoredMetric;
+  earningsRiskScore:  ScoredMetric;
+  rsRank:            ScoredMetric;   // relative strength rank 0–100 vs screened universe
+
+  // Label flags — drive UI display
+  hasRealAnalystConsensus: boolean;
+  hasRealAnalystTarget:    boolean;
 
   // Composite
-  riskAdjustedScore: number | null;  // weighted composite, 0–100
-  finalRating:       "Strong Watch" | "Watch" | "Neutral" | "Avoid" | "Insufficient Data";
+  riskAdjustedScore: number | null;
+  finalRating: "Strong Watch" | "Watch" | "Neutral" | "Avoid" | "Insufficient Data";
 
-  fetchedAt: string; // ISO timestamp
+  fetchedAt: string;
 }
 
 export interface PolygonTickerNews {
