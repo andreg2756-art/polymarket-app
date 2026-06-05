@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { use } from "react";
 import { Skeleton } from "@/components/Skeleton";
+import TechnicalsPanel from "@/components/stocks/TechnicalsPanel";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, ReferenceLine,
@@ -153,6 +154,14 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
           </div>
         </section>
       )}
+
+      {/* Technicals Panel */}
+      <section>
+        <h2 className="text-lg font-semibold mb-3">Technical Analysis</h2>
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <TechnicalsPanel ticker={stock.ticker} currentPrice={stock.price} />
+        </div>
+      </section>
 
       {income.length > 1 && (
         <div className="grid md:grid-cols-2 gap-6">

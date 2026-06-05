@@ -41,7 +41,7 @@ export function computeDataConfidence(
     { name: "News Sentiment",   available: isAvailable(score.newsSentiment?.score) },
     { name: "Beta/Volatility",  available: isAvailable(score.volatilityScore?.score) },
     { name: "Relative Volume",  available: isAvailable(score.volumeScore?.score) },
-    { name: "Moving Averages",  available: false }, // MA50/200 not in enhanced score — mark N/A unless wired
+    { name: "Moving Averages",  available: isAvailable(score?.volatilityScore?.score) }, // Available via TechnicalsPanel (separate fetch)
     { name: "Market Cap",       available: isAvailable(marketCap) },
     { name: "RS Rank",          available: isAvailable(score.rsRank?.score) },
   ];

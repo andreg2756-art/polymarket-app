@@ -8,6 +8,7 @@ import BacktestSummary from "@/components/stocks/BacktestSummary";
 import ScoreBreakdown from "@/components/stocks/ScoreBreakdown";
 import ResearchChecklist from "@/components/stocks/ResearchChecklist";
 import EnhancedScorePanel from "@/components/stocks/EnhancedScorePanel";
+import TechnicalsPanel from "@/components/stocks/TechnicalsPanel";
 
 interface Stock {
   id: string;
@@ -348,6 +349,7 @@ export default function StocksPage() {
                         shortInterest={s.shortInterest}
                         revenueGrowth={s.revenueGrowth}
                       />
+                      <TechnicalsPanel ticker={s.ticker} currentPrice={s.price} />
                       <MediaOutlook ticker={s.ticker} />
                       <EnhancedScorePanel ticker={s.ticker} />
                     </div>
