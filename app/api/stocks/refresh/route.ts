@@ -1,36 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getProfile, getPriceHistory } from "@/lib/fmp";
+import { getProfile } from "@/lib/fmp";
+import { getYahooChart } from "@/lib/yahoo-finance";
 import { SMALL_CAP_UNIVERSE } from "@/lib/small-cap-universe";
 
 export const maxDuration = 60;
 
-function pctChange(prices: { close: number }[], days: number): number {
-  if (prices.length < days) return 0;
-  const recent = prices[0]?.close ?? 0;
-  const old = prices[Math.min(days - 1, prices.length - 1)]?.close ?? recent;
-  if (!old) return 0;
-  return ((recent - old) / old) * 100;
-}
-
-function avgVolume(prices: { volume: number }[], days: number): number {
-  const slice = prices.slice(0, days);
-  if (!slice.length) return 0;
-  return slice.reduce((s, p) => s + p.volume, 0) / slice.length;
-}
-
-function computeScore(params: {
-  revenueGrowth: number;
-  change1M: number;
-  change3M: number;
-  relativeVolume: number;
-  marketCap: number;
-}): number {
-  const { change1M, change3M, relativeVolume } = params;
-  const mom1M = change1M > 25 ? 30 : change1M > 15 ? 22 : change1M > 8 ? 15 : change1M > 0 ? 8 : change1M > -5 ? 3 : 0;
-  const mom3M = change3M > 40 ? 35 : change3M > 20 ? 25 : change3M > 10 ? 18 : change3M > 0 ? 10 : change3M > -10 ? 3 : 0;
-  const volScore = relativeVolume > 3 ? 20 : relativeVolume > 2 ? 14 : relativeVolume > 1.5 ? 10 : relativeVolume > 1 ? 5 : 0;
-  const trendBonus = change1M > 0 && change3M > 0 ? 10 : 0;
+function computeScore(change1M: number, change3M: number, relativeVolume: number): number {
+  const mom1M = change1M > 30 ? 30 : change1M > 20 ? 24 : change1M > 10 ? 18 : change1M > 5 ? 12 : change1M > 0 ? 6 : change1M > -5 ? 2 : 0;
+  const mom3M = change3M > 50 ? 35 : change3M > 30 ? 28 : change3M > 15 ? 20 : change3M > 5 ? 13 : change3M > 0 ? 7 : change3M > -10 ? 2 : 0;
+  const volScore = relativeVolume > 3 ? 20 : relativeVolume > 2 ? 15 : relativeVolume > 1.5 ? 10 : relativeVolume > 1.2 ? 6 : relativeVolume > 1 ? 3 : 0;
+  const trendBonus = change1M > 0 && change3M > 0 ? 15 : change1M > 0 ? 5 : 0;
   return Math.min(100, Math.round(mom1M + mom3M + volScore + trendBonus));
 }
 
@@ -45,68 +25,76 @@ type StockRow = {
 
 export async function POST() {
   try {
-    const to = new Date().toISOString().split("T")[0];
-    const from90 = new Date(Date.now() - 90 * 86400000).toISOString().split("T")[0];
-
-    const results = await Promise.allSettled(
-      SMALL_CAP_UNIVERSE.map(async (ticker): Promise<StockRow | null> => {
-        const [profileRes, pricesRes] = await Promise.allSettled([
-          getProfile(ticker),
-          getPriceHistory(ticker, from90, to),
-        ]);
-
-        const p = profileRes.status === "fulfilled" ? profileRes.value : null;
-        const prices = pricesRes.status === "fulfilled" ? pricesRes.value : [];
-
-        if (!p || !p.marketCap) return null;
-
-        const cap = p.marketCap;
-        const change1M = Math.round(pctChange(prices, 21) * 10) / 10;
-        const change3M = Math.round(pctChange(prices, 63) * 10) / 10;
-
-        const recentVol = prices[0]?.volume ?? 0;
-        const avg20Vol = avgVolume(prices, 20);
-        const relativeVolume = avg20Vol > 0 ? Math.round((recentVol / avg20Vol) * 10) / 10 : 1;
-
-        const bullishScore = computeScore({ revenueGrowth: 0, change1M, change3M, relativeVolume, marketCap: cap });
-
-        return {
-          ticker,
-          name: p.companyName ?? ticker,
-          exchange: p.exchange ?? "",
-          sector: p.sector ?? "",
-          industry: p.industry ?? "",
-          description: p.description?.slice(0, 1000) ?? "",
-          marketCap: cap,
-          price: p.price ?? 0,
-          change1M,
-          change3M,
-          revenueGrowth: 0,
-          epsGrowth: 0,
-          analystRating: "N/A",
-          analystCount: 0,
-          bullishScore,
-          lastEarningsDate: null,
-          float: null,
-          shortInterest: null,
-          institutionalOwn: null,
-          insiderBuying: 0,
-          relativeVolume,
-          earningsBeat: false,
-          revenueBeat: false,
-          guidanceUp: false,
-          rank: 0,
-        };
-      })
+    // Step 1: fetch all price data from Yahoo (no API key, no rate limits)
+    const yahooResults = await Promise.allSettled(
+      SMALL_CAP_UNIVERSE.map((ticker) => getYahooChart(ticker).then((d) => ({ ticker, data: d })))
     );
 
-    const stocks = results
-      .filter((r) => r.status === "fulfilled" && r.value !== null)
-      .map((r) => (r as PromiseFulfilledResult<StockRow>).value)
+    const yahooMap = new Map<string, NonNullable<Awaited<ReturnType<typeof getYahooChart>>>>();
+    for (const r of yahooResults) {
+      if (r.status === "fulfilled" && r.value.data) {
+        yahooMap.set(r.value.ticker, r.value.data);
+      }
+    }
+
+    // Step 2: fetch FMP profiles only for tickers where Yahoo succeeded (saves API calls)
+    const validTickers = Array.from(yahooMap.keys());
+    const profileResults = await Promise.allSettled(
+      validTickers.map((ticker) => getProfile(ticker).then((d) => ({ ticker, data: d })))
+    );
+
+    const profileMap = new Map<string, Awaited<ReturnType<typeof getProfile>>>();
+    for (const r of profileResults) {
+      if (r.status === "fulfilled" && r.value.data) {
+        profileMap.set(r.value.ticker, r.value.data);
+      }
+    }
+
+    // Step 3: combine and score
+    const stocks: StockRow[] = [];
+    for (const ticker of validTickers) {
+      const y = yahooMap.get(ticker);
+      if (!y) continue;
+
+      const p = profileMap.get(ticker);
+      const marketCap = p?.marketCap ?? y.marketCap ?? 0;
+
+      const bullishScore = computeScore(y.change1M, y.change3M, y.relativeVolume);
+
+      stocks.push({
+        ticker,
+        name: p?.companyName ?? y.name,
+        exchange: p?.exchange ?? "",
+        sector: p?.sector ?? "",
+        industry: p?.industry ?? "",
+        description: p?.description?.slice(0, 1000) ?? "",
+        marketCap,
+        price: y.price,
+        change1M: y.change1M,
+        change3M: y.change3M,
+        revenueGrowth: 0,
+        epsGrowth: 0,
+        analystRating: "N/A",
+        analystCount: 0,
+        bullishScore,
+        lastEarningsDate: null,
+        float: null,
+        shortInterest: null,
+        institutionalOwn: null,
+        insiderBuying: 0,
+        relativeVolume: y.relativeVolume,
+        earningsBeat: false,
+        revenueBeat: false,
+        guidanceUp: false,
+        rank: 0,
+      });
+    }
+
+    const ranked = stocks
       .sort((a, b) => b.bullishScore - a.bullishScore)
       .map((s, i) => ({ ...s, rank: i + 1 }));
 
-    for (const s of stocks) {
+    for (const s of ranked) {
       await prisma.stock.upsert({
         where: { ticker: s.ticker },
         create: s,
@@ -117,7 +105,7 @@ export async function POST() {
       });
     }
 
-    return NextResponse.json({ success: true, count: stocks.length });
+    return NextResponse.json({ success: true, count: ranked.length });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
