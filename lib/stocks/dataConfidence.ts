@@ -5,10 +5,12 @@ import type { EnhancedStockScore } from "./types";
 import type { ShortInterestResult } from "./shortInterest";
 
 export interface DataConfidenceResult {
-  score: number;           // 0–100
+  confidencePct: number;   // 0–100
+  score: number;           // alias for confidencePct (backwards compat)
   availableCount: number;
   totalFactors: number;
-  label: "High" | "Medium" | "Low";
+  level: "High" | "Medium" | "Low";
+  label: "High" | "Medium" | "Low"; // alias for level
   color: string;
   availableFactors: string[];
   missingFactors: string[];
@@ -54,9 +56,11 @@ export function computeDataConfidence(
   else if (pct >= 50) { label = "Medium"; color = "text-yellow-400"; }
 
   return {
+    confidencePct: pct,
     score: pct,
     availableCount: available.length,
     totalFactors: checks.length,
+    level: label,
     label,
     color,
     availableFactors: available.map((c) => c.name),
