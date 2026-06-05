@@ -106,6 +106,11 @@ export async function POST() {
       });
     }
 
+    // Remove any stale tickers not in current universe
+    await prisma.stock.deleteMany({
+      where: { ticker: { notIn: SMALL_CAP_UNIVERSE } },
+    });
+
     return NextResponse.json({ success: true, count: ranked.length });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

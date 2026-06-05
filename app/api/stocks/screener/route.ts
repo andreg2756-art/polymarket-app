@@ -13,6 +13,7 @@ export async function GET(req: Request) {
     where: {
       bullishScore: { gte: minScore },
       revenueGrowth: { gte: minRevGrowth },
+      price: { gt: 0 },
       ...(sector ? { sector: { contains: sector, mode: "insensitive" } } : {}),
       ...(search ? {
         OR: [
