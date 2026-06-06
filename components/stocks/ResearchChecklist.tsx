@@ -216,18 +216,6 @@ export default function ResearchChecklist(props: Props) {
                     </span>
                   </div>
                 )}
-                <Row
-                  label="Revenue Growth"
-                  value={revGrowthDisplay ?? val(supp?.revenueGrowth)}
-                  status={revGrowthStatus}
-                  source={sourceTag(supp?.revenueGrowth)}
-                />
-                {supp?.revenueGrowthQoQ?.value && (
-                  <p className="text-xs text-gray-600 pb-0.5 pl-1">({supp.revenueGrowthQoQ.value})</p>
-                )}
-                {supp?.revenueGrowth?.reason && (
-                  <p className="text-xs text-gray-600 pb-1 pl-1">{supp.revenueGrowth.reason}</p>
-                )}
                 <Row label="Bullish Score" value={`${bullishScore}/100`} status={bullishScore >= 60 ? "ok" : bullishScore < 30 ? "warn" : "neutral"} />
                 <Row
                   label="Cash Runway"
@@ -241,6 +229,46 @@ export default function ResearchChecklist(props: Props) {
                   status={debtStatus}
                   source={sourceTag(supp?.debtRisk)}
                 />
+              </section>
+
+              {/* Revenue */}
+              <section>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Revenue</h3>
+                <Row
+                  label="TTM Revenue Growth"
+                  value={(() => {
+                    if (supp?.revenueGrowthTTM?.value) return String(supp.revenueGrowthTTM.value);
+                    if (revenueGrowth !== 0 && revenueGrowth !== null) return `${revenueGrowth > 0 ? "+" : ""}${revenueGrowth.toFixed(1)}%`;
+                    return "N/A";
+                  })()}
+                  status={(() => {
+                    const v = supp?.revenueGrowthTTM?.value ? String(supp.revenueGrowthTTM.value) : null;
+                    if (!v) return "neutral";
+                    return v.startsWith("+") ? "ok" : v.startsWith("-") ? "warn" : "neutral";
+                  })()}
+                  source={sourceTag(supp?.revenueGrowthTTM)}
+                />
+                {supp?.revenueGrowthTTM?.reason && (
+                  <p className="text-xs text-gray-700 pb-1 pl-1">{supp.revenueGrowthTTM.reason}</p>
+                )}
+                <Row
+                  label="Latest Quarter Growth"
+                  value={supp?.revenueGrowthQtrYoY?.value ? String(supp.revenueGrowthQtrYoY.value) : "N/A"}
+                  status={(() => {
+                    const v = supp?.revenueGrowthQtrYoY?.value ? String(supp.revenueGrowthQtrYoY.value) : null;
+                    if (!v) return "neutral";
+                    return v.startsWith("+") ? "ok" : v.startsWith("-") ? "warn" : "neutral";
+                  })()}
+                  source={sourceTag(supp?.revenueGrowthQtrYoY)}
+                />
+                {supp?.revenueGrowthQtrYoY?.reason && (
+                  <p className="text-xs text-gray-700 pb-1 pl-1">{supp.revenueGrowthQtrYoY.reason}</p>
+                )}
+                {supp?.revenueGrowthInconsistent?.value && (
+                  <div className="text-xs text-yellow-800 bg-yellow-950/40 border border-yellow-900/50 rounded px-2 py-1 mt-1">
+                    {String(supp.revenueGrowthInconsistent.value)}
+                  </div>
+                )}
               </section>
 
               {/* Earnings */}

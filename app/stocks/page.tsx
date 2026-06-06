@@ -241,7 +241,7 @@ export default function StocksPage() {
           missing.map((s) =>
             fetch(`/api/stocks/supplemental/${s.ticker}`)
               .then((r) => r.json())
-              .then((d) => ({ ticker: s.ticker, value: d?.revenueGrowth?.value as string | null ?? null }))
+              .then((d) => ({ ticker: s.ticker, value: (d?.revenueGrowthTTM?.value ?? d?.revenueGrowth?.value) as string | null ?? null }))
               .catch(() => ({ ticker: s.ticker, value: null }))
           )
         );
@@ -315,7 +315,7 @@ export default function StocksPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-900 text-gray-400 text-xs uppercase">
               <tr>
-                {["#","Ticker","Company / Sector","Price","1M","3M","Rel.Vol","Rev Growth","Risk","Score","Actions"].map((h) => (
+                {["#","Ticker","Company / Sector","Price","1M","3M","Rel.Vol","Rev Growth (TTM)","Risk","Score","Actions"].map((h) => (
                   <th key={h} className="px-3 py-3 text-left whitespace-nowrap">{h}</th>
                 ))}
               </tr>

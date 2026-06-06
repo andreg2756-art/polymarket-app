@@ -5,7 +5,7 @@ import type { EnhancedStockScore, ScoredMetric } from "./types";
 import { getNewsSentimentScore } from "./newsSentiment";
 import { getAnalystFactors } from "./analystFactors";
 import { getEarningsRiskScore } from "./earningsRisk";
-import { getRevenueGrowthScore } from "./revenueGrowth";
+import { getRevenueGrowthScore, computeBlendedGrowthModifier } from "./revenueGrowth";
 import { getRelativeStrengthRank } from "./relativeStrength";
 
 // Weights sum to 0.95 — remaining 0.05 is news sentiment
@@ -126,7 +126,9 @@ export async function computeEnhancedScore(
   change3M: number,
   relativeVolume: number,
   existingRevenueGrowth: number | null = null,
-  floatTurnover: number | null = null
+  floatTurnover: number | null = null,
+  ttmGrowth: number | null = null,
+  qtrGrowth: number | null = null
 ): Promise<EnhancedStockScore> {
 
   const [analystFactors, newsSentiment, earningsRisk, revenueGrowth, rsRank] = await Promise.all([
@@ -185,7 +187,12 @@ export async function computeEnhancedScore(
     const weightedSum = available.reduce((s, c) => s + (c.score! * c.weight), 0);
     let base = clampScore(weightedSum / totalWeight);
 
-    base = applyRevenueGrowthModifier(base, revenueGrowth?.modifier ?? 0);
+    // Use blended modifier (0.7 TTM + 0.3 quarterly) when fresh data is available,
+    // otherwise fall back to the SEC EDGAR modifier from getRevenueGrowthScore
+    const blendedMod = (ttmGrowth !== null || qtrGrowth !== null)
+      ? computeBlendedGrowthModifier(ttmGrowth, qtrGrowth)
+      : (revenueGrowth?.modifier ?? 0);
+    base = applyRevenueGrowthModifier(base, blendedMod);
     base = applyEarningsRiskPenalty(base, earningsRisk?.daysUntilEarnings ?? null);
     base = clampScore(base + floatTurnoverModifier(floatTurnover));
 

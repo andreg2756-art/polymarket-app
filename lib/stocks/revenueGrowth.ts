@@ -73,6 +73,19 @@ function growthModifier(growth: number): number {
   return -8;
 }
 
+/**
+ * Blended growth modifier: 0.7 × TTM + 0.3 × quarterly YoY.
+ * Falls back to whichever is available; returns 0 if neither is.
+ */
+export function computeBlendedGrowthModifier(ttm: number | null, qtrYoY: number | null): number {
+  if (ttm !== null && qtrYoY !== null) {
+    return growthModifier(0.7 * ttm + 0.3 * qtrYoY);
+  }
+  if (ttm !== null)    return growthModifier(ttm);
+  if (qtrYoY !== null) return growthModifier(qtrYoY);
+  return 0;
+}
+
 function growthLabel(growth: number): string {
   if (growth > 40)  return `+${growth.toFixed(1)}% YoY — strong growth`;
   if (growth >= 25) return `+${growth.toFixed(1)}% YoY — healthy growth`;

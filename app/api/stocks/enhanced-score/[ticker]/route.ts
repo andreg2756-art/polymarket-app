@@ -4,7 +4,7 @@ import { getShortInterest } from "@/lib/stocks/shortInterest";
 import { computeDataConfidence } from "@/lib/stocks/dataConfidence";
 import { prisma } from "@/lib/prisma";
 import { getExtraStockMetrics, fetchYahooDailyCandles } from "@/lib/stocks/technicals";
-import { getSupplementalStockData } from "@/lib/stockSupplementalData";
+import { getSupplementalStockData, getRevenueGrowthRaw } from "@/lib/stockSupplementalData";
 
 export async function GET(
   _req: Request,
@@ -31,9 +31,12 @@ export async function GET(
     const techMetrics = await getExtraStockMetrics(ticker, price, currentVolume).catch(() => null);
     const floatTurnover = techMetrics?.floatTurnover ?? null;
 
+    // Fetch raw revenue growth numbers for blended modifier (cached, fast on repeat calls)
+    const revRaw = await getRevenueGrowthRaw(ticker).catch(() => ({ ttm: null, qtrYoY: null }));
+
     // All fetches in parallel — each has its own null fallback
     const [enhancedScore, shortInterest, suppData] = await Promise.all([
-      computeEnhancedScore(ticker, change1M, change3M, relativeVolume, revenueGrowth, floatTurnover),
+      computeEnhancedScore(ticker, change1M, change3M, relativeVolume, revenueGrowth, floatTurnover, revRaw.ttm, revRaw.qtrYoY),
       getShortInterest(ticker).catch(() => null),
       getSupplementalStockData(ticker).catch(() => null),
     ]);

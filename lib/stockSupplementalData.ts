@@ -14,11 +14,15 @@ type SupplementalMetric = {
 };
 
 export type SupplementalStockData = {
-  ma50:                  SupplementalMetric;
-  ma200:                 SupplementalMetric;
-  revenueGrowth:         SupplementalMetric;
-  revenueGrowthQoQ:      SupplementalMetric;  // secondary display only
-  cashRunway:            SupplementalMetric;
+  ma50:                      SupplementalMetric;
+  ma200:                     SupplementalMetric;
+  // Revenue growth — three distinct metrics, never mixed
+  revenueGrowth:             SupplementalMetric; // primary = TTM (for screener table)
+  revenueGrowthTTM:          SupplementalMetric; // trailing 12-month vs prior 12-month
+  revenueGrowthQtrYoY:       SupplementalMetric; // latest quarter vs same quarter last year
+  revenueGrowthQoQ:          SupplementalMetric; // sequential quarter-over-quarter (legacy)
+  revenueGrowthInconsistent: SupplementalMetric; // warning when TTM and quarterly disagree in sign
+  cashRunway:                SupplementalMetric;
   debtRisk:              SupplementalMetric;
   lastEarnings:          SupplementalMetric;
   nextEarnings:          SupplementalMetric;
@@ -186,75 +190,107 @@ function fmtDate(ts: unknown): string | null {
 }
 
 // ── Revenue Growth ─────────────────────────────────────────────────────────
-// Prefer quarterly YoY (most recent Q vs same Q prior year).
-// Fall back to financialData.revenueGrowth if quarterly data is incomplete.
+// Three distinct metrics — never mixed:
+//   TTM     : Yahoo financialData.revenueGrowth (trailing 12-month vs prior 12-month)
+//   QtrYoY  : Yahoo quarterly — latest Q vs same Q one year ago (Q[0] vs Q[4])
+//   QoQ     : Yahoo quarterly — latest Q vs prior Q (Q[0] vs Q[1]), legacy secondary
 
-const LOW_BASE_THRESHOLD = 10_000_000; // $10M — flag if prior-year Q revenue is very small
+const LOW_BASE_THRESHOLD = 10_000_000; // flag when prior-year Q revenue is tiny
 
-// Returns { yoy, qoq } — both may be null if data is unavailable
-function calcRevenueGrowthBoth(qs: Record<string, unknown> | null): {
-  yoy: SupplementalMetric;
-  qoq: SupplementalMetric;
-} {
-  const unavailYoY = missing("Year-ago quarterly revenue not available");
-  const unavailQoQ = missing("Quarterly revenue data unavailable");
+interface RevenueGrowthBundle {
+  ttm:         SupplementalMetric;
+  qtrYoY:      SupplementalMetric;
+  qoq:         SupplementalMetric;
+  inconsistent: SupplementalMetric;
+  // raw numbers for the blended score modifier
+  ttmRaw:      number | null;
+  qtrYoYRaw:   number | null;
+}
+
+function calcRevenueGrowthAll(qs: Record<string, unknown> | null): RevenueGrowthBundle {
+  const unavail = (msg: string): SupplementalMetric => missing(msg);
   try {
+    const fd = qs?.financialData as Record<string, unknown> | undefined;
     const quarterly: unknown[] =
       (qs?.incomeStatementHistoryQuarterly as Record<string, unknown> | undefined)
         ?.incomeStatementHistory as unknown[] ?? [];
 
-    // YoY: most recent Q vs same Q one year ago (index 0 vs index 4)
-    let yoy: SupplementalMetric = unavailYoY;
+    // ── TTM from financialData.revenueGrowth ────────────────────────────────
+    let ttm: SupplementalMetric = unavail("TTM revenue growth unavailable from Yahoo");
+    let ttmRaw: number | null = null;
+    const rgRaw = raw(fd?.revenueGrowth);
+    if (rgRaw !== null) {
+      ttmRaw = rgRaw * 100;
+      const sign = ttmRaw >= 0 ? "+" : "";
+      ttm = {
+        value:  `${sign}${ttmRaw.toFixed(1)}%`,
+        source: "yahoo",
+        reason: "Trailing 12-month revenue vs prior trailing 12-month period.",
+      };
+    }
+
+    // ── Quarterly YoY: Q[0] vs Q[4] ─────────────────────────────────────────
+    let qtrYoY: SupplementalMetric = unavail("Latest-quarter YoY data requires ≥5 quarters");
+    let qtrYoYRaw: number | null = null;
     if (quarterly.length >= 5) {
       const cur  = raw((quarterly[0] as Record<string, unknown>)?.totalRevenue);
       const prev = raw((quarterly[4] as Record<string, unknown>)?.totalRevenue);
       if (cur !== null && prev !== null && prev > 0) {
-        const growth  = ((cur - prev) / prev) * 100;
-        const sign    = growth >= 0 ? "+" : "";
+        qtrYoYRaw = ((cur - prev) / prev) * 100;
+        const sign    = qtrYoYRaw >= 0 ? "+" : "";
         const lowBase = prev < LOW_BASE_THRESHOLD;
-        yoy = {
-          value:  `${sign}${growth.toFixed(1)}% YoY${lowBase ? " ⚠" : ""}`,
+        qtrYoY = {
+          value:  `${sign}${qtrYoYRaw.toFixed(1)}%${lowBase ? " ⚠" : ""}`,
           source: "yahoo",
-          reason: lowBase ? "⚠ Growth may be inflated due to low prior-year base." : undefined,
+          reason: lowBase
+            ? "⚠ Growth may be inflated due to low prior-year base. Latest quarter revenue vs same quarter last year."
+            : "Latest quarter revenue vs same quarter last year.",
         };
       }
     }
 
-    // If YoY unavailable, fall back to TTM from financialData
-    if (yoy === unavailYoY) {
-      const fd = qs?.financialData as Record<string, unknown> | undefined;
-      const rg = raw(fd?.revenueGrowth);
-      if (rg !== null) {
-        const pct  = rg * 100;
-        const sign = pct >= 0 ? "+" : "";
-        yoy = {
-          value:  `${sign}${pct.toFixed(1)}% YoY (TTM)`,
-          source: "yahoo",
-          reason: "Trailing twelve months from Yahoo financialData.",
-        };
-      }
-    }
-
-    // QoQ: most recent Q vs prior Q (index 0 vs index 1)
-    let qoq: SupplementalMetric = unavailQoQ;
+    // ── QoQ: Q[0] vs Q[1] (sequential, legacy) ─────────────────────────────
+    let qoq: SupplementalMetric = unavail("Sequential quarterly data unavailable");
     if (quarterly.length >= 2) {
       const cur  = raw((quarterly[0] as Record<string, unknown>)?.totalRevenue);
       const prev = raw((quarterly[1] as Record<string, unknown>)?.totalRevenue);
       if (cur !== null && prev !== null && prev > 0) {
-        const growth = ((cur - prev) / prev) * 100;
-        const sign   = growth >= 0 ? "+" : "";
-        qoq = { value: `${sign}${growth.toFixed(1)}% QoQ`, source: "yahoo" };
+        const g    = ((cur - prev) / prev) * 100;
+        const sign = g >= 0 ? "+" : "";
+        qoq = { value: `${sign}${g.toFixed(1)}% QoQ`, source: "yahoo" };
       }
     }
 
-    return { yoy, qoq };
-  } catch {
-    return { yoy: unavailYoY, qoq: unavailQoQ };
-  }
-}
+    // ── Inconsistency warning ────────────────────────────────────────────────
+    let inconsistent: SupplementalMetric = { value: null, source: "calculated" };
+    if (ttmRaw !== null && qtrYoYRaw !== null) {
+      const ttmNeg = ttmRaw < 0;
+      const qtrPos = qtrYoYRaw > 0;
+      if (ttmNeg && qtrPos) {
+        inconsistent = {
+          value: "⚠ Growth trend inconsistent. Recent quarter improved, but trailing 12-month revenue remains negative.",
+          source: "calculated",
+          reason: `TTM ${ttmRaw.toFixed(1)}% vs latest quarter +${qtrYoYRaw.toFixed(1)}% — monitor for sustained improvement.`,
+        };
+      } else if (!ttmNeg && qtrYoYRaw < 0) {
+        inconsistent = {
+          value: "⚠ Growth trend inconsistent. Trailing 12-month positive, but latest quarter declined vs year ago.",
+          source: "calculated",
+          reason: `TTM +${ttmRaw.toFixed(1)}% vs latest quarter ${qtrYoYRaw.toFixed(1)}% — recent deceleration.`,
+        };
+      }
+    }
 
-function calcRevenueGrowth(qs: Record<string, unknown> | null): SupplementalMetric {
-  return calcRevenueGrowthBoth(qs).yoy;
+    return { ttm, qtrYoY, qoq, inconsistent, ttmRaw, qtrYoYRaw };
+  } catch {
+    return {
+      ttm:    unavail("Revenue growth fetch failed"),
+      qtrYoY: unavail("Revenue growth fetch failed"),
+      qoq:    unavail("Revenue growth fetch failed"),
+      inconsistent: { value: null, source: "calculated" },
+      ttmRaw: null, qtrYoYRaw: null,
+    };
+  }
 }
 
 // ── Cash Runway ────────────────────────────────────────────────────────────
@@ -626,7 +662,7 @@ export async function getSupplementalStockData(symbol: string): Promise<Suppleme
   const insiders    = calcInsiderActivity(qs);
   const shortInterest = await calcShortInterest(symbol, qs);
   const riskFields  = calcSmallCapRisk(qs);
-  const revGrowth   = calcRevenueGrowthBoth(qs);
+  const rev         = calcRevenueGrowthAll(qs);
 
   return {
     ma50: chart.ma50 !== null
@@ -637,8 +673,12 @@ export async function getSupplementalStockData(symbol: string): Promise<Suppleme
       ? { value: Number(chart.ma200.toFixed(2)), source: "calculated" }
       : missing("Requires at least 200 trading days of price history"),
 
-    revenueGrowth:    revGrowth.yoy,
-    revenueGrowthQoQ: revGrowth.qoq,
+    // Revenue growth — keep `revenueGrowth` = TTM for screener table backwards-compat
+    revenueGrowth:             rev.ttm,
+    revenueGrowthTTM:          rev.ttm,
+    revenueGrowthQtrYoY:       rev.qtrYoY,
+    revenueGrowthQoQ:          rev.qoq,
+    revenueGrowthInconsistent: rev.inconsistent,
     cashRunway:       calcCashRunway(qs),
     debtRisk:        calcDebtRisk(qs),
     lastEarnings:    calcLastEarnings(qs),
@@ -654,6 +694,17 @@ export async function getSupplementalStockData(symbol: string): Promise<Suppleme
       ? { value: Math.round(chart.avgDailyVolume).toLocaleString(), source: "calculated" }
       : missing("Requires at least 30 trading days of volume history"),
   };
+}
+
+/** Lightweight: fetch only the raw revenue growth numbers for the scoring modifier. */
+export async function getRevenueGrowthRaw(symbol: string): Promise<{ ttm: number | null; qtrYoY: number | null }> {
+  try {
+    const qs = await fetchYahooQuoteSummary(symbol);
+    const rev = calcRevenueGrowthAll(qs);
+    return { ttm: rev.ttmRaw, qtrYoY: rev.qtrYoYRaw };
+  } catch {
+    return { ttm: null, qtrYoY: null };
+  }
 }
 
 // Merge helper — only fills fields that are currently missing/null
