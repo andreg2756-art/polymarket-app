@@ -106,7 +106,7 @@ function buildRiskQualityScore(
     score,
     source: "calculated",
     reason: [
-      "Risk Quality includes beta, historical volatility, and 52-week range position.",
+      "Risk Quality: 60% beta/volatility + 40% 52W range position (upside).",
       betaReason,
     ].filter(Boolean).join(" "),
   };
@@ -150,10 +150,12 @@ export async function computeEnhancedScore(
   const momentumScore = buildMomentumScore(change1M, change3M);
   const volumeScore   = buildVolumeScore(relativeVolume);
 
-  // Single combined risk quality — replaces separate volatility + analystScore
+  // Risk Quality = 60% beta/volatility + 40% 52W range position.
+  // Pass targetUpside (pure range score) not analystScore (which already blends beta+range)
+  // to avoid double-counting beta at 84% effective weight.
   const riskQualityScore = buildRiskQualityScore(
     analystFactors?.beta,
-    analystFactors?.analystScore
+    analystFactors?.targetUpside
   );
 
   // Volatility kept as supporting detail only (not weighted separately)
