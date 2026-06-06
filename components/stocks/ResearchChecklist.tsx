@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import type { SupplementalStockData } from "@/lib/stockSupplementalData";
+import { SHARES_OUTSTANDING } from "@/lib/small-cap-universe";
 
 interface Props {
   ticker: string;
@@ -111,6 +112,14 @@ export default function ResearchChecklist(props: Props) {
   const volLabel = relativeVolume > 2.0 ? "High" : relativeVolume >= 1.5 ? "Elevated" : relativeVolume >= 1.0 ? "Normal" : "Below average";
   const capStatus = marketCap >= 500e6 ? "ok" : marketCap >= 200e6 ? "neutral" : "warn";
 
+  // Market cap discrepancy: compare stored value vs price × SHARES_OUTSTANDING
+  const capCalculated = (() => {
+    const shares = SHARES_OUTSTANDING[ticker] ?? 0;
+    return shares > 0 ? Math.round(price * shares * 1_000_000) : 0;
+  })();
+  const capDiscrepancy = marketCap > 0 && capCalculated > 0
+    && Math.abs(capCalculated - marketCap) / marketCap > 0.1;
+
   // Moving averages vs price
   const ma50Val = supp?.ma50.value ? Number(supp.ma50.value) : null;
   const ma200Val = supp?.ma200.value ? Number(supp.ma200.value) : null;
@@ -199,12 +208,23 @@ export default function ResearchChecklist(props: Props) {
               <section>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Fundamentals</h3>
                 <Row label="Market Cap" value={fmtCap(marketCap)} status={capStatus} />
+                {capDiscrepancy && (
+                  <div className="text-xs text-yellow-800 bg-yellow-950/40 border border-yellow-900/50 rounded px-2 py-1 mb-1">
+                    ⚠ Market cap sources disagree.
+                    <span className="block text-yellow-900 mt-0.5">
+                      Yahoo: {fmtCap(marketCap)} · Calculated: {fmtCap(capCalculated)}
+                    </span>
+                  </div>
+                )}
                 <Row
                   label="Revenue Growth"
                   value={revGrowthDisplay ?? val(supp?.revenueGrowth)}
                   status={revGrowthStatus}
                   source={sourceTag(supp?.revenueGrowth)}
                 />
+                {supp?.revenueGrowthQoQ?.value && (
+                  <p className="text-xs text-gray-600 pb-0.5 pl-1">({supp.revenueGrowthQoQ.value})</p>
+                )}
                 {supp?.revenueGrowth?.reason && (
                   <p className="text-xs text-gray-600 pb-1 pl-1">{supp.revenueGrowth.reason}</p>
                 )}
@@ -327,12 +347,33 @@ export default function ResearchChecklist(props: Props) {
                   status={val(supp?.freeCashFlow).startsWith("-") ? "warn" : val(supp?.freeCashFlow) !== "N/A" ? "ok" : "neutral"}
                   source={sourceTag(supp?.freeCashFlow)}
                 />
+              </section>
+
+              {/* Dilution Risk */}
+              <section>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Dilution Risk</h3>
                 <Row
-                  label="Dilution Risk"
-                  value={val(supp?.dilutionRisk)}
-                  status={val(supp?.dilutionRisk).includes("⚠") ? "warn" : val(supp?.dilutionRisk).toLowerCase().includes("minimal") ? "ok" : "neutral"}
-                  source={sourceTag(supp?.dilutionRisk)}
+                  label="Shares Outstanding Growth"
+                  value={val(supp?.sharesOutstandingGrowthYoY)}
+                  status={
+                    val(supp?.sharesOutstandingGrowthYoY).startsWith("+") &&
+                    parseFloat(val(supp?.sharesOutstandingGrowthYoY)) > 8 ? "warn" :
+                    val(supp?.sharesOutstandingGrowthYoY).startsWith("-") ? "ok" : "neutral"
+                  }
+                  source={sourceTag(supp?.sharesOutstandingGrowthYoY)}
                 />
+                <Row
+                  label="Dilution Rating"
+                  value={val(supp?.dilutionRating)}
+                  status={
+                    val(supp?.dilutionRating) === "High" ? "warn" :
+                    val(supp?.dilutionRating) === "Low"  ? "ok"  : "neutral"
+                  }
+                  source={sourceTag(supp?.dilutionRating)}
+                />
+                {supp?.dilutionRating?.reason && (
+                  <p className="text-xs text-gray-600 pb-1 pl-1">{supp.dilutionRating.reason}</p>
+                )}
               </section>
 
               {/* Ownership */}

@@ -17,6 +17,7 @@ export type SupplementalStockData = {
   ma50:                  SupplementalMetric;
   ma200:                 SupplementalMetric;
   revenueGrowth:         SupplementalMetric;
+  revenueGrowthQoQ:      SupplementalMetric;  // secondary display only
   cashRunway:            SupplementalMetric;
   debtRisk:              SupplementalMetric;
   lastEarnings:          SupplementalMetric;
@@ -28,13 +29,15 @@ export type SupplementalStockData = {
   analystRating:         SupplementalMetric;
   recentRevisions:       SupplementalMetric;
   // Small-cap risk fields
-  cash:                  SupplementalMetric;
-  totalDebt:             SupplementalMetric;
-  netCash:               SupplementalMetric;
-  freeCashFlow:          SupplementalMetric;
-  dilutionRisk:          SupplementalMetric;
-  insiderOwnership:      SupplementalMetric;
-  institutionalOwnership: SupplementalMetric;
+  cash:                      SupplementalMetric;
+  totalDebt:                 SupplementalMetric;
+  netCash:                   SupplementalMetric;
+  freeCashFlow:              SupplementalMetric;
+  dilutionRisk:              SupplementalMetric;  // implied vs basic (options/warrants)
+  sharesOutstandingGrowthYoY: SupplementalMetric; // YoY shares growth from quarterly history
+  dilutionRating:            SupplementalMetric;  // Low / Moderate / High
+  insiderOwnership:          SupplementalMetric;
+  institutionalOwnership:    SupplementalMetric;
 };
 
 function missing(reason: string): SupplementalMetric {
@@ -188,56 +191,70 @@ function fmtDate(ts: unknown): string | null {
 
 const LOW_BASE_THRESHOLD = 10_000_000; // $10M — flag if prior-year Q revenue is very small
 
-function calcRevenueGrowth(qs: Record<string, unknown> | null): SupplementalMetric {
+// Returns { yoy, qoq } — both may be null if data is unavailable
+function calcRevenueGrowthBoth(qs: Record<string, unknown> | null): {
+  yoy: SupplementalMetric;
+  qoq: SupplementalMetric;
+} {
+  const unavailYoY = missing("Year-ago quarterly revenue not available");
+  const unavailQoQ = missing("Quarterly revenue data unavailable");
   try {
     const quarterly: unknown[] =
       (qs?.incomeStatementHistoryQuarterly as Record<string, unknown> | undefined)
         ?.incomeStatementHistory as unknown[] ?? [];
 
+    // YoY: most recent Q vs same Q one year ago (index 0 vs index 4)
+    let yoy: SupplementalMetric = unavailYoY;
     if (quarterly.length >= 5) {
       const cur  = raw((quarterly[0] as Record<string, unknown>)?.totalRevenue);
       const prev = raw((quarterly[4] as Record<string, unknown>)?.totalRevenue);
       if (cur !== null && prev !== null && prev > 0) {
-        const growth   = ((cur - prev) / prev) * 100;
-        const sign     = growth >= 0 ? "+" : "";
-        const lowBase  = prev < LOW_BASE_THRESHOLD;
-        return {
-          value:  `${sign}${growth.toFixed(1)}% YoY (quarterly)${lowBase ? " ⚠" : ""}`,
+        const growth  = ((cur - prev) / prev) * 100;
+        const sign    = growth >= 0 ? "+" : "";
+        const lowBase = prev < LOW_BASE_THRESHOLD;
+        yoy = {
+          value:  `${sign}${growth.toFixed(1)}% YoY${lowBase ? " ⚠" : ""}`,
           source: "yahoo",
           reason: lowBase ? "⚠ Growth may be inflated due to low prior-year base." : undefined,
         };
       }
     }
 
-    // Fall back: most recent two quarters QoQ
+    // If YoY unavailable, fall back to TTM from financialData
+    if (yoy === unavailYoY) {
+      const fd = qs?.financialData as Record<string, unknown> | undefined;
+      const rg = raw(fd?.revenueGrowth);
+      if (rg !== null) {
+        const pct  = rg * 100;
+        const sign = pct >= 0 ? "+" : "";
+        yoy = {
+          value:  `${sign}${pct.toFixed(1)}% YoY (TTM)`,
+          source: "yahoo",
+          reason: "Trailing twelve months from Yahoo financialData.",
+        };
+      }
+    }
+
+    // QoQ: most recent Q vs prior Q (index 0 vs index 1)
+    let qoq: SupplementalMetric = unavailQoQ;
     if (quarterly.length >= 2) {
       const cur  = raw((quarterly[0] as Record<string, unknown>)?.totalRevenue);
       const prev = raw((quarterly[1] as Record<string, unknown>)?.totalRevenue);
       if (cur !== null && prev !== null && prev > 0) {
         const growth = ((cur - prev) / prev) * 100;
         const sign   = growth >= 0 ? "+" : "";
-        return {
-          value:  `${sign}${growth.toFixed(1)}% QoQ`,
-          source: "yahoo",
-          reason: "Quarter-over-quarter; year-ago data not available.",
-        };
+        qoq = { value: `${sign}${growth.toFixed(1)}% QoQ`, source: "yahoo" };
       }
     }
 
-    // Fall back: financialData.revenueGrowth (TTM)
-    const fd = qs?.financialData as Record<string, unknown> | undefined;
-    const rg = raw(fd?.revenueGrowth);
-    if (rg !== null) {
-      const pct  = rg * 100;
-      const sign = pct >= 0 ? "+" : "";
-      return {
-        value:  `${sign}${pct.toFixed(1)}% TTM`,
-        source: "yahoo",
-        reason: "Trailing twelve months from Yahoo financialData.",
-      };
-    }
-  } catch { /* fall through */ }
-  return missing("Revenue data not available from Yahoo Finance");
+    return { yoy, qoq };
+  } catch {
+    return { yoy: unavailYoY, qoq: unavailQoQ };
+  }
+}
+
+function calcRevenueGrowth(qs: Record<string, unknown> | null): SupplementalMetric {
+  return calcRevenueGrowthBoth(qs).yoy;
 }
 
 // ── Cash Runway ────────────────────────────────────────────────────────────
@@ -505,9 +522,15 @@ function calcSmallCapRisk(qs: Record<string, unknown> | null): {
   netCash: SupplementalMetric;
   freeCashFlow: SupplementalMetric;
   dilutionRisk: SupplementalMetric;
+  sharesOutstandingGrowthYoY: SupplementalMetric;
+  dilutionRating: SupplementalMetric;
   insiderOwnership: SupplementalMetric;
   institutionalOwnership: SupplementalMetric;
 } {
+  const u = missing("Small-cap risk data unavailable");
+  const uAll = { cash: u, totalDebt: u, netCash: u, freeCashFlow: u,
+    dilutionRisk: u, sharesOutstandingGrowthYoY: u, dilutionRating: u,
+    insiderOwnership: u, institutionalOwnership: u };
   try {
     const fd  = qs?.financialData as Record<string, unknown> | undefined;
     const ks  = qs?.defaultKeyStatistics as Record<string, unknown> | undefined;
@@ -516,23 +539,56 @@ function calcSmallCapRisk(qs: Record<string, unknown> | null): {
     const cashVal  = raw(fd?.totalCash);
     const debtVal  = raw(fd?.totalDebt);
     const fcfVal   = raw(fd?.freeCashflow);
-
-    // Net cash
     const netCashVal = cashVal !== null && debtVal !== null ? cashVal - debtVal : null;
 
-    // Dilution risk: compare sharesOutstanding vs impliedSharesOutstanding
+    // Dilution risk: implied vs basic shares (options/warrants)
     const sharesOut  = raw(ks?.sharesOutstanding);
     const impliedOut = raw(ks?.impliedSharesOutstanding);
     let dilution: SupplementalMetric = missing("Share count data unavailable");
     if (sharesOut !== null && impliedOut !== null && sharesOut > 0) {
       const dilutionPct = ((impliedOut - sharesOut) / sharesOut) * 100;
-      if (dilutionPct > 5) {
-        dilution = { value: `⚠ ${dilutionPct.toFixed(1)}% potential dilution (options/warrants)`, source: "yahoo" };
-      } else if (dilutionPct > 0) {
-        dilution = { value: `Low — ${dilutionPct.toFixed(1)}% potential dilution`, source: "yahoo" };
-      } else {
-        dilution = { value: "Minimal dilution risk", source: "yahoo" };
+      dilution = dilutionPct > 5
+        ? { value: `⚠ ${dilutionPct.toFixed(1)}% potential dilution (options/warrants)`, source: "yahoo" }
+        : dilutionPct > 0
+        ? { value: `Low — ${dilutionPct.toFixed(1)}% potential dilution`, source: "yahoo" }
+        : { value: "Minimal dilution risk", source: "yahoo" };
+    }
+
+    // YoY shares outstanding growth from quarterly income statements
+    // incomeStatementHistoryQuarterly contains basicShares or shares field per quarter
+    let sharesGrowthYoY: SupplementalMetric = missing("Historical shares data unavailable");
+    let dilutionRating: SupplementalMetric  = missing("Historical shares data unavailable");
+    try {
+      const quarterly: unknown[] =
+        (qs?.incomeStatementHistoryQuarterly as Record<string, unknown> | undefined)
+          ?.incomeStatementHistory as unknown[] ?? [];
+      if (quarterly.length >= 5) {
+        // Some Yahoo responses include basicShares on income statements
+        const cur4  = raw((quarterly[0] as Record<string, unknown>)?.basicShares);
+        const prev4 = raw((quarterly[4] as Record<string, unknown>)?.basicShares);
+        if (cur4 !== null && prev4 !== null && prev4 > 0) {
+          const growth = ((cur4 - prev4) / prev4) * 100;
+          const sign   = growth >= 0 ? "+" : "";
+          sharesGrowthYoY = { value: `${sign}${growth.toFixed(1)}% YoY`, source: "yahoo" };
+          const rating = growth < 2 ? "Low" : growth < 8 ? "Moderate" : "High";
+          dilutionRating = {
+            value: rating,
+            source: "yahoo",
+            reason: `${sign}${growth.toFixed(1)}% YoY shares growth. Low <2%, Moderate 2–8%, High >8%.`,
+          };
+        }
       }
+    } catch { /* leave as unavailable */ }
+
+    // Fall back dilution rating to implied-vs-basic if YoY unavailable
+    if (dilutionRating.source === "unavailable" && sharesOut !== null && impliedOut !== null && sharesOut > 0) {
+      const pct    = ((impliedOut - sharesOut) / sharesOut) * 100;
+      const rating = pct < 2 ? "Low" : pct < 8 ? "Moderate" : "High";
+      dilutionRating = {
+        value: rating,
+        source: "yahoo",
+        reason: `Based on ${pct.toFixed(1)}% implied dilution from options/warrants.`,
+      };
     }
 
     // Insider / institutional ownership
@@ -540,24 +596,22 @@ function calcSmallCapRisk(qs: Record<string, unknown> | null): {
     const instPct    = raw(mh?.institutionsPercentHeld) ?? raw(ks?.heldPercentInstitutions);
 
     return {
-      cash:      cashVal  !== null ? { value: fmtLarge(cashVal),                              source: "yahoo" } : missing("Cash data unavailable"),
-      totalDebt: debtVal  !== null ? { value: fmtLarge(debtVal),                              source: "yahoo" } : missing("Debt data unavailable"),
+      cash:      cashVal   !== null ? { value: fmtLarge(cashVal),   source: "yahoo" } : missing("Cash data unavailable"),
+      totalDebt: debtVal   !== null ? { value: fmtLarge(debtVal),   source: "yahoo" } : missing("Debt data unavailable"),
       netCash:   netCashVal !== null
-        ? {
-            value:  netCashVal >= 0 ? `Net cash ${fmtLarge(netCashVal)}` : `Net debt ${fmtLarge(Math.abs(netCashVal))}`,
-            source: "yahoo",
-          }
+        ? { value: netCashVal >= 0 ? `Net cash ${fmtLarge(netCashVal)}` : `Net debt ${fmtLarge(Math.abs(netCashVal))}`, source: "yahoo" }
         : missing("Net cash/debt requires both cash and debt"),
       freeCashFlow: fcfVal !== null
         ? { value: `${fcfVal >= 0 ? "" : "-"}${fmtLarge(Math.abs(fcfVal))}/yr`, source: "yahoo" }
         : missing("Free cash flow unavailable"),
       dilutionRisk: dilution,
+      sharesOutstandingGrowthYoY: sharesGrowthYoY,
+      dilutionRating,
       insiderOwnership:      insiderPct !== null ? { value: `${(insiderPct * 100).toFixed(1)}%`, source: "yahoo" } : missing("Insider ownership unavailable"),
       institutionalOwnership: instPct   !== null ? { value: `${(instPct   * 100).toFixed(1)}%`, source: "yahoo" } : missing("Institutional ownership unavailable"),
     };
   } catch {
-    const u = missing("Small-cap risk data unavailable");
-    return { cash: u, totalDebt: u, netCash: u, freeCashFlow: u, dilutionRisk: u, insiderOwnership: u, institutionalOwnership: u };
+    return uAll;
   }
 }
 
@@ -572,6 +626,7 @@ export async function getSupplementalStockData(symbol: string): Promise<Suppleme
   const insiders    = calcInsiderActivity(qs);
   const shortInterest = await calcShortInterest(symbol, qs);
   const riskFields  = calcSmallCapRisk(qs);
+  const revGrowth   = calcRevenueGrowthBoth(qs);
 
   return {
     ma50: chart.ma50 !== null
@@ -582,8 +637,9 @@ export async function getSupplementalStockData(symbol: string): Promise<Suppleme
       ? { value: Number(chart.ma200.toFixed(2)), source: "calculated" }
       : missing("Requires at least 200 trading days of price history"),
 
-    revenueGrowth:   calcRevenueGrowth(qs),
-    cashRunway:      calcCashRunway(qs),
+    revenueGrowth:    revGrowth.yoy,
+    revenueGrowthQoQ: revGrowth.qoq,
+    cashRunway:       calcCashRunway(qs),
     debtRisk:        calcDebtRisk(qs),
     lastEarnings:    calcLastEarnings(qs),
     nextEarnings:    calcNextEarnings(qs),
