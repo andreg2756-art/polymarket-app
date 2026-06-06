@@ -29,11 +29,13 @@ function val(metric: SupplementalStockData[keyof SupplementalStockData] | undefi
 function sourceTag(metric: SupplementalStockData[keyof SupplementalStockData] | undefined) {
   if (!metric || metric.source === "unavailable") return null;
   const colors: Record<string, string> = {
-    yahoo: "text-blue-600",
-    sec: "text-purple-600",
+    yahoo:      "text-blue-600",
+    sec:        "text-purple-600",
     calculated: "text-gray-600",
+    finra:      "text-yellow-700",
   };
-  return <span className={`text-xs ${colors[metric.source] ?? "text-gray-700"}`}>[{metric.source}]</span>;
+  const label = metric.source === "finra" ? "finra (short vol)" : metric.source;
+  return <span className={`text-xs ${colors[metric.source] ?? "text-gray-700"}`}>[{label}]</span>;
 }
 
 function Row({
@@ -245,11 +247,14 @@ export default function ResearchChecklist(props: Props) {
                   source={sourceTag(supp?.avgDailyVolume)}
                 />
                 <Row
-                  label="Short Interest"
+                  label={supp?.shortInterest?.source === "finra" ? "Short Volume Ratio" : "Short Interest"}
                   value={shortInterestDisplay ?? val(supp?.shortInterest)}
                   status={shortStatus}
                   source={!shortInterestDisplay ? sourceTag(supp?.shortInterest) : undefined}
                 />
+                {supp?.shortInterest?.source === "finra" && (
+                  <p className="text-xs text-yellow-900 pb-1">Not exchange-reported short interest</p>
+                )}
               </section>
 
               {/* Insider Activity */}
@@ -257,8 +262,9 @@ export default function ResearchChecklist(props: Props) {
                 <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Insider Activity</h3>
                 <Row
                   label="Insider Buying"
-                  value={insiderBuying > 0 ? `$${(insiderBuying / 1000).toFixed(0)}K detected` : "None detected"}
-                  status={insiderBuying > 0 ? "ok" : "neutral"}
+                  value={val(supp?.insiderBuying) !== "N/A" ? val(supp?.insiderBuying) : insiderBuying > 0 ? `$${(insiderBuying / 1000).toFixed(0)}K detected` : "None detected"}
+                  status={val(supp?.insiderBuying).toLowerCase().includes("purchase") || insiderBuying > 0 ? "ok" : "neutral"}
+                  source={sourceTag(supp?.insiderBuying)}
                 />
                 <Row
                   label="Insider Selling"
