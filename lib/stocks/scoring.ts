@@ -5,7 +5,7 @@ import type { EnhancedStockScore, ScoredMetric } from "./types";
 import { getNewsSentimentScore } from "./newsSentiment";
 import { getAnalystFactors } from "./analystFactors";
 import { getEarningsRiskScore } from "./earningsRisk";
-import { getRevenueGrowthScore, computeBlendedGrowthModifier } from "./revenueGrowth";
+import { getRevenueGrowthScore, computeRevenueTrend } from "./revenueGrowth";
 import { getRelativeStrengthRank } from "./relativeStrength";
 
 // Weights sum to 0.95 — remaining 0.05 is news sentiment
@@ -187,12 +187,10 @@ export async function computeEnhancedScore(
     const weightedSum = available.reduce((s, c) => s + (c.score! * c.weight), 0);
     let base = clampScore(weightedSum / totalWeight);
 
-    // Use blended modifier (0.7 TTM + 0.3 quarterly) when fresh data is available,
-    // otherwise fall back to the SEC EDGAR modifier from getRevenueGrowthScore
-    const blendedMod = (ttmGrowth !== null || qtrGrowth !== null)
-      ? computeBlendedGrowthModifier(ttmGrowth, qtrGrowth)
-      : (revenueGrowth?.modifier ?? 0);
-    base = applyRevenueGrowthModifier(base, blendedMod);
+    // Always use trend-based modifier — never fall back to SEC EDGAR annual data
+    // when Yahoo TTM is available, as they can give contradictory signals.
+    const trend = computeRevenueTrend(ttmGrowth, qtrGrowth);
+    base = applyRevenueGrowthModifier(base, trend.modifier);
     base = applyEarningsRiskPenalty(base, earningsRisk?.daysUntilEarnings ?? null);
     base = clampScore(base + floatTurnoverModifier(floatTurnover));
 

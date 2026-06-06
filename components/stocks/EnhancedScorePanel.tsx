@@ -4,19 +4,13 @@ import type { EnhancedStockScore } from "@/lib/stocks/types";
 import type { ShortInterestResult } from "@/lib/stocks/shortInterest";
 import type { DataConfidenceResult } from "@/lib/stocks/dataConfidence";
 import type { NewsSentimentDetail } from "@/lib/stocks/newsSentiment";
-
-interface RevTrend {
-  ttm:      number | null;
-  qtr:      number | null;
-  status:   "Positive" | "Negative" | "Mixed" | null;
-  modifier: number;
-}
+import type { RevenueTrend } from "@/lib/stocks/revenueGrowth";
 
 interface FullScore extends EnhancedStockScore {
   shortInterest:  ShortInterestResult | null;
   dataConfidence: DataConfidenceResult | null;
   newsSentiment:  EnhancedStockScore["newsSentiment"] & { detail?: NewsSentimentDetail | null };
-  revTrend?:      RevTrend | null;
+  revTrend?:      RevenueTrend | null;
 }
 
 interface Props { ticker: string }
@@ -182,7 +176,7 @@ export default function EnhancedScorePanel({ ticker }: Props) {
               <MetricRow label="Risk Quality"    weight="20%" sublabel="β·vol·52w" value={data.riskQualityScore.value} score={data.riskQualityScore.score} color="bg-purple-500" reason={data.riskQualityScore.reason} tag={<CalcTag />} />
               <MetricRow label={upsideLabel}     weight="15%" sublabel={upsideSub} value={data.upsideScore.value}      score={data.upsideScore.score}      color="bg-orange-500" reason={data.upsideScore.reason} tag={!data.hasRealAnalystTarget ? <CalcTag /> : undefined} />
               <MetricRow label="Volume"          weight="15%" value={data.volumeScore.value}        score={data.volumeScore.score}      color="bg-cyan-500"    reason={data.volumeScore.reason} />
-              <MetricRow label="News Sentiment"  weight="5%"  value={data.newsSentiment.score !== null ? `${data.newsSentiment.source === "polygon" ? "Polygon" : "Yahoo"} (${data.newsSentiment.score})` : null} score={data.newsSentiment.score} color="bg-yellow-500" reason={data.newsSentiment.reason} />
+              <MetricRow label="News Sentiment"  weight="5%"  value={data.newsSentiment.score !== null ? `${data.newsSentiment.score} / 100` : null} score={data.newsSentiment.score} color="bg-yellow-500" reason={data.newsSentiment.reason} />
 
               {/* ── News Detail ── */}
               <SectionHeader>News</SectionHeader>
@@ -260,26 +254,31 @@ export default function EnhancedScorePanel({ ticker }: Props) {
               {(() => {
                 const rt = data.revTrend;
                 const fmt = (n: number | null) => n === null ? "N/A" : `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
+                const status   = rt?.status ?? "Unknown";
+                const modAmt   = rt?.modifier ?? 0;
                 const statusColor =
-                  rt?.status === "Positive" ? "text-emerald-400" :
-                  rt?.status === "Negative" ? "text-red-400" : "text-yellow-400";
-                const modAmt = rt?.modifier ?? revMod;
+                  status === "Strong Positive" ? "text-emerald-300" :
+                  status === "Positive"         ? "text-emerald-400" :
+                  status === "Negative"         ? "text-red-400"     :
+                  status === "Mixed"            ? "text-yellow-400"  : "text-gray-500";
                 return (
                   <div className="py-1.5 border-b border-gray-800">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs text-gray-400 w-40 shrink-0">Revenue Trend</span>
-                      <span className={`text-xs font-medium ${statusColor} flex-1`}>{rt?.status ?? "N/A"}</span>
-                      <span className={`text-xs font-medium w-14 text-right shrink-0 ${modAmt !== null && modAmt > 0 ? "text-emerald-400" : modAmt !== null && modAmt < 0 ? "text-red-400" : "text-gray-500"}`}>
-                        {modAmt === null ? "N/A" : modAmt === 0 ? "No change" : `${modAmt > 0 ? "+" : ""}${modAmt} pts`}
+                      <span className={`text-xs font-medium ${statusColor} flex-1`}>{status}</span>
+                      <span className={`text-xs font-medium w-14 text-right shrink-0 ${modAmt > 0 ? "text-emerald-400" : modAmt < 0 ? "text-red-400" : "text-gray-500"}`}>
+                        {modAmt === 0 ? "No change" : `${modAmt > 0 ? "+" : ""}${modAmt} pts`}
                       </span>
                     </div>
-                    <div className="flex gap-4 mt-1 pl-0">
+                    <div className="flex gap-4 mt-1">
                       <span className="text-xs text-gray-600">TTM: <span className={(rt?.ttm ?? 0) < 0 ? "text-red-500" : "text-gray-400"}>{fmt(rt?.ttm ?? null)}</span></span>
-                      <span className="text-xs text-gray-600">Latest Q: <span className={(rt?.qtr ?? 0) > 0 ? "text-emerald-500" : "text-gray-400"}>{fmt(rt?.qtr ?? null)}</span></span>
+                      <span className="text-xs text-gray-600">Latest Q: <span className={(rt?.qtr ?? null) === null ? "text-gray-600" : (rt?.qtr ?? 0) > 0 ? "text-emerald-500" : "text-gray-400"}>{fmt(rt?.qtr ?? null)}</span></span>
                     </div>
-                    {rt?.status === "Mixed" && (
+                    {(status === "Mixed" || status === "Unknown") && rt?.ttm !== null && (
                       <p className="text-xs text-yellow-800 mt-1 leading-snug">
-                        ⚠ Recent quarter improved significantly, but trailing 12-month revenue remains below the prior period.
+                        {status === "Mixed"
+                          ? "⚠ Recent quarter improved significantly, but trailing 12-month revenue remains below the prior period."
+                          : "⚠ Quarterly data unavailable — TTM growth used. Positive modifier withheld until confirmed."}
                       </p>
                     )}
                   </div>

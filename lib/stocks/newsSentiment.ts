@@ -38,19 +38,23 @@ const PUBLISHER_WEIGHTS: Record<string, number> = {
 
 // Law-firm solicitation patterns — class-action notices have near-zero signal value
 const LAW_FIRM_PATTERNS = [
+  // Explicit firm names (expanded list)
+  /\b(rosen law|rosen llp|pomerantz|faruqi|robbins geller|bragar eagel|bronstein gewirtz|schall law|levi.{0,5}korsinsky|bernstein liebhard|kessler topaz|lieff cabraser|berman tabacco|cotchett pitre|wolf haldenstein|gainey mckenna|rigrodsky long)\b/i,
+  // Generic solicitation language
   /\bclass.?action\b/i,
-  /\bshareholder.{0,20}(rights|lawsuit|suit|notice|alert|investigation)\b/i,
-  /\binvestor.{0,20}(rights|alert|notice|lawsuit)\b/i,
-  /\b(levi|faruqi|pomerantz|rosen law|robbins geller|bernstein liebhard)\b/i,
-  /\bsecurities (fraud|violation|class)\b/i,
-  /\bencourage.{0,30}contact.{0,30}attorney\b/i,
+  /\bshareholder.{0,25}(rights|lawsuit|suit|notice|alert|investigation|reminded|informed)\b/i,
+  /\binvestor.{0,25}(rights|alert|notice|lawsuit|reminded|informed)\b/i,
+  /\bsecurities (fraud|violation|class|lawsuit)\b/i,
+  /\bencourage.{0,40}contact.{0,20}(attorney|lawyer|law firm)\b/i,
+  /\blead plaintiff\b/i,
+  /\bfiling deadline\b/i,
 ];
 
 function publisherWeight(name: string, title?: string): number {
   // Suppress law-firm solicitations regardless of publisher
   if (title) {
     for (const pat of LAW_FIRM_PATTERNS) {
-      if (pat.test(title)) return 0.1;
+      if (pat.test(title)) return 0.05;
     }
   }
   const lower = name.toLowerCase();

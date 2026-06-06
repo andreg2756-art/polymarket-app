@@ -77,30 +77,67 @@ function growthModifier(growth: number): number {
  * Blended growth modifier: 0.7 × TTM + 0.3 × quarterly YoY.
  * Falls back to whichever is available; returns 0 if neither is.
  */
+export type RevenueTrendStatus =
+  | "Strong Positive"
+  | "Positive"
+  | "Mixed"
+  | "Negative"
+  | "Unknown";
+
+export interface RevenueTrend {
+  status:   RevenueTrendStatus;
+  modifier: number;
+  ttm:      number | null;
+  qtr:      number | null;
+}
+
 /**
- * 4-case growth score modifier.
- * Only uses TTM + quarterly together; never lets a strong quarterly alone
- * drive a bullish score when TTM is negative.
+ * 5-state revenue trend — status and modifier are always consistent.
  *
- * Both >20%  => +8
- * Both >0%   => +4
- * Signs differ (mixed) => 0
- * Both <=0%  => -4
- * One missing => use the other alone via original growthModifier
+ * Both available:
+ *   TTM>20 & Qtr>20  => Strong Positive (+8)
+ *   TTM>0  & Qtr>0   => Positive (+4)
+ *   Signs differ     => Mixed (0)
+ *   TTM≤0  & Qtr≤0   => Negative (-4)
+ *
+ * Quarterly unavailable:
+ *   TTM>0  => Unknown (0)  — never assume Positive without confirmation
+ *   TTM≤0  => Negative (-4)
+ *   TTM null => Unknown (0)
+ *
+ * Validation: modifier sign must match status sign.
  */
-export function computeBlendedGrowthModifier(ttm: number | null, qtrYoY: number | null): number {
-  if (ttm !== null && qtrYoY !== null) {
-    const bothPos = ttm > 0 && qtrYoY > 0;
-    const bothNeg = ttm <= 0 && qtrYoY <= 0;
-    const bothStrong = ttm > 20 && qtrYoY > 20;
-    if (bothStrong) return 8;
-    if (bothPos)    return 4;
-    if (bothNeg)    return -4;
-    return 0; // mixed signs
+export function computeRevenueTrend(ttm: number | null, qtr: number | null): RevenueTrend {
+  let status: RevenueTrendStatus;
+  let modifier: number;
+
+  if (ttm !== null && qtr !== null) {
+    if (ttm > 20 && qtr > 20)            { status = "Strong Positive"; modifier = 8;  }
+    else if (ttm > 0 && qtr > 0)         { status = "Positive";        modifier = 4;  }
+    else if (ttm <= 0 && qtr <= 0)       { status = "Negative";        modifier = -4; }
+    else                                  { status = "Mixed";           modifier = 0;  }
+  } else if (ttm !== null) {
+    // Quarterly unavailable — do not assume positive
+    if (ttm <= 0)  { status = "Negative"; modifier = -4; }
+    else           { status = "Unknown";  modifier = 0;  }
+  } else {
+    status = "Unknown"; modifier = 0;
   }
-  if (ttm !== null)    return growthModifier(ttm);
-  if (qtrYoY !== null) return growthModifier(qtrYoY);
-  return 0;
+
+  // Invariant assertion (dev-time)
+  if (process.env.NODE_ENV === "development") {
+    const statusNeg = status === "Negative";
+    const statusPos = status === "Strong Positive" || status === "Positive";
+    if (statusNeg && modifier > 0) console.warn(`[revenueGrowth] INCONSISTENT: status=${status} but modifier=+${modifier}`);
+    if (statusPos && modifier < 0) console.warn(`[revenueGrowth] INCONSISTENT: status=${status} but modifier=${modifier}`);
+  }
+
+  return { status, modifier, ttm, qtr };
+}
+
+/** Legacy export kept for callers that only need the numeric modifier. */
+export function computeBlendedGrowthModifier(ttm: number | null, qtr: number | null): number {
+  return computeRevenueTrend(ttm, qtr).modifier;
 }
 
 function growthLabel(growth: number): string {

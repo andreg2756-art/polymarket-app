@@ -5,6 +5,7 @@ import { computeDataConfidence } from "@/lib/stocks/dataConfidence";
 import { prisma } from "@/lib/prisma";
 import { getExtraStockMetrics, fetchYahooDailyCandles } from "@/lib/stocks/technicals";
 import { getSupplementalStockData, getRevenueGrowthRaw } from "@/lib/stockSupplementalData";
+import { computeRevenueTrend } from "@/lib/stocks/revenueGrowth";
 
 export async function GET(
   _req: Request,
@@ -50,22 +51,8 @@ export async function GET(
 
     const confidence = computeDataConfidence(enhancedScore, shortInterest, marketCap, suppAvailable);
 
-    // Compute revenue trend for panel display
-    const ttm    = revRaw.ttm;
-    const qtr    = revRaw.qtrYoY;
-    const revTrend: {
-      ttm: number | null; qtr: number | null;
-      status: "Positive" | "Negative" | "Mixed" | null;
-      modifier: number;
-    } = {
-      ttm,
-      qtr,
-      status: ttm !== null && qtr !== null
-        ? (ttm > 0 && qtr > 0 ? "Positive" : ttm < 0 && qtr < 0 ? "Negative" : "Mixed")
-        : ttm !== null ? (ttm > 0 ? "Positive" : "Negative")
-        : null,
-      modifier: enhancedScore.revenueGrowthScore?.modifier ?? 0,
-    };
+    // Compute revenue trend — single source of truth for both display and modifier
+    const revTrend = computeRevenueTrend(revRaw.ttm, revRaw.qtrYoY);
 
     return NextResponse.json({
       ...enhancedScore,
