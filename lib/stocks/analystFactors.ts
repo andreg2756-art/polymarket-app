@@ -104,7 +104,7 @@ function betaToScore(beta: number): number {
 // Derive a synthetic "target upside" from 52-week range positioning.
 // If price is near the 52w low, there is more room to the high.
 // This is NOT analyst consensus — it's a range-based opportunity signal.
-function rangeUpsideScore(current: number, high52: number, low52: number): { pct: number; score: number; label: string } | null {
+function rangeUpsideScore(current: number, high52: number, low52: number): { pct: number; belowPct: number; score: number; label: string } | null {
   if (!current || !high52 || !low52 || high52 <= low52) return null;
   // How far is current from the 52w high, expressed as upside potential
   const upsidePct = ((high52 - current) / current) * 100;
@@ -112,8 +112,13 @@ function rangeUpsideScore(current: number, high52: number, low52: number): { pct
   const rangePosition = (current - low52) / (high52 - low52);
   // Score: more upside to 52w high + lower in range = higher score
   const score = Math.round(Math.max(0, Math.min(100, (1 - rangePosition) * 60 + Math.min(upsidePct, 50))));
-  const label = upsidePct > 30 ? "Large upside to 52w high" : upsidePct > 10 ? "Moderate upside to 52w high" : "Near 52w high";
-  return { pct: upsidePct, score, label };
+  const belowPct = ((current - high52) / high52) * 100; // negative when below high
+  const label = upsidePct > 30
+    ? `${upsidePct.toFixed(1)}% upside to 52W High`
+    : upsidePct > 10
+    ? `${upsidePct.toFixed(1)}% upside to 52W High`
+    : "Near 52W High";
+  return { pct: upsidePct, belowPct, score, label };
 }
 
 export async function getAnalystFactors(ticker: string): Promise<AnalystFactors> {
@@ -185,10 +190,10 @@ export async function getAnalystFactors(ticker: string): Promise<AnalystFactors>
     },
 
     targetUpside: rangeUpside ? {
-      value: `+${rangeUpside.pct.toFixed(1)}% to 52w high ($${high52.toFixed(2)})`,
+      value: `${rangeUpside.pct.toFixed(1)}% upside to 52W High ($${high52.toFixed(2)})`,
       score: rangeUpside.score,
       source: "calculated",
-      reason: `${rangeUpside.label}. Current $${currentPrice.toFixed(2)}, 52w high $${high52.toFixed(2)}, 52w low $${low52.toFixed(2)}. Note: this is range-based, not analyst consensus.`,
+      reason: `Current price is ${Math.abs(rangeUpside.belowPct).toFixed(1)}% below the 52W High of $${high52.toFixed(2)}, implying ${rangeUpside.pct.toFixed(1)}% upside back to that level. 52W Low: $${low52.toFixed(2)}. Note: range-based signal, not analyst consensus.`,
     } : {
       value: null,
       score: null,

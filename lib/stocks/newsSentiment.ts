@@ -138,49 +138,83 @@ function scorePolygonArticles(articles: PolygonArticle[]): NewsSentimentDetail {
 
 // ── Yahoo keyword fallback ─────────────────────────────────────────────────
 
+// Phrase-level positive signals (checked before individual words)
+const POSITIVE_PHRASES = [
+  "beats estimate", "beat estimates", "beats expectations", "beat expectations",
+  "revenue beats", "revenue beat", "earnings beat", "earnings beats",
+  "eps beat", "eps beats", "raises guidance", "raised guidance",
+  "record revenue", "record earnings", "record quarter", "record results",
+  "profit growth", "profitable", "strong demand", "high risk-reward",
+  "outperforms", "outperformed", "upgraded", "raises price target",
+];
+
 const POSITIVE_WORDS = [
-  "beat","beats","surpass","record","upgrade","strong","raise","accelerat",
-  "partnership","win","contract","expand","rally","surge","outperform","buy",
-  "opportunity","momentum","bullish","breakout","approval","launch","exceed",
-  "top","above","higher","grew","growth","gains","profit","profitable",
+  "beat", "beats", "surpass", "upgrade", "outperform",
+  "rally", "surge", "approval", "launch", "profitable",
+  "breakout", "bullish", "outperforms",
 ];
 
-// Only clearly bad signals — not generic financial terms
+// Phrase-level negative signals — only materially bad events
+const NEGATIVE_PHRASES = [
+  "missed estimates", "misses estimates", "revenue miss", "earnings miss",
+  "eps miss", "cuts guidance", "cut guidance", "lowered guidance",
+  "weak outlook", "disappointing outlook", "falls after earnings",
+  "plunges after", "wider loss", "offering at",
+];
+
 const NEGATIVE_WORDS = [
-  "miss","misses","disappoint","downgrade","cut","loss","dilut","lawsuit",
-  "recall","bankruptcy","investigation","probe","fine","resign","layoff",
-  "restructur","withdraw","fraud","warning","guidance cut","outlook cut",
-  "weaker","slower","below","plunge","crash","collapse","default",
+  "misses", "downgrade", "downgraded", "loss", "lawsuit",
+  "bankruptcy", "investigation", "dilution", "plunges", "disappointing",
 ];
 
-// Titles containing these phrases are never classified as negative
-// (they describe beats, strong results, or approvals)
-const NEVER_NEGATIVE_PATTERNS = [
-  /\bearnings beat\b/i,
-  /\brevenue beat\b/i,
-  /\beps beat\b/i,
-  /\bbeats estimate/i,
-  /\bbeats expectation/i,
-  /\bexceeds estimate/i,
-  /\bsurpasses estimate/i,
-  /\brecord revenue\b/i,
-  /\brecord earnings\b/i,
-  /\bfda approv/i,
-  /\bapproved by\b/i,
+// Hard-override: these patterns are ALWAYS positive regardless of other words
+const ALWAYS_POSITIVE_PATTERNS = [
+  /\brevenue beats?\b/i,
+  /\bearnings beats?\b/i,
+  /\beps beats?\b/i,
+  /beats?\s+estimates?\b/i,
+  /beats?\s+expectations?\b/i,
+  /\brecord\s+(revenue|earnings|quarter|results)\b/i,
+  /\braises?\s+guidance\b/i,
+  /\bfda\s+approv/i,
+];
+
+// Hard-override: these patterns cancel a positive classification
+const ALWAYS_NEGATIVE_PATTERNS = [
+  /\bcuts?\s+guidance\b/i,
+  /\blowered?\s+guidance\b/i,
+  /\bwider\s+loss\b/i,
+  /\bfalls?\s+after\s+earnings\b/i,
+  /\boffering\s+at\b/i,
+  /\bbankruptcy\b/i,
+  /\blawsuit\b/i,
 ];
 
 export function classifySentiment(title: string): number {
-  const t = title.toLowerCase();
-
-  // Hard override: never classify beats/approvals as negative
-  for (const pat of NEVER_NEGATIVE_PATTERNS) {
-    if (pat.test(title)) return 1; // strongly positive
+  // Check always-positive first
+  for (const pat of ALWAYS_POSITIVE_PATTERNS) {
+    if (pat.test(title)) return 1;
+  }
+  // Check always-negative
+  for (const pat of ALWAYS_NEGATIVE_PATTERNS) {
+    if (pat.test(title)) return -1;
   }
 
-  const pos = POSITIVE_WORDS.filter((w) => t.includes(w)).length;
-  const neg = NEGATIVE_WORDS.filter((w) => t.includes(w)).length;
+  const t = title.toLowerCase();
+  const posPhrase = POSITIVE_PHRASES.filter((p) => t.includes(p)).length;
+  const negPhrase = NEGATIVE_PHRASES.filter((p) => t.includes(p)).length;
+  const posWord   = POSITIVE_WORDS.filter((w) => t.includes(w)).length;
+  const negWord   = NEGATIVE_WORDS.filter((w) => t.includes(w)).length;
+
+  // Phrases outweigh individual words (2:1)
+  const pos = posPhrase * 2 + posWord;
+  const neg = negPhrase * 2 + negWord;
+
   if (pos + neg === 0) return 0;
-  return (pos - neg) / (pos + neg);
+  // Negative wins only when it is materially stronger
+  const net = (pos - neg) / (pos + neg);
+  // Tiebreak toward neutral rather than negative
+  return Math.abs(net) < 0.2 ? 0 : net;
 }
 
 // Backwards-compatible alias used internally
