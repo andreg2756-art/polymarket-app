@@ -1,5 +1,6 @@
 // /lib/stocks/dataConfidence.ts
-// Weighted confidence score — high-importance fields count more than low-importance ones.
+// Confidence V3 — category-based percentage weights.
+// Missing categories reduce confidence proportionally to their weight.
 
 import type { EnhancedStockScore } from "./types";
 import type { ShortInterestResult } from "./shortInterest";
@@ -16,14 +17,13 @@ export interface DataConfidenceResult {
   missingFactors: string[];
 }
 
-// Weight tiers:
-//   high   = 3  (market cap, revenue growth, cash/debt)
-//   medium = 2  (float, ownership, earnings date, RS rank)
-//   low    = 1  (short interest, news sentiment, moving averages)
-interface WeightedFactor {
+// Category weights (sum = 100)
+// Price/Volume = 20, Revenue = 15, Earnings = 15, Balance Sheet = 15,
+// Ownership = 10, Float = 10, News = 10, Short Interest = 5
+interface Category {
   name: string;
   available: boolean;
-  weight: 1 | 2 | 3;
+  weight: number; // percentage points (0–100 scale)
 }
 
 function isAvailable(value: unknown): boolean {
@@ -37,7 +37,6 @@ export function computeDataConfidence(
   score: EnhancedStockScore,
   shortInterest: ShortInterestResult | null,
   marketCap: number | null,
-  // Optional supplemental fields for cash/debt/ownership confidence
   suppAvailable?: {
     cash?: boolean;
     totalDebt?: boolean;
@@ -45,44 +44,77 @@ export function computeDataConfidence(
     institutionalOwnership?: boolean;
   }
 ): DataConfidenceResult {
-  const factors: WeightedFactor[] = [
-    // High importance
-    { name: "Market Cap",       available: isAvailable(marketCap),                         weight: 3 },
-    { name: "Revenue Growth",   available: isAvailable(score.revenueGrowthScore?.value),   weight: 3 },
-    { name: "Cash / Debt",      available: suppAvailable?.cash === true || suppAvailable?.totalDebt === true, weight: 3 },
-    // Medium importance
-    { name: "Float",            available: isAvailable(score.volumeScore?.score),           weight: 2 },
-    { name: "Earnings Date",    available: isAvailable(score.earningsRiskScore?.value),     weight: 2 },
-    { name: "RS Rank",          available: isAvailable(score.rsRank?.score),                weight: 2 },
-    { name: "Ownership",        available: suppAvailable?.insiderOwnership === true || suppAvailable?.institutionalOwnership === true, weight: 2 },
-    { name: "Risk Quality",     available: isAvailable(score.riskQualityScore?.score),      weight: 2 },
-    // Low-medium importance
-    { name: "Short Interest",   available: shortInterest?.available === true && shortInterest?.isStale !== true, weight: 1 },
-    { name: "News Sentiment",   available: isAvailable(score.newsSentiment?.score),         weight: 1 },
-    { name: "Moving Averages",  available: isAvailable(score.volatilityScore?.score),       weight: 1 },
+  const cats: Category[] = [
+    // Price / Volume (20%) — available whenever we have a score
+    {
+      name:      "Price / Volume",
+      available: isAvailable(score.volumeScore?.score) && isAvailable(marketCap),
+      weight:    20,
+    },
+    // Revenue (15%)
+    {
+      name:      "Revenue",
+      available: isAvailable(score.revenueGrowthScore?.value),
+      weight:    15,
+    },
+    // Earnings (15%)
+    {
+      name:      "Earnings",
+      available: isAvailable(score.earningsRiskScore?.value),
+      weight:    15,
+    },
+    // Balance Sheet (15%)
+    {
+      name:      "Balance Sheet",
+      available: suppAvailable?.cash === true || suppAvailable?.totalDebt === true,
+      weight:    15,
+    },
+    // Ownership (10%)
+    {
+      name:      "Ownership",
+      available: suppAvailable?.insiderOwnership === true || suppAvailable?.institutionalOwnership === true,
+      weight:    10,
+    },
+    // Float (10%)
+    {
+      name:      "Float",
+      available: isAvailable(score.riskQualityScore?.score),
+      weight:    10,
+    },
+    // News (10%)
+    {
+      name:      "News Sentiment",
+      available: isAvailable(score.newsSentiment?.score),
+      weight:    10,
+    },
+    // Short Interest (5%)
+    {
+      name:      "Short Interest",
+      available: shortInterest?.available === true && shortInterest?.isStale !== true,
+      weight:    5,
+    },
   ];
 
-  const totalWeight     = factors.reduce((s, f) => s + f.weight, 0);
-  const availableWeight = factors.filter((f) => f.available).reduce((s, f) => s + f.weight, 0);
-  const pct = Math.round((availableWeight / totalWeight) * 100);
+  const availableWeight = cats.filter((c) => c.available).reduce((s, c) => s + c.weight, 0);
+  const pct = Math.round(availableWeight); // weights already sum to 100
 
-  const available = factors.filter((f) => f.available);
-  const missing   = factors.filter((f) => !f.available);
+  const available = cats.filter((c) => c.available);
+  const missing   = cats.filter((c) => !c.available);
 
   let label: DataConfidenceResult["label"] = "Low";
   let color = "text-red-400";
   if (pct >= 75) { label = "High";   color = "text-emerald-400"; }
-  else if (pct >= 45) { label = "Medium"; color = "text-yellow-400"; }
+  else if (pct >= 50) { label = "Medium"; color = "text-yellow-400"; }
 
   return {
     confidencePct: pct,
     score: pct,
     availableCount: available.length,
-    totalFactors: factors.length,
+    totalFactors: cats.length,
     level: label,
     label,
     color,
-    availableFactors: available.map((f) => f.name),
-    missingFactors: missing.map((f) => f.name),
+    availableFactors: available.map((c) => c.name),
+    missingFactors:   missing.map((c) => `${c.name} (${c.weight}%)`),
   };
 }

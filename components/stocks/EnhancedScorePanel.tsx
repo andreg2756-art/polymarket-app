@@ -30,6 +30,14 @@ const SHORT_RISK_COLORS: Record<string, string> = {
   unknown:  "text-gray-500",
 };
 
+function sentimentLabel(score: number): string {
+  if (score >= 70) return "Bullish";
+  if (score >= 55) return "Slightly Bullish";
+  if (score >= 45) return "Neutral";
+  if (score >= 30) return "Slightly Bearish";
+  return "Bearish";
+}
+
 function ScoreBar({ score, color }: { score: number | null; color: string }) {
   if (score === null) return <span className="text-xs text-gray-600">N/A</span>;
   return (
@@ -176,29 +184,43 @@ export default function EnhancedScorePanel({ ticker }: Props) {
               <MetricRow label="Risk Quality"    weight="20%" sublabel="β·vol·52w" value={data.riskQualityScore.value} score={data.riskQualityScore.score} color="bg-purple-500" reason={data.riskQualityScore.reason} tag={<CalcTag />} />
               <MetricRow label={upsideLabel}     weight="15%" sublabel={upsideSub} value={data.upsideScore.value}      score={data.upsideScore.score}      color="bg-orange-500" reason={data.upsideScore.reason} tag={!data.hasRealAnalystTarget ? <CalcTag /> : undefined} />
               <MetricRow label="Volume"          weight="15%" value={data.volumeScore.value}        score={data.volumeScore.score}      color="bg-cyan-500"    reason={data.volumeScore.reason} />
-              <MetricRow label="News Sentiment"  weight="5%"  value={data.newsSentiment.score !== null ? `${data.newsSentiment.score} / 100` : null} score={data.newsSentiment.score} color="bg-yellow-500" reason={data.newsSentiment.reason} />
+              <MetricRow label="News Sentiment"  weight="5%"  value={data.newsSentiment.score !== null ? sentimentLabel(data.newsSentiment.score) : null} score={data.newsSentiment.score} color="bg-yellow-500" reason={data.newsSentiment.reason} />
 
               {/* ── News Detail ── */}
               <SectionHeader>News</SectionHeader>
               {newsDetail ? (
                 <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">Articles</span>
-                    <span className="text-gray-300">{newsDetail.articleCount} scanned</span>
+                  {/* Score + label */}
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-500">Sentiment Score</span>
+                    <span className="text-gray-300 font-medium">{newsDetail.sentimentScore} / 100 — {sentimentLabel(newsDetail.sentimentScore)}</span>
                   </div>
-                  <div className="flex gap-3 text-xs">
-                    <span className="text-emerald-400">+{newsDetail.positiveCount} pos</span>
-                    <span className="text-red-400">−{newsDetail.negativeCount} neg</span>
+                  {/* Article counts */}
+                  <div className="space-y-0.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Articles Found</span>
+                      <span className="text-gray-400">{newsDetail.articleCount}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Articles Analyzed</span>
+                      <span className="text-gray-400">{newsDetail.analyzedArticles ?? newsDetail.articleCount - (newsDetail.lawFirmCount ?? 0)}</span>
+                    </div>
+                    {(newsDetail.lawFirmCount ?? 0) > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Excluded Law-Firm Notices</span>
+                        <span className="text-yellow-800">{newsDetail.lawFirmCount}</span>
+                      </div>
+                    )}
+                  </div>
+                  {/* Signal breakdown */}
+                  <div className="flex gap-3 text-xs pt-0.5">
+                    <span className="text-emerald-400">+{newsDetail.positiveCount} positive</span>
+                    <span className="text-red-400">−{newsDetail.negativeCount} negative</span>
                     <span className="text-gray-500">{newsDetail.neutralCount} neutral</span>
-                    <span className={`text-xs ml-auto px-1 rounded ${newsDetail.confidence === "High" ? "text-emerald-600" : newsDetail.confidence === "Medium" ? "text-yellow-700" : "text-gray-600"}`}>
+                    <span className={`ml-auto ${newsDetail.confidence === "High" ? "text-emerald-600" : newsDetail.confidence === "Medium" ? "text-yellow-700" : "text-gray-600"}`}>
                       {newsDetail.confidence} conf.
                     </span>
                   </div>
-                  {(newsDetail.lawFirmCount ?? 0) > 0 && (
-                    <p className="text-xs text-gray-600">
-                      {newsDetail.lawFirmCount} law-firm notice{newsDetail.lawFirmCount === 1 ? "" : "s"} excluded from sentiment impact
-                    </p>
-                  )}
                   {newsDetail.topPositive && (
                     <a href={newsDetail.topPositive.url} target="_blank" rel="noopener noreferrer"
                       className="block border-l-2 border-emerald-800 pl-2 hover:border-emerald-500 transition-colors">

@@ -76,16 +76,17 @@ function recencyMultiplier(publishedUtc: string): number {
 // ── Polygon sentiment scoring ──────────────────────────────────────────────
 
 export interface NewsSentimentDetail {
-  sentimentScore:  number;       // 0–100
-  positiveCount:   number;
-  negativeCount:   number;
-  neutralCount:    number;
-  articleCount:    number;
-  lawFirmCount:    number;       // articles suppressed as law-firm solicitations
-  confidence:      "High" | "Medium" | "Low";
-  source:          "polygon" | "yahoo" | "unavailable";
-  topPositive:     { title: string; publisher: string; url: string } | null;
-  topNegative:     { title: string; publisher: string; url: string } | null;
+  sentimentScore:   number;       // 0–100
+  positiveCount:    number;
+  negativeCount:    number;
+  neutralCount:     number;
+  articleCount:     number;       // total articles found
+  analyzedArticles: number;       // articleCount - lawFirmCount
+  lawFirmCount:     number;       // articles suppressed as law-firm solicitations
+  confidence:       "High" | "Medium" | "Low";
+  source:           "polygon" | "yahoo" | "unavailable";
+  topPositive:      { title: string; publisher: string; url: string } | null;
+  topNegative:      { title: string; publisher: string; url: string } | null;
 }
 
 function isLawFirmTitle(title: string): boolean {
@@ -155,14 +156,14 @@ function scorePolygonArticles(articles: PolygonArticle[]): NewsSentimentDetail {
   }
 
   if (totalWeight === 0) {
-    return { sentimentScore: 50, positiveCount: 0, negativeCount: 0, neutralCount: 0, articleCount: 0, lawFirmCount, confidence: "Low" as const, source: "polygon", topPositive: null, topNegative: null };
+    return { sentimentScore: 50, positiveCount: 0, negativeCount: 0, neutralCount: 0, articleCount: 0, analyzedArticles: 0, lawFirmCount, confidence: "Low" as const, source: "polygon", topPositive: null, topNegative: null };
   }
 
   // Weighted net sentiment → 0–100
   const netSentiment = (weightedPos - weightedNeg) / totalWeight;
   const sentimentScore = Math.round(Math.max(0, Math.min(100, 50 + netSentiment * 50)));
 
-  return { sentimentScore, positiveCount, negativeCount, neutralCount, articleCount: articles.length, lawFirmCount, confidence: sentimentConfidence(articles.length, positiveCount, negativeCount), source: "polygon", topPositive, topNegative };
+  return { sentimentScore, positiveCount, negativeCount, neutralCount, articleCount: articles.length, analyzedArticles: articles.length - lawFirmCount, lawFirmCount, confidence: sentimentConfidence(articles.length, positiveCount, negativeCount), source: "polygon", topPositive, topNegative };
 }
 
 // ── Yahoo keyword fallback ─────────────────────────────────────────────────
@@ -311,10 +312,10 @@ function scoreYahooHeadlines(headlines: Awaited<ReturnType<typeof fetchYahooHead
     }
   }
 
-  if (!totalWeight) return { sentimentScore: 50, positiveCount: 0, negativeCount: 0, neutralCount: 0, articleCount: 0, lawFirmCount, confidence: "Low" as const, source: "yahoo", topPositive: null, topNegative: null };
+  if (!totalWeight) return { sentimentScore: 50, positiveCount: 0, negativeCount: 0, neutralCount: 0, articleCount: 0, analyzedArticles: 0, lawFirmCount, confidence: "Low" as const, source: "yahoo", topPositive: null, topNegative: null };
 
   const sentimentScore = Math.round(Math.max(0, Math.min(100, 50 + (weightedNet / totalWeight) * 50)));
-  return { sentimentScore, positiveCount, negativeCount, neutralCount, articleCount: headlines.length, lawFirmCount, confidence: sentimentConfidence(headlines.length, positiveCount, negativeCount), source: "yahoo", topPositive, topNegative };
+  return { sentimentScore, positiveCount, negativeCount, neutralCount, articleCount: headlines.length, analyzedArticles: headlines.length - lawFirmCount, lawFirmCount, confidence: sentimentConfidence(headlines.length, positiveCount, negativeCount), source: "yahoo", topPositive, topNegative };
 }
 
 // ── Public export ──────────────────────────────────────────────────────────
