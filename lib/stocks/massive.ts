@@ -123,3 +123,24 @@ export async function fetchShortInterest(ticker: string): Promise<PolygonShortIn
 
   return { ticker, sharesShort, shortInterestPct, daysToCover, averageDailyVolume, settlementDate, planLimited: false };
 }
+
+// ── Candle fallback ────────────────────────────────────────────────────────
+// Used when Yahoo Finance candles are unreliable or unavailable.
+// Requires POLYGON_API_KEY with a plan that includes aggregates.
+
+export interface PolygonCandle { close: number; volume: number; timestamp: number }
+
+export async function fetchPolygonDailyCandles(
+  ticker: string,
+  fromDate: string, // YYYY-MM-DD
+  toDate:   string
+): Promise<PolygonCandle[]> {
+  const data = await polygonGet<{ results?: { c: number; v: number; t: number }[] }>(
+    `/v2/aggs/ticker/${encodeURIComponent(ticker.toUpperCase())}/range/1/day/${fromDate}/${toDate}`,
+    { adjusted: "true", sort: "asc", limit: "300" }
+  );
+  if (!data?.results?.length) return [];
+  return data.results
+    .filter((r) => typeof r.c === "number" && r.c > 0)
+    .map((r) => ({ close: r.c, volume: r.v ?? 0, timestamp: r.t }));
+}

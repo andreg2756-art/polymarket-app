@@ -134,6 +134,30 @@ export async function fetchYahooDailyCandles(ticker: string): Promise<PriceCandl
   }
 }
 
+/**
+ * Fetch 1-year daily candles. Tries Yahoo first; falls back to Polygon
+ * when Yahoo returns fewer than 50 candles (rate-limited or blocked).
+ * Requires POLYGON_API_KEY for the fallback to activate.
+ */
+export async function fetchDailyCandlesWithFallback(ticker: string): Promise<PriceCandle[]> {
+  const yahoo = await fetchYahooDailyCandles(ticker);
+  if (yahoo.length >= 50) return yahoo;
+
+  // Polygon fallback — only used when Yahoo is insufficient
+  try {
+    const { fetchPolygonDailyCandles } = await import("./massive");
+    const now  = new Date();
+    const from = new Date(now.getTime() - 370 * 86_400_000);
+    const fmt  = (d: Date) => d.toISOString().split("T")[0];
+    const pg   = await fetchPolygonDailyCandles(ticker, fmt(from), fmt(now));
+    if (pg.length > yahoo.length) {
+      return pg.map((c) => ({ close: c.close, volume: c.volume }));
+    }
+  } catch { /* Polygon not configured — ignore */ }
+
+  return yahoo;
+}
+
 // ── FMP float data ─────────────────────────────────────────────────────────
 
 interface FmpFloatResponse {

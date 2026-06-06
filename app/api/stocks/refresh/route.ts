@@ -47,8 +47,11 @@ export async function POST() {
       for (const ticker of tickers) {
         const y = yahooMap.get(ticker);
         if (!y) continue;
+        // Prefer live Yahoo market cap; fall back to price × SHARES_OUTSTANDING estimate
         const shares = SHARES_OUTSTANDING[ticker] ?? 0;
-        const marketCap = shares > 0 ? Math.round(y.price * shares * 1_000_000) : 0;
+        const marketCap = y.marketCap > 0
+          ? y.marketCap
+          : shares > 0 ? Math.round(y.price * shares * 1_000_000) : 0;
         const bullishScore = computeScore(y.change1M, y.change3M, y.relativeVolume);
         sectorStocks.push({
           ticker, name: y.name, exchange: "", sector,

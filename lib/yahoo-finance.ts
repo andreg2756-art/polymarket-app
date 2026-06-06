@@ -13,8 +13,10 @@ export interface YahooChart {
   change1M: number;
   change3M: number;
   relativeVolume: number;
-  marketCap: number;
+  marketCap: number;       // from meta.marketCap (live), falls back to 0
   name: string;
+  week52High: number | null; // from meta.fiftyTwoWeekHigh
+  week52Low:  number | null; // from meta.fiftyTwoWeekLow
 }
 
 export async function getYahooChart(ticker: string): Promise<YahooChart | null> {
@@ -47,9 +49,12 @@ export async function getYahooChart(ticker: string): Promise<YahooChart | null> 
       : volumes.reduce((a, b) => a + b, 0) / (volumes.length || 1);
     const relativeVolume = avg30Vol > 0 ? Math.round((recentVol / avg30Vol) * 100) / 100 : 1;
 
-    const name = meta.longName ?? meta.shortName ?? ticker;
+    const name      = meta.longName ?? meta.shortName ?? ticker;
+    const marketCap = typeof meta.marketCap === "number" && meta.marketCap > 0 ? meta.marketCap : 0;
+    const week52High = typeof meta.fiftyTwoWeekHigh === "number" && meta.fiftyTwoWeekHigh > 0 ? meta.fiftyTwoWeekHigh : null;
+    const week52Low  = typeof meta.fiftyTwoWeekLow  === "number" && meta.fiftyTwoWeekLow  > 0 ? meta.fiftyTwoWeekLow  : null;
 
-    return { price, change1M, change3M, relativeVolume, marketCap: 0, name };
+    return { price, change1M, change3M, relativeVolume, marketCap, name, week52High, week52Low };
   } catch {
     return null;
   }
