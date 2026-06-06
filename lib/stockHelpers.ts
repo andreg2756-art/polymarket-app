@@ -63,101 +63,160 @@ export interface RiskFlag {
   explanation: string;
 }
 
+export interface RiskFlagResult {
+  confirmed:    RiskFlag[];   // real, data-backed risk signals
+  dataWarnings: RiskFlag[];   // missing or unverifiable data
+}
+
 interface RiskInputs {
+  symbol?:         string;
   price:           number;
   marketCap:       number;
   change1M:        number;
   change3M:        number;
   relativeVolume:  number;
-  averageVolume:   number | null;
-  revenueGrowth:   number | null;   // raw number, 0 = unavailable
-  lastEarningsDate: string | null;
-  nextEarningsDate: string | null;
-  sma200:          number | null;
+  averageVolume:   number | null | undefined;
+  revenueGrowth:   number | null | undefined;  // 0 = unavailable
+  lastEarningsDate: string | null | undefined;
+  nextEarningsDate: string | null | undefined;
+  sma200:          number | null | undefined;
   cash:            unknown;
   totalDebt:       unknown;
 }
 
-export function generateRiskFlags(inputs: RiskInputs): RiskFlag[] {
-  const flags: RiskFlag[] = [];
+/** Safely coerce any volume-like value to a number or null. */
+function safeVolume(v: number | null | undefined): number | null {
+  if (v === null || v === undefined) return null;
+  const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[^0-9.]/g, ""));
+  return isFinite(n) && n > 0 ? n : null;
+}
+
+/** Safely coerce any growth-like value to a number or null (0 = unavailable). */
+function safeGrowth(v: number | null | undefined): number | null {
+  if (v === null || v === undefined) return null;
+  const n = typeof v === "number" ? v : parseFloat(String(v));
+  return isFinite(n) && n !== 0 ? n : null;
+}
+
+function fmtCap(n: number): string {
+  if (n >= 1e9)  return `$${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6)  return `$${(n / 1e6).toFixed(0)}M`;
+  return `$${n.toLocaleString()}`;
+}
+
+export function generateRiskFlags(inputs: RiskInputs): RiskFlagResult {
+  const confirmed:    RiskFlag[] = [];
+  const dataWarnings: RiskFlag[] = [];
+
   const {
-    price, marketCap, change1M, relativeVolume, averageVolume,
-    revenueGrowth, lastEarningsDate, nextEarningsDate, sma200,
+    symbol, price, marketCap, change1M,
+    lastEarningsDate, nextEarningsDate, sma200,
     cash, totalDebt,
   } = inputs;
 
-  // Low liquidity
-  if (averageVolume === null || averageVolume < 250_000) {
-    flags.push({
+  const avgVol      = safeVolume(inputs.averageVolume);
+  const revGrowth   = safeGrowth(inputs.revenueGrowth);
+
+  // ── Confirmed risk flags ─────────────────────────────────────────────────
+
+  // Low Liquidity — only when we *have* the data and it's below threshold
+  if (avgVol !== null && avgVol < 250_000) {
+    confirmed.push({
       label:       "Low Liquidity",
       severity:    "High",
-      explanation: averageVolume === null
-        ? "Average volume data is unavailable — liquidity cannot be verified."
-        : `Average daily volume is ${(averageVolume / 1000).toFixed(0)}K, below the 250K threshold. Thin markets can cause large bid/ask spreads and sharp moves.`,
+      explanation: `Average daily volume is ${(avgVol / 1000).toFixed(0)}K, below 250K. Thin markets can cause large bid/ask spreads and sharp moves.`,
     });
   }
 
-  // Microcap risk
+  // Microcap Risk — graded severity
   if (marketCap > 0 && marketCap < 300_000_000) {
-    flags.push({
+    confirmed.push({
       label:       "Microcap Risk",
-      severity:    "High",
-      explanation: `Market cap is ${marketCap >= 1e6 ? `$${(marketCap / 1e6).toFixed(0)}M` : "very small"}, below $300M. Microcaps carry higher volatility, dilution risk, and lower analyst coverage.`,
+      severity:    marketCap < 100_000_000 ? "High" : "Medium",
+      explanation: `Market cap is ${fmtCap(marketCap)}, below $300M. Smaller companies can have higher volatility and dilution risk.`,
     });
   }
 
-  // Negative revenue growth
-  if (revenueGrowth !== null && revenueGrowth !== 0 && revenueGrowth < 0) {
-    flags.push({
+  // Negative Revenue Growth
+  if (revGrowth !== null && revGrowth < 0) {
+    confirmed.push({
       label:       "Negative Revenue Growth",
       severity:    "Medium",
-      explanation: `Revenue growth is ${revenueGrowth.toFixed(1)}% YoY. Declining revenue is a fundamental risk for long-term holders.`,
+      explanation: `Revenue growth is ${revGrowth.toFixed(1)}% YoY. Declining revenue is a fundamental risk for long-term holders.`,
     });
   }
 
-  // Earnings soon
+  // Earnings Within 7 Days
   if (nextEarningsDate) {
     const days = Math.floor((new Date(nextEarningsDate).getTime() - Date.now()) / 86_400_000);
-    if (days >= 0 && days <= 7) {
-      flags.push({
+    if (isFinite(days) && days >= 0 && days <= 7) {
+      confirmed.push({
         label:       "Earnings Within 7 Days",
         severity:    "High",
-        explanation: `Earnings are expected ${days === 0 ? "today" : `in ${days} day${days === 1 ? "" : "s"}`}. Binary event risk — stocks can gap significantly in either direction.`,
+        explanation: `Earnings are expected ${days === 0 ? "today" : `in ${days} day${days === 1 ? "" : "s"}`}. Binary event risk — stocks can move sharply in either direction.`,
       });
     }
   }
 
-  // Extended move
-  if (change1M > 50) {
-    flags.push({
+  // Extended 1-Month Move
+  if (isFinite(change1M) && change1M > 50) {
+    confirmed.push({
       label:       "Extended 1-Month Move",
       severity:    "Medium",
-      explanation: `1-month return is +${change1M.toFixed(1)}%. Extended short-term moves increase reversion risk. Consider whether the move has fundamental support.`,
+      explanation: `1-month return is +${change1M.toFixed(1)}%. Extended short-term moves increase mean-reversion risk.`,
     });
   }
 
-  // Below 200D MA
-  if (sma200 !== null && sma200 > 0 && price < sma200) {
-    flags.push({
+  // Below 200-Day MA
+  if (sma200 !== null && sma200 !== undefined && isFinite(sma200) && sma200 > 0 && isFinite(price) && price < sma200) {
+    confirmed.push({
       label:       "Below 200-Day MA",
       severity:    "Medium",
-      explanation: `Price ($${price.toFixed(2)}) is below the 200-day moving average ($${sma200.toFixed(2)}). Weak long-term trend.`,
+      explanation: `Price ($${price.toFixed(2)}) is below the 200-day moving average ($${sma200.toFixed(2)}), indicating a weak long-term trend.`,
     });
   }
 
-  // Missing fundamentals
-  const missingFundamentals: string[] = [];
-  if (!revenueGrowth) missingFundamentals.push("revenue growth");
-  if (!cash && cash !== 0)    missingFundamentals.push("cash");
-  if (!totalDebt && totalDebt !== 0) missingFundamentals.push("debt");
-  if (!lastEarningsDate && !nextEarningsDate) missingFundamentals.push("earnings dates");
-  if (missingFundamentals.length > 0) {
-    flags.push({
+  // ── Data Quality Warnings ────────────────────────────────────────────────
+
+  // Liquidity Unknown — when volume data is missing
+  if (avgVol === null) {
+    dataWarnings.push({
+      label:       "Liquidity Unknown",
+      severity:    "Medium",
+      explanation: "Average volume data is unavailable, so liquidity cannot be verified.",
+    });
+  }
+
+  // Missing fields — collect then emit one grouped warning
+  const missingFields: string[] = [];
+  if (revGrowth === null)                                  missingFields.push("revenue growth");
+  if (!cash && cash !== 0)                                 missingFields.push("cash");
+  if (!totalDebt && totalDebt !== 0)                       missingFields.push("debt");
+  if (!lastEarningsDate && !nextEarningsDate)              missingFields.push("earnings dates");
+
+  if (missingFields.length > 0) {
+    const severity: RiskSeverity = missingFields.length >= 4 ? "Medium" : missingFields.length >= 2 ? "Medium" : "Low";
+    dataWarnings.push({
       label:       "Missing Fundamentals",
-      severity:    "Low",
-      explanation: `The following data is unavailable: ${missingFundamentals.join(", ")}. Confidence in the analysis is reduced.`,
+      severity,
+      explanation: `${missingFields.map((f) => f.charAt(0).toUpperCase() + f.slice(1)).join(", ")} data ${missingFields.length === 1 ? "is" : "are"} unavailable. Confidence in the analysis is reduced.`,
     });
   }
 
-  return flags;
+  // Dev-only logging
+  if (process.env.NODE_ENV === "development") {
+    console.debug("[RiskFlags]", {
+      symbol,
+      marketCap,
+      averageVolume: inputs.averageVolume,
+      revenueGrowth: inputs.revenueGrowth,
+      cash,
+      totalDebt,
+      nextEarningsDate,
+      confirmed: confirmed.map((f) => `${f.label} (${f.severity})`),
+      dataWarnings: dataWarnings.map((f) => `${f.label} (${f.severity})`),
+    });
+  }
+
+  return { confirmed, dataWarnings };
 }

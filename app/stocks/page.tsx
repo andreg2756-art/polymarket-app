@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { SHARES_OUTSTANDING } from "@/lib/small-cap-universe";
-import { generateRiskFlags, type RiskFlag } from "@/lib/stockHelpers";
+import { generateRiskFlags, type RiskFlag, type RiskFlagResult } from "@/lib/stockHelpers";
 import { TableSkeleton } from "@/components/Skeleton";
 import { exportCSV } from "@/lib/analytics";
 import Disclaimer from "@/components/stocks/Disclaimer";
@@ -221,30 +221,49 @@ const SEVERITY_STYLES: Record<RiskFlag["severity"], string> = {
   Low:    "bg-gray-800/60 border-gray-700 text-gray-400",
 };
 
-function RiskFlagsPanel({ flags }: { flags: RiskFlag[] }) {
+function FlagList({ flags, emptyText }: { flags: RiskFlag[]; emptyText: string }) {
+  if (flags.length === 0) {
+    return <p className="text-xs text-gray-600 italic">{emptyText}</p>;
+  }
+  return (
+    <div className="space-y-1.5">
+      {flags.map((f) => (
+        <div key={f.label} className={`rounded border px-2.5 py-1.5 text-xs ${SEVERITY_STYLES[f.severity]}`}>
+          <p className="font-semibold">{f.label} — {f.severity}</p>
+          <p className="mt-0.5 text-gray-400 leading-snug">{f.explanation}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RiskFlagsPanel({ result }: { result: RiskFlagResult }) {
   const [open, setOpen] = useState(false);
-  if (flags.length === 0) return null;
-  const highCount = flags.filter((f) => f.severity === "High").length;
+  const total     = result.confirmed.length + result.dataWarnings.length;
+  const hasHigh   = result.confirmed.some((f) => f.severity === "High");
+  if (total === 0) return null;
   return (
     <div>
       <button
         onClick={() => setOpen((o) => !o)}
         className={`text-xs px-2 py-1 rounded border transition-colors whitespace-nowrap ${
-          highCount > 0
+          hasHigh
             ? "border-red-800 text-red-400 hover:bg-red-900/20"
             : "border-yellow-800 text-yellow-500 hover:bg-yellow-900/20"
         }`}
       >
-        {open ? "Hide" : "Risk Flags"} ({flags.length})
+        {open ? "Hide" : "Risk Flags"} ({total})
       </button>
       {open && (
-        <div className="mt-2 space-y-1.5 w-72">
-          {flags.map((f) => (
-            <div key={f.label} className={`rounded border px-2.5 py-1.5 text-xs ${SEVERITY_STYLES[f.severity]}`}>
-              <p className="font-semibold">{f.label} — {f.severity}</p>
-              <p className="mt-0.5 text-gray-400 leading-snug">{f.explanation}</p>
-            </div>
-          ))}
+        <div className="mt-2 space-y-3 w-72">
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Confirmed Risk Flags</p>
+            <FlagList flags={result.confirmed} emptyText="No confirmed risk flags detected from available data." />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Quality Warnings</p>
+            <FlagList flags={result.dataWarnings} emptyText="No major data quality warnings." />
+          </div>
         </div>
       )}
     </div>
@@ -421,7 +440,8 @@ export default function StocksPage() {
                   {/* Actions */}
                   <td className="px-3 py-3 pt-4 min-w-[200px]">
                     <div className="space-y-2">
-                      <RiskFlagsPanel flags={generateRiskFlags({
+                      <RiskFlagsPanel result={generateRiskFlags({
+                        symbol: s.ticker,
                         price: s.price,
                         marketCap: s.marketCap,
                         change1M: s.change1M,
