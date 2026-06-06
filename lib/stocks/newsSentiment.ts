@@ -71,57 +71,50 @@ function scorePolygonArticles(articles: PolygonArticle[]): NewsSentimentDetail {
     const weight     = pubWeight * recWeight;
     totalWeight     += weight;
 
-    // Use Polygon insights if available, else keyword fallback on title
-    const insights = article.insights ?? [];
-    if (insights.length > 0) {
-      // Average insights sentiment for this article
-      let posHits = 0, negHits = 0, neuHits = 0;
-      for (const ins of insights) {
-        if (ins.sentiment === "positive") posHits++;
-        else if (ins.sentiment === "negative") negHits++;
-        else neuHits++;
-      }
-      const total = posHits + negHits + neuHits || 1;
-      weightedPos += weight * (posHits / total);
-      weightedNeg += weight * (negHits / total);
-      weightedNeu += weight * (neuHits / total);
+    // Always check title against hard-override patterns first.
+    // This overrides Polygon's pre-computed insights when our rules are definitive
+    // (e.g. Polygon labels "Revenue Beats 16%" as negative — we correct that here).
+    const titleOverride = titleHardOverride(article.title);
 
-      if (posHits >= negHits && posHits >= neuHits) {
-        positiveCount++;
-        if (weight > topPosWeight) {
-          topPosWeight = weight;
-          topPositive = { title: article.title, publisher: article.publisher?.name ?? "", url: article.article_url };
+    let raw: number;
+    if (titleOverride !== null) {
+      raw = titleOverride;
+    } else {
+      // Use Polygon insights if available, else keyword fallback on title
+      const insights = article.insights ?? [];
+      if (insights.length > 0) {
+        let posHits = 0, negHits = 0, neuHits = 0;
+        for (const ins of insights) {
+          if (ins.sentiment === "positive") posHits++;
+          else if (ins.sentiment === "negative") negHits++;
+          else neuHits++;
         }
-      } else if (negHits > posHits) {
-        negativeCount++;
-        if (weight > topNegWeight) {
-          topNegWeight = weight;
-          topNegative = { title: article.title, publisher: article.publisher?.name ?? "", url: article.article_url };
-        }
+        const total = posHits + negHits + neuHits || 1;
+        // Convert Polygon's distribution to a net score in [-1, 1]
+        raw = (posHits - negHits) / total;
       } else {
-        neutralCount++;
+        raw = keywordSentiment(article.title);
+      }
+    }
+
+    weightedPos += weight * Math.max(0, raw);
+    weightedNeg += weight * Math.max(0, -raw);
+    weightedNeu += weight * (raw === 0 ? 1 : 0);
+
+    if (raw > 0) {
+      positiveCount++;
+      if (weight > topPosWeight) {
+        topPosWeight = weight;
+        topPositive = { title: article.title, publisher: article.publisher?.name ?? "", url: article.article_url };
+      }
+    } else if (raw < 0) {
+      negativeCount++;
+      if (weight > topNegWeight) {
+        topNegWeight = weight;
+        topNegative = { title: article.title, publisher: article.publisher?.name ?? "", url: article.article_url };
       }
     } else {
-      // Keyword fallback
-      const raw = keywordSentiment(article.title);
-      weightedPos += weight * Math.max(0, raw);
-      weightedNeg += weight * Math.max(0, -raw);
-      weightedNeu += weight * (raw === 0 ? 1 : 0);
-      if (raw > 0) {
-        positiveCount++;
-        if (weight > topPosWeight) {
-          topPosWeight = weight;
-          topPositive = { title: article.title, publisher: article.publisher?.name ?? "", url: article.article_url };
-        }
-      } else if (raw < 0) {
-        negativeCount++;
-        if (weight > topNegWeight) {
-          topNegWeight = weight;
-          topNegative = { title: article.title, publisher: article.publisher?.name ?? "", url: article.article_url };
-        }
-      } else {
-        neutralCount++;
-      }
+      neutralCount++;
     }
   }
 
@@ -167,38 +160,45 @@ const NEGATIVE_WORDS = [
   "bankruptcy", "investigation", "dilution", "plunges", "disappointing",
 ];
 
-// Hard-override: these patterns are ALWAYS positive regardless of other words
-const ALWAYS_POSITIVE_PATTERNS = [
-  /\brevenue beats?\b/i,
-  /\bearnings beats?\b/i,
-  /\beps beats?\b/i,
-  /beats?\s+estimates?\b/i,
-  /beats?\s+expectations?\b/i,
-  /\brecord\s+(revenue|earnings|quarter|results)\b/i,
-  /\braises?\s+guidance\b/i,
-  /\bfda\s+approv/i,
+// Hard-negative phrases that override a positive classification.
+// "beats" must never appear here — only materially bad events.
+const HARD_NEGATIVE_PHRASES = [
+  "cuts guidance", "lowers guidance", "lowered guidance",
+  "weak outlook", "wider loss", "misses estimates", "missed estimates",
+  "downgrade", "downgraded", "offering", "dilution",
+  "bankruptcy", "lawsuit", "investigation",
 ];
 
-// Hard-override: these patterns cancel a positive classification
-const ALWAYS_NEGATIVE_PATTERNS = [
-  /\bcuts?\s+guidance\b/i,
-  /\blowered?\s+guidance\b/i,
-  /\bwider\s+loss\b/i,
-  /\bfalls?\s+after\s+earnings\b/i,
-  /\boffering\s+at\b/i,
-  /\bbankruptcy\b/i,
-  /\blawsuit\b/i,
+// Hard-positive phrases.
+// Checked AFTER hard-negative so "beats estimates but cuts guidance" → negative.
+const HARD_POSITIVE_PHRASES = [
+  "revenue beats", "earnings beat", "eps beat",
+  "beats estimates", "beats expectations",
+  "raises guidance", "raised guidance",
+  "record revenue", "record earnings",
+  "profitable", "high risk-reward",
+  "upgraded",
 ];
+
+/**
+ * Returns 1 (positive), -1 (negative), or null (no hard override).
+ * Order: hard-negative first, then hard-positive.
+ * This function is used to override Polygon's pre-computed insights.
+ */
+export function titleHardOverride(title: string): 1 | -1 | null {
+  const t = title.toLowerCase();
+  for (const phrase of HARD_NEGATIVE_PHRASES) {
+    if (t.includes(phrase)) return -1;
+  }
+  for (const phrase of HARD_POSITIVE_PHRASES) {
+    if (t.includes(phrase)) return 1;
+  }
+  return null;
+}
 
 export function classifySentiment(title: string): number {
-  // Check always-positive first
-  for (const pat of ALWAYS_POSITIVE_PATTERNS) {
-    if (pat.test(title)) return 1;
-  }
-  // Check always-negative
-  for (const pat of ALWAYS_NEGATIVE_PATTERNS) {
-    if (pat.test(title)) return -1;
-  }
+  const override = titleHardOverride(title);
+  if (override !== null) return override;
 
   const t = title.toLowerCase();
   const posPhrase = POSITIVE_PHRASES.filter((p) => t.includes(p)).length;
