@@ -22,6 +22,7 @@ export type SupplementalStockData = {
   revenueGrowthQtrYoY:       SupplementalMetric; // latest quarter vs same quarter last year
   revenueGrowthQoQ:          SupplementalMetric; // sequential quarter-over-quarter (legacy)
   revenueGrowthInconsistent: SupplementalMetric; // warning when TTM and quarterly disagree in sign
+  revenueGrowthTrend:        SupplementalMetric; // Positive / Negative / Mixed
   cashRunway:                SupplementalMetric;
   debtRisk:              SupplementalMetric;
   lastEarnings:          SupplementalMetric;
@@ -198,10 +199,11 @@ function fmtDate(ts: unknown): string | null {
 const LOW_BASE_THRESHOLD = 10_000_000; // flag when prior-year Q revenue is tiny
 
 interface RevenueGrowthBundle {
-  ttm:         SupplementalMetric;
-  qtrYoY:      SupplementalMetric;
-  qoq:         SupplementalMetric;
+  ttm:          SupplementalMetric;
+  qtrYoY:       SupplementalMetric;
+  qoq:          SupplementalMetric;
   inconsistent: SupplementalMetric;
+  trend:        SupplementalMetric; // Positive / Negative / Mixed
   // raw numbers for the blended score modifier
   ttmRaw:      number | null;
   qtrYoYRaw:   number | null;
@@ -281,13 +283,24 @@ function calcRevenueGrowthAll(qs: Record<string, unknown> | null): RevenueGrowth
       }
     }
 
-    return { ttm, qtrYoY, qoq, inconsistent, ttmRaw, qtrYoYRaw };
+    // ── Growth trend label ───────────────────────────────────────────────────
+    let trend: SupplementalMetric = { value: null, source: "calculated" };
+    if (ttmRaw !== null && qtrYoYRaw !== null) {
+      if (ttmRaw > 0 && qtrYoYRaw > 0)     trend = { value: "Positive",  source: "calculated" };
+      else if (ttmRaw < 0 && qtrYoYRaw < 0) trend = { value: "Negative",  source: "calculated" };
+      else                                   trend = { value: "Mixed",     source: "calculated" };
+    } else if (ttmRaw !== null) {
+      trend = { value: ttmRaw > 0 ? "Positive" : "Negative", source: "calculated" };
+    }
+
+    return { ttm, qtrYoY, qoq, inconsistent, trend, ttmRaw, qtrYoYRaw };
   } catch {
     return {
       ttm:    unavail("Revenue growth fetch failed"),
       qtrYoY: unavail("Revenue growth fetch failed"),
       qoq:    unavail("Revenue growth fetch failed"),
       inconsistent: { value: null, source: "calculated" },
+      trend:        { value: null, source: "calculated" },
       ttmRaw: null, qtrYoYRaw: null,
     };
   }
@@ -679,6 +692,7 @@ export async function getSupplementalStockData(symbol: string): Promise<Suppleme
     revenueGrowthQtrYoY:       rev.qtrYoY,
     revenueGrowthQoQ:          rev.qoq,
     revenueGrowthInconsistent: rev.inconsistent,
+    revenueGrowthTrend:        rev.trend,
     cashRunway:       calcCashRunway(qs),
     debtRisk:        calcDebtRisk(qs),
     lastEarnings:    calcLastEarnings(qs),

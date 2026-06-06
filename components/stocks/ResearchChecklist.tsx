@@ -264,6 +264,16 @@ export default function ResearchChecklist(props: Props) {
                 {supp?.revenueGrowthQtrYoY?.reason && (
                   <p className="text-xs text-gray-700 pb-1 pl-1">{supp.revenueGrowthQtrYoY.reason}</p>
                 )}
+                {supp?.revenueGrowthTrend?.value && (
+                  <Row
+                    label="Growth Trend"
+                    value={String(supp.revenueGrowthTrend.value)}
+                    status={
+                      supp.revenueGrowthTrend.value === "Positive" ? "ok" :
+                      supp.revenueGrowthTrend.value === "Negative" ? "warn" : "neutral"
+                    }
+                  />
+                )}
                 {supp?.revenueGrowthInconsistent?.value && (
                   <div className="text-xs text-yellow-800 bg-yellow-950/40 border border-yellow-900/50 rounded px-2 py-1 mt-1">
                     {String(supp.revenueGrowthInconsistent.value)}

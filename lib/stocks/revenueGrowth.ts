@@ -77,9 +77,26 @@ function growthModifier(growth: number): number {
  * Blended growth modifier: 0.7 × TTM + 0.3 × quarterly YoY.
  * Falls back to whichever is available; returns 0 if neither is.
  */
+/**
+ * 4-case growth score modifier.
+ * Only uses TTM + quarterly together; never lets a strong quarterly alone
+ * drive a bullish score when TTM is negative.
+ *
+ * Both >20%  => +8
+ * Both >0%   => +4
+ * Signs differ (mixed) => 0
+ * Both <=0%  => -4
+ * One missing => use the other alone via original growthModifier
+ */
 export function computeBlendedGrowthModifier(ttm: number | null, qtrYoY: number | null): number {
   if (ttm !== null && qtrYoY !== null) {
-    return growthModifier(0.7 * ttm + 0.3 * qtrYoY);
+    const bothPos = ttm > 0 && qtrYoY > 0;
+    const bothNeg = ttm <= 0 && qtrYoY <= 0;
+    const bothStrong = ttm > 20 && qtrYoY > 20;
+    if (bothStrong) return 8;
+    if (bothPos)    return 4;
+    if (bothNeg)    return -4;
+    return 0; // mixed signs
   }
   if (ttm !== null)    return growthModifier(ttm);
   if (qtrYoY !== null) return growthModifier(qtrYoY);
