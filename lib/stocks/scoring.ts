@@ -35,6 +35,15 @@ function applyEarningsRiskPenalty(score: number, daysUntilEarnings: number | nul
   return score;
 }
 
+// Float turnover modifier: 0–5 pts. Does not overpower momentum.
+export function floatTurnoverModifier(floatTurnover: number | null): number {
+  if (floatTurnover === null) return 0;
+  if (floatTurnover > 0.03) return 5;   // exceptional  >3%
+  if (floatTurnover > 0.01) return 3;   // strong        1–3%
+  if (floatTurnover > 0.005) return 1;  // average     0.5–1%
+  return 0;                              // weak         <0.5%
+}
+
 function buildMomentumScore(change1M: number, change3M: number): ScoredMetric {
   const mom1 = change1M > 30 ? 100 : change1M > 20 ? 85 : change1M > 10 ? 70 : change1M > 5 ? 55 : change1M > 0 ? 42 : change1M > -5 ? 25 : 10;
   const mom3 = change3M > 50 ? 100 : change3M > 30 ? 85 : change3M > 15 ? 70 : change3M > 5 ? 55 : change3M > 0 ? 42 : change3M > -10 ? 25 : 10;
@@ -116,7 +125,8 @@ export async function computeEnhancedScore(
   change1M: number,
   change3M: number,
   relativeVolume: number,
-  existingRevenueGrowth: number | null = null
+  existingRevenueGrowth: number | null = null,
+  floatTurnover: number | null = null
 ): Promise<EnhancedStockScore> {
 
   const [analystFactors, newsSentiment, earningsRisk, revenueGrowth, rsRank] = await Promise.all([
@@ -177,6 +187,7 @@ export async function computeEnhancedScore(
 
     base = applyRevenueGrowthModifier(base, revenueGrowth?.modifier ?? 0);
     base = applyEarningsRiskPenalty(base, earningsRisk?.daysUntilEarnings ?? null);
+    base = clampScore(base + floatTurnoverModifier(floatTurnover));
 
     riskAdjustedScore = base;
   }

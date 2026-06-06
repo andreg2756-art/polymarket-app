@@ -126,10 +126,31 @@ export default function TechnicalsPanel({ ticker, currentPrice }: Props) {
 
               {/* Float */}
               <SectionHeader>Float (FMP)</SectionHeader>
+              <Row label="Market Cap"         value={currentPrice > 0 && d?.outstandingShares ? `$${((currentPrice * d.outstandingShares) / 1e6).toFixed(1)}M` : "N/A"} />
+              <Row label="Float Market Cap"   value={d?.floatMarketCap !== null && d?.floatMarketCap !== undefined ? `$${(d.floatMarketCap / 1e6).toFixed(1)}M` : "N/A"} />
               <Row label="Float Shares"       value={fmtLargeNum(d?.floatShares      ?? null)} />
               <Row label="Free Float %"       value={d?.freeFloatPct      !== null && d?.freeFloatPct      !== undefined ? `${d.freeFloatPct.toFixed(1)}%`          : "N/A"} />
               <Row label="Outstanding Shares" value={fmtLargeNum(d?.outstandingShares ?? null)} />
-              <Row label="Float Turnover"     value={d?.floatTurnover     !== null && d?.floatTurnover     !== undefined ? `${(d.floatTurnover * 100).toFixed(2)}%` : "N/A"} highlight={d?.floatTurnover !== null && d?.floatTurnover !== undefined ? (d.floatTurnover > 0.05 ? "green" : "neutral") : "neutral"} />
+              <Row
+                label="Float Turnover"
+                value={d?.floatTurnover !== null && d?.floatTurnover !== undefined ? `${(d.floatTurnover * 100).toFixed(2)}%` : "N/A"}
+                highlight={d?.floatTurnover !== null && d?.floatTurnover !== undefined ? (d.floatTurnover > 0.01 ? "green" : d.floatTurnover > 0.005 ? "neutral" : "neutral") : "neutral"}
+              />
+
+              {/* 52-Week Range */}
+              <SectionHeader>52-Week Range</SectionHeader>
+              <Row label="52W High"           value={d?.week52High !== null && d?.week52High !== undefined ? `$${d.week52High.toFixed(2)}` : "N/A"} />
+              <Row label="52W Low"            value={d?.week52Low  !== null && d?.week52Low  !== undefined ? `$${d.week52Low.toFixed(2)}`  : "N/A"} />
+              <Row
+                label="Distance to 52W High"
+                value={d?.distanceToHighPct !== null && d?.distanceToHighPct !== undefined ? `${d.distanceToHighPct.toFixed(1)}%` : "N/A"}
+                highlight={d?.distanceToHighPct !== null && d?.distanceToHighPct !== undefined ? (d.distanceToHighPct >= -5 ? "green" : d.distanceToHighPct >= -20 ? "neutral" : "red") : "neutral"}
+              />
+              <Row
+                label="Position in Range"
+                value={d?.rangePositionPct !== null && d?.rangePositionPct !== undefined ? `${d.rangePositionPct.toFixed(1)}%` : "N/A"}
+                highlight={d?.rangePositionPct !== null && d?.rangePositionPct !== undefined ? (d.rangePositionPct >= 60 ? "green" : d.rangePositionPct <= 30 ? "red" : "neutral") : "neutral"}
+              />
 
               {/* Short Interest */}
               <SectionHeader>Short Interest (Polygon)</SectionHeader>

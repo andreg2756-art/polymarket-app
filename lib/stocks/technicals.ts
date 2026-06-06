@@ -15,6 +15,13 @@ export type ExtraStockMetrics = {
   freeFloatPct:        number | null;
   outstandingShares:   number | null;
   floatTurnover:       number | null;
+  // 52-week range
+  week52High:          number | null;
+  week52Low:           number | null;
+  distanceToHighPct:   number | null;  // negative = below 52w high
+  rangePositionPct:    number | null;  // 0 = at 52w low, 100 = at 52w high
+  // float market cap
+  floatMarketCap:      number | null;
 };
 
 export interface PriceCandle {
@@ -39,7 +46,7 @@ export function calculateTechnicalMetrics(
   candles: PriceCandle[],
   currentPrice: number,
   currentVolume: number
-): Omit<ExtraStockMetrics, "floatShares" | "freeFloatPct" | "outstandingShares" | "floatTurnover"> {
+): Omit<ExtraStockMetrics, "floatShares" | "freeFloatPct" | "outstandingShares" | "floatTurnover" | "floatMarketCap"> {
   const closes  = candles.map((c) => c.close).filter((v) => isFinite(v) && v > 0);
   const volumes = candles.map((c) => c.volume).filter((v) => isFinite(v) && v >= 0);
 
@@ -67,6 +74,18 @@ export function calculateTechnicalMetrics(
     ? Math.round((currentVolume / avgVol30) * 100) / 100
     : null;
 
+  // 52-week range from last ~252 trading days of candles
+  const last252 = closes.slice(-252);
+  const week52High = last252.length > 0 ? Math.max(...last252) : null;
+  const week52Low  = last252.length > 0 ? Math.min(...last252) : null;
+  const distanceToHighPct = week52High && price > 0
+    ? Math.round(((price - week52High) / week52High) * 1000) / 10
+    : null;
+  const rangePositionPct =
+    week52High !== null && week52Low !== null && week52High > week52Low
+      ? Math.round(((price - week52Low) / (week52High - week52Low)) * 1000) / 10
+      : null;
+
   return {
     sma50:               sma50   !== null ? Math.round(sma50   * 100) / 100 : null,
     sma200:              sma200  !== null ? Math.round(sma200  * 100) / 100 : null,
@@ -76,6 +95,10 @@ export function calculateTechnicalMetrics(
     threeMonthReturnPct,
     averageVolume:       avgVol30 !== null ? Math.round(avgVol30) : null,
     relativeVolume,
+    week52High:          week52High  !== null ? Math.round(week52High  * 100) / 100 : null,
+    week52Low:           week52Low   !== null ? Math.round(week52Low   * 100) / 100 : null,
+    distanceToHighPct,
+    rangePositionPct,
   };
 }
 
@@ -168,10 +191,16 @@ export async function getExtraStockMetrics(
       ? Math.round((currentVolume / floatData.floatShares) * 10000) / 10000
       : null;
 
+  const floatMarketCap =
+    currentPrice > 0 && floatData.floatShares && floatData.floatShares > 0
+      ? Math.round(currentPrice * floatData.floatShares)
+      : null;
+
   return {
     ...technicals,
     ...floatData,
     floatTurnover,
+    floatMarketCap,
   };
 }
 

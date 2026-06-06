@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getYahooChart, TICKER_SECTOR } from "@/lib/yahoo-finance";
 import { SMALL_CAP_UNIVERSE, SHARES_OUTSTANDING, SECTOR_UNIVERSE } from "@/lib/small-cap-universe";
+import { getRevenueGrowthScore } from "@/lib/stocks/revenueGrowth";
 
 export const maxDuration = 60;
 
@@ -76,12 +77,29 @@ export async function POST() {
     deduped.sort((a, b) => b.bullishScore - a.bullishScore);
     const ranked = deduped.map((s, i) => ({ ...s, rank: i + 1 }));
 
+    // Fetch revenue growth from SEC EDGAR in parallel (free, no API key)
+    // Results are cached via next.revalidate so this is fast on repeat runs
+    const revenueGrowthResults = await Promise.allSettled(
+      ranked.map((s) => getRevenueGrowthScore(s.ticker, null).then((r) => ({ ticker: s.ticker, value: r.value })))
+    );
+    const revenueGrowthMap = new Map<string, number>();
+    for (const r of revenueGrowthResults) {
+      if (r.status === "fulfilled" && r.value.value !== null) {
+        const numVal = typeof r.value.value === "string"
+          ? parseFloat(r.value.value.replace("%", "").replace("+", ""))
+          : Number(r.value.value);
+        if (isFinite(numVal)) revenueGrowthMap.set(r.value.ticker, numVal);
+      }
+    }
+
     // Upsert all into DB
     for (const s of ranked) {
+      const revenueGrowth = revenueGrowthMap.get(s.ticker) ?? s.revenueGrowth;
+      const row = { ...s, revenueGrowth };
       await prisma.stock.upsert({
         where: { ticker: s.ticker },
-        create: s,
-        update: s,
+        create: row,
+        update: row,
       });
       await prisma.stockSnapshot.create({
         data: { ticker: s.ticker, bullishScore: s.bullishScore, price: s.price, marketCap: s.marketCap },

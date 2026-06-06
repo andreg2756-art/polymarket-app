@@ -19,8 +19,9 @@ export interface YahooChart {
 
 export async function getYahooChart(ticker: string): Promise<YahooChart | null> {
   try {
+    // Use 1yr range so avg30Vol and 3M change both have enough data
     const res = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=3mo`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`,
       { headers: { "User-Agent": "Mozilla/5.0" }, next: { revalidate: 3600 } }
     );
     if (!res.ok) return null;
@@ -39,11 +40,12 @@ export async function getYahooChart(ticker: string): Promise<YahooChart | null> 
     const change1M = close21 ? Math.round(((price - close21) / close21) * 1000) / 10 : 0;
     const change3M = close63 ? Math.round(((price - close63) / close63) * 1000) / 10 : 0;
 
+    // Use 30-day average to match calculateTechnicalMetrics in technicals.ts
     const recentVol = volumes[volumes.length - 1] ?? 0;
-    const avg20Vol = volumes.length >= 20
-      ? volumes.slice(-20).reduce((a, b) => a + b, 0) / 20
+    const avg30Vol = volumes.length >= 30
+      ? volumes.slice(-30).reduce((a, b) => a + b, 0) / 30
       : volumes.reduce((a, b) => a + b, 0) / (volumes.length || 1);
-    const relativeVolume = avg20Vol > 0 ? Math.round((recentVol / avg20Vol) * 10) / 10 : 1;
+    const relativeVolume = avg30Vol > 0 ? Math.round((recentVol / avg30Vol) * 100) / 100 : 1;
 
     const name = meta.longName ?? meta.shortName ?? ticker;
 
