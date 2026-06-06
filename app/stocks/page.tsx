@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { SHARES_OUTSTANDING } from "@/lib/small-cap-universe";
+import { generateRiskFlags, type RiskFlag } from "@/lib/stockHelpers";
 import { TableSkeleton } from "@/components/Skeleton";
 import { exportCSV } from "@/lib/analytics";
 import Disclaimer from "@/components/stocks/Disclaimer";
@@ -68,7 +69,7 @@ function fmtCap(n: number) {
 }
 
 function scoreSummary(score: number, s: Stock): string {
-  const label = score >= 70 ? "Strong bullish signal" : score >= 45 ? "Moderate bullish signal" : score >= 20 ? "Weak bullish signal" : "No bullish signal";
+  const label = score >= 70 ? "Strong momentum signal" : score >= 45 ? "Moderate momentum signal" : score >= 20 ? "Weak momentum signal" : "No momentum signal";
   const parts: string[] = [];
   if (s.change1M > 20) parts.push(`strong 1M momentum (+${s.change1M.toFixed(1)}%)`);
   else if (s.change1M > 5) parts.push(`positive 1M momentum (+${s.change1M.toFixed(1)}%)`);
@@ -78,7 +79,7 @@ function scoreSummary(score: number, s: Stock): string {
   else if (s.change3M < 0) parts.push(`declining 3M trend (${s.change3M.toFixed(1)}%)`);
   if (s.relativeVolume > 2) parts.push(`elevated volume (${s.relativeVolume.toFixed(1)}x avg)`);
   const detail = parts.length ? parts.join(", ") : "no strong price signals";
-  return `${label} (${score}/100). Based on: ${detail}. Weights: 1M 30pts · 3M 35pts · Volume 20pts · Alignment 15pts. Ranking signal only — not a prediction.`;
+  return `Momentum Score ${score}/100. Based on: ${detail}. Ranks recent price strength, volume, and trend alignment. Not a buy recommendation.`;
 }
 
 function ScoreBadge({ score, stock }: { score: number; stock: Stock }) {
@@ -214,6 +215,42 @@ function MediaOutlook({ ticker }: { ticker: string }) {
 }
 
 // Revenue growth strings fetched lazily for stocks with 0 in DB
+const SEVERITY_STYLES: Record<RiskFlag["severity"], string> = {
+  High:   "bg-red-900/40 border-red-800 text-red-300",
+  Medium: "bg-yellow-900/30 border-yellow-800 text-yellow-300",
+  Low:    "bg-gray-800/60 border-gray-700 text-gray-400",
+};
+
+function RiskFlagsPanel({ flags }: { flags: RiskFlag[] }) {
+  const [open, setOpen] = useState(false);
+  if (flags.length === 0) return null;
+  const highCount = flags.filter((f) => f.severity === "High").length;
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={`text-xs px-2 py-1 rounded border transition-colors whitespace-nowrap ${
+          highCount > 0
+            ? "border-red-800 text-red-400 hover:bg-red-900/20"
+            : "border-yellow-800 text-yellow-500 hover:bg-yellow-900/20"
+        }`}
+      >
+        {open ? "Hide" : "Risk Flags"} ({flags.length})
+      </button>
+      {open && (
+        <div className="mt-2 space-y-1.5 w-72">
+          {flags.map((f) => (
+            <div key={f.label} className={`rounded border px-2.5 py-1.5 text-xs ${SEVERITY_STYLES[f.severity]}`}>
+              <p className="font-semibold">{f.label} — {f.severity}</p>
+              <p className="mt-0.5 text-gray-400 leading-snug">{f.explanation}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 type RevGrowthMap = Record<string, string>;
 
 export default function StocksPage() {
@@ -282,9 +319,14 @@ export default function StocksPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-emerald-400">Top 50 Bullish Stocks</h1>
+          <h1 className="text-2xl font-bold text-emerald-400">Top 50 Momentum Stocks</h1>
           <p className="text-gray-500 text-sm mt-1">Best 50 across 10 sectors · momentum, volume &amp; trend scored</p>
-          {updatedAt && <p className="text-gray-600 text-xs">Last updated: {new Date(updatedAt).toLocaleString()}</p>}
+          {updatedAt && (
+            <p className="text-gray-600 text-xs">
+              Market data last updated:{" "}
+              {new Date(updatedAt).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" })} ET
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <button onClick={() => setShowBacktest(!showBacktest)}
@@ -315,7 +357,7 @@ export default function StocksPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-900 text-gray-400 text-xs uppercase">
               <tr>
-                {["#","Ticker","Company / Sector","Price","1M","3M","Rel.Vol","Rev Growth (TTM)","Risk","Score","Actions"].map((h) => (
+                {["#","Ticker","Company / Sector","Price","1M","3M","Rel.Vol","Rev Growth (TTM)","Risk","Momentum Score","Actions"].map((h) => (
                   <th key={h} className="px-3 py-3 text-left whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -379,6 +421,20 @@ export default function StocksPage() {
                   {/* Actions */}
                   <td className="px-3 py-3 pt-4 min-w-[200px]">
                     <div className="space-y-2">
+                      <RiskFlagsPanel flags={generateRiskFlags({
+                        price: s.price,
+                        marketCap: s.marketCap,
+                        change1M: s.change1M,
+                        change3M: s.change3M,
+                        relativeVolume: s.relativeVolume,
+                        averageVolume: null,
+                        revenueGrowth: s.revenueGrowth || null,
+                        lastEarningsDate: s.lastEarningsDate,
+                        nextEarningsDate: null,
+                        sma200: null,
+                        cash: null,
+                        totalDebt: null,
+                      })} />
                       <ResearchChecklist
                         ticker={s.ticker}
                         name={s.name}

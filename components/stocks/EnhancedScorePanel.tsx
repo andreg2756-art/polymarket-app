@@ -163,9 +163,14 @@ export default function EnhancedScorePanel({ ticker }: Props) {
           {data && !loading && (
             <>
               {/* Final Rating */}
-              <div className={`flex items-center justify-between rounded-lg border px-3 py-2 mb-2 ${ratingStyle?.bg} ${ratingStyle?.border}`}>
-                <span className="text-xs font-semibold text-gray-400">Final Rating</span>
-                <span className={`text-sm font-bold ${ratingStyle?.text}`}>{data.finalRating}</span>
+              <div className={`rounded-lg border px-3 py-2 mb-2 ${ratingStyle?.bg} ${ratingStyle?.border}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-400">Final Rating</span>
+                  <span className={`text-sm font-bold ${ratingStyle?.text}`}>{data.finalRating}</span>
+                </div>
+                <p className="text-xs text-gray-600 mt-1 leading-snug">
+                  Combines momentum signals with available risk checks. Missing fundamentals reduce confidence. Does not predict future returns.
+                </p>
               </div>
 
               {/* Risk-adjusted score */}
@@ -348,7 +353,10 @@ export default function EnhancedScorePanel({ ticker }: Props) {
                 <p className="text-xs text-gray-700 mt-1">
                   Risk Quality = beta · historical volatility · 52-week range position.
                   <br />
-                  <span className="text-gray-600">calc</span> = derived from price history · not financial advice
+                  <span className="text-gray-600">calc</span> = derived from Yahoo Finance price history · not financial advice
+                </p>
+                <p className="text-xs text-gray-700 mt-1 leading-snug">
+                  Sources: Price/Volume — Yahoo Finance · Revenue — Yahoo Finance (TTM + quarterly) · Earnings date — Nasdaq/SEC EDGAR · Short interest — Polygon (paid plan) · News — Polygon/Yahoo Finance
                 </p>
               </div>
             </>

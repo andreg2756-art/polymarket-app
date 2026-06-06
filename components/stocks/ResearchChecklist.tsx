@@ -216,7 +216,8 @@ export default function ResearchChecklist(props: Props) {
                     </span>
                   </div>
                 )}
-                <Row label="Bullish Score" value={`${bullishScore}/100`} status={bullishScore >= 60 ? "ok" : bullishScore < 30 ? "warn" : "neutral"} />
+                <Row label="Momentum Score" value={`${bullishScore}/100`} status={bullishScore >= 60 ? "ok" : bullishScore < 30 ? "warn" : "neutral"} />
+                <p className="text-xs text-gray-700 pb-1 pl-1">Ranks recent price strength, volume, and trend alignment. Not a buy recommendation.</p>
                 <Row
                   label="Cash Runway"
                   value={cashVal}
