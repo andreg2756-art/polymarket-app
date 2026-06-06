@@ -37,7 +37,7 @@ export function computeDataConfidence(
     { name: "Revenue Growth",   available: isAvailable(score.revenueGrowthScore?.value) },
     { name: "Analyst/Risk Rating", available: isAvailable(score.riskQualityScore?.score) },
     { name: "Earnings Date",    available: isAvailable(score.earningsRiskScore?.value) },
-    { name: "Short Interest",   available: shortInterest?.available === true },
+    { name: "Short Interest",   available: shortInterest?.available === true && shortInterest?.isStale !== true },
     { name: "News Sentiment",   available: isAvailable(score.newsSentiment?.score) },
     { name: "Beta/Volatility",  available: isAvailable(score.volatilityScore?.score) },
     { name: "Relative Volume",  available: isAvailable(score.volumeScore?.score) },

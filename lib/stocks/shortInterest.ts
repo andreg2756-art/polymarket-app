@@ -19,12 +19,22 @@ export type ShortInterestMetrics = {
 export interface ShortInterestResult extends ShortInterestMetrics {
   available:          boolean;
   planLimited:        boolean;
+  isStale:            boolean;   // true if settlementDate > 45 days old
   displayShortPct:    string;
   displayDaysToCover: string;
   displaySharesShort: string;
   displaySettlement:  string;
   riskLevel:          "high" | "moderate" | "low" | "unknown";
   reason:             string;
+}
+
+const STALE_DAYS = 45;
+
+function isStaleDate(dateStr: string | null): boolean {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return false;
+  return (Date.now() - d.getTime()) / 86400000 > STALE_DAYS;
 }
 
 function assessRisk(pct: number | null, dtc: number | null): ShortInterestResult["riskLevel"] {
@@ -62,7 +72,15 @@ export async function getShortInterestData(symbol: string, floatShares?: number 
       daysToCover = Math.round((raw.sharesShort / raw.averageDailyVolume) * 10) / 10;
     }
 
-    const riskLevel = assessRisk(shortInterestPctFloat, daysToCover);
+    const stale     = isStaleDate(raw.settlementDate);
+    const riskLevel = stale ? "unknown" : assessRisk(shortInterestPctFloat, daysToCover);
+
+    if (stale) {
+      return nullResult(
+        `Stale data — settlement ${raw.settlementDate ?? "unknown"} is older than ${STALE_DAYS} days`,
+        false, false, true
+      );
+    }
 
     const riskParts = [
       raw.sharesShort          !== null ? `Shares short: ${fmtLargeNum(raw.sharesShort)}`       : null,
@@ -82,6 +100,7 @@ export async function getShortInterestData(symbol: string, floatShares?: number 
       source:                "polygon",
       available:             true,
       planLimited:           false,
+      isStale:               false,
       displayShortPct:       shortInterestPctFloat !== null ? `${shortInterestPctFloat.toFixed(1)}%` : "N/A",
       displayDaysToCover:    daysToCover           !== null ? `${daysToCover.toFixed(1)} days`       : "N/A",
       displaySharesShort:    raw.sharesShort        !== null ? fmtLargeNum(raw.sharesShort)          : "N/A",
@@ -98,12 +117,12 @@ export async function getShortInterestData(symbol: string, floatShares?: number 
 // Keep old export name for backwards compat
 export const getShortInterest = getShortInterestData;
 
-function nullResult(reason: string, available: boolean, planLimited: boolean): ShortInterestResult {
+function nullResult(reason: string, available: boolean, planLimited: boolean, isStale = false): ShortInterestResult {
   return {
     sharesShort: null, shortInterestPctFloat: null, daysToCover: null,
     averageDailyVolume: null, settlementDate: null,
-    source: "unavailable", available, planLimited,
-    displayShortPct: planLimited ? "Unavailable on current plan" : "N/A",
+    source: "unavailable", available, planLimited, isStale,
+    displayShortPct: isStale ? "N/A — stale data" : planLimited ? "Unavailable on current plan" : "N/A",
     displayDaysToCover: planLimited ? "Unavailable on current plan" : "N/A",
     displaySharesShort: "N/A",
     displaySettlement: "N/A",

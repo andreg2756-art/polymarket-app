@@ -14,19 +14,27 @@ type SupplementalMetric = {
 };
 
 export type SupplementalStockData = {
-  ma50:             SupplementalMetric;
-  ma200:            SupplementalMetric;
-  revenueGrowth:    SupplementalMetric;
-  cashRunway:       SupplementalMetric;
-  debtRisk:         SupplementalMetric;
-  lastEarnings:     SupplementalMetric;
-  nextEarnings:     SupplementalMetric;
-  avgDailyVolume:   SupplementalMetric;
-  shortInterest:    SupplementalMetric;
-  insiderBuying:    SupplementalMetric;
-  insiderSelling:   SupplementalMetric;
-  analystRating:    SupplementalMetric;
-  recentRevisions:  SupplementalMetric;
+  ma50:                  SupplementalMetric;
+  ma200:                 SupplementalMetric;
+  revenueGrowth:         SupplementalMetric;
+  cashRunway:            SupplementalMetric;
+  debtRisk:              SupplementalMetric;
+  lastEarnings:          SupplementalMetric;
+  nextEarnings:          SupplementalMetric;
+  avgDailyVolume:        SupplementalMetric;
+  shortInterest:         SupplementalMetric;
+  insiderBuying:         SupplementalMetric;
+  insiderSelling:        SupplementalMetric;
+  analystRating:         SupplementalMetric;
+  recentRevisions:       SupplementalMetric;
+  // Small-cap risk fields
+  cash:                  SupplementalMetric;
+  totalDebt:             SupplementalMetric;
+  netCash:               SupplementalMetric;
+  freeCashFlow:          SupplementalMetric;
+  dilutionRisk:          SupplementalMetric;
+  insiderOwnership:      SupplementalMetric;
+  institutionalOwnership: SupplementalMetric;
 };
 
 function missing(reason: string): SupplementalMetric {
@@ -77,6 +85,7 @@ const QUOTE_MODULES = [
   "insiderTransactions",
   "recommendationTrend",
   "incomeStatementHistoryQuarterly",
+  "majorHoldersBreakdown",
 ].join(",");
 
 async function fetchYahooQuoteSummary(symbol: string): Promise<Record<string, unknown> | null> {
@@ -177,6 +186,8 @@ function fmtDate(ts: unknown): string | null {
 // Prefer quarterly YoY (most recent Q vs same Q prior year).
 // Fall back to financialData.revenueGrowth if quarterly data is incomplete.
 
+const LOW_BASE_THRESHOLD = 10_000_000; // $10M — flag if prior-year Q revenue is very small
+
 function calcRevenueGrowth(qs: Record<string, unknown> | null): SupplementalMetric {
   try {
     const quarterly: unknown[] =
@@ -187,16 +198,18 @@ function calcRevenueGrowth(qs: Record<string, unknown> | null): SupplementalMetr
       const cur  = raw((quarterly[0] as Record<string, unknown>)?.totalRevenue);
       const prev = raw((quarterly[4] as Record<string, unknown>)?.totalRevenue);
       if (cur !== null && prev !== null && prev > 0) {
-        const growth = ((cur - prev) / prev) * 100;
-        const sign   = growth >= 0 ? "+" : "";
+        const growth   = ((cur - prev) / prev) * 100;
+        const sign     = growth >= 0 ? "+" : "";
+        const lowBase  = prev < LOW_BASE_THRESHOLD;
         return {
-          value:  `${sign}${growth.toFixed(1)}% YoY (quarterly)`,
+          value:  `${sign}${growth.toFixed(1)}% YoY (quarterly)${lowBase ? " ⚠" : ""}`,
           source: "yahoo",
+          reason: lowBase ? "⚠ Growth may be inflated due to low prior-year base." : undefined,
         };
       }
     }
 
-    // Fall back: most recent two quarters annualised
+    // Fall back: most recent two quarters QoQ
     if (quarterly.length >= 2) {
       const cur  = raw((quarterly[0] as Record<string, unknown>)?.totalRevenue);
       const prev = raw((quarterly[1] as Record<string, unknown>)?.totalRevenue);
@@ -206,6 +219,7 @@ function calcRevenueGrowth(qs: Record<string, unknown> | null): SupplementalMetr
         return {
           value:  `${sign}${growth.toFixed(1)}% QoQ`,
           source: "yahoo",
+          reason: "Quarter-over-quarter; year-ago data not available.",
         };
       }
     }
@@ -216,7 +230,11 @@ function calcRevenueGrowth(qs: Record<string, unknown> | null): SupplementalMetr
     if (rg !== null) {
       const pct  = rg * 100;
       const sign = pct >= 0 ? "+" : "";
-      return { value: `${sign}${pct.toFixed(1)}% TTM`, source: "yahoo" };
+      return {
+        value:  `${sign}${pct.toFixed(1)}% TTM`,
+        source: "yahoo",
+        reason: "Trailing twelve months from Yahoo financialData.",
+      };
     }
   } catch { /* fall through */ }
   return missing("Revenue data not available from Yahoo Finance");
@@ -333,6 +351,14 @@ function calcNextEarnings(qs: Record<string, unknown> | null): SupplementalMetri
 // Prefer Yahoo defaultKeyStatistics (real short interest).
 // Fall back to FINRA short volume ratio with a clear label.
 
+const STALE_DAYS = 45;
+
+function isStaleMs(rawTs: unknown): boolean {
+  const ts = raw(rawTs);
+  if (ts === null) return false;
+  return (Date.now() - ts * 1000) / 86400000 > STALE_DAYS;
+}
+
 async function calcShortInterest(
   symbol: string,
   qs: Record<string, unknown> | null
@@ -342,6 +368,14 @@ async function calcShortInterest(
     const pct   = raw(ks?.shortPercentOfFloat);
     const ratio = raw(ks?.shortRatio);
     const date  = fmtDate(ks?.dateShortInterest) ?? fmt(ks?.dateShortInterest);
+    const stale = isStaleMs(ks?.dateShortInterest);
+
+    if (stale) {
+      return {
+        value: null, source: "unavailable",
+        reason: `Stale short interest data — as of ${date ?? "unknown date"}, older than ${STALE_DAYS} days. Short interest data must be recent; stale data excluded.`,
+      };
+    }
 
     if (pct !== null) {
       const pctDisplay = (pct * 100).toFixed(1);
@@ -463,6 +497,70 @@ function calcRecentRevisions(qs: Record<string, unknown> | null): SupplementalMe
   }
 }
 
+// ── Small-cap risk fields ──────────────────────────────────────────────────
+
+function calcSmallCapRisk(qs: Record<string, unknown> | null): {
+  cash: SupplementalMetric;
+  totalDebt: SupplementalMetric;
+  netCash: SupplementalMetric;
+  freeCashFlow: SupplementalMetric;
+  dilutionRisk: SupplementalMetric;
+  insiderOwnership: SupplementalMetric;
+  institutionalOwnership: SupplementalMetric;
+} {
+  try {
+    const fd  = qs?.financialData as Record<string, unknown> | undefined;
+    const ks  = qs?.defaultKeyStatistics as Record<string, unknown> | undefined;
+    const mh  = qs?.majorHoldersBreakdown as Record<string, unknown> | undefined;
+
+    const cashVal  = raw(fd?.totalCash);
+    const debtVal  = raw(fd?.totalDebt);
+    const fcfVal   = raw(fd?.freeCashflow);
+
+    // Net cash
+    const netCashVal = cashVal !== null && debtVal !== null ? cashVal - debtVal : null;
+
+    // Dilution risk: compare sharesOutstanding vs impliedSharesOutstanding
+    const sharesOut  = raw(ks?.sharesOutstanding);
+    const impliedOut = raw(ks?.impliedSharesOutstanding);
+    let dilution: SupplementalMetric = missing("Share count data unavailable");
+    if (sharesOut !== null && impliedOut !== null && sharesOut > 0) {
+      const dilutionPct = ((impliedOut - sharesOut) / sharesOut) * 100;
+      if (dilutionPct > 5) {
+        dilution = { value: `⚠ ${dilutionPct.toFixed(1)}% potential dilution (options/warrants)`, source: "yahoo" };
+      } else if (dilutionPct > 0) {
+        dilution = { value: `Low — ${dilutionPct.toFixed(1)}% potential dilution`, source: "yahoo" };
+      } else {
+        dilution = { value: "Minimal dilution risk", source: "yahoo" };
+      }
+    }
+
+    // Insider / institutional ownership
+    const insiderPct = raw(mh?.insidersPercentHeld) ?? raw(ks?.heldPercentInsiders);
+    const instPct    = raw(mh?.institutionsPercentHeld) ?? raw(ks?.heldPercentInstitutions);
+
+    return {
+      cash:      cashVal  !== null ? { value: fmtLarge(cashVal),                              source: "yahoo" } : missing("Cash data unavailable"),
+      totalDebt: debtVal  !== null ? { value: fmtLarge(debtVal),                              source: "yahoo" } : missing("Debt data unavailable"),
+      netCash:   netCashVal !== null
+        ? {
+            value:  netCashVal >= 0 ? `Net cash ${fmtLarge(netCashVal)}` : `Net debt ${fmtLarge(Math.abs(netCashVal))}`,
+            source: "yahoo",
+          }
+        : missing("Net cash/debt requires both cash and debt"),
+      freeCashFlow: fcfVal !== null
+        ? { value: `${fcfVal >= 0 ? "" : "-"}${fmtLarge(Math.abs(fcfVal))}/yr`, source: "yahoo" }
+        : missing("Free cash flow unavailable"),
+      dilutionRisk: dilution,
+      insiderOwnership:      insiderPct !== null ? { value: `${(insiderPct * 100).toFixed(1)}%`, source: "yahoo" } : missing("Insider ownership unavailable"),
+      institutionalOwnership: instPct   !== null ? { value: `${(instPct   * 100).toFixed(1)}%`, source: "yahoo" } : missing("Institutional ownership unavailable"),
+    };
+  } catch {
+    const u = missing("Small-cap risk data unavailable");
+    return { cash: u, totalDebt: u, netCash: u, freeCashFlow: u, dilutionRisk: u, insiderOwnership: u, institutionalOwnership: u };
+  }
+}
+
 // ── Main export ────────────────────────────────────────────────────────────
 
 export async function getSupplementalStockData(symbol: string): Promise<SupplementalStockData> {
@@ -471,8 +569,9 @@ export async function getSupplementalStockData(symbol: string): Promise<Suppleme
     fetchYahooQuoteSummary(symbol),
   ]);
 
-  const insiders = calcInsiderActivity(qs);
+  const insiders    = calcInsiderActivity(qs);
   const shortInterest = await calcShortInterest(symbol, qs);
+  const riskFields  = calcSmallCapRisk(qs);
 
   return {
     ma50: chart.ma50 !== null
@@ -493,6 +592,7 @@ export async function getSupplementalStockData(symbol: string): Promise<Suppleme
     insiderSelling:  insiders.selling,
     analystRating:   calcAnalystRating(qs),
     recentRevisions: calcRecentRevisions(qs),
+    ...riskFields,
 
     avgDailyVolume: chart.avgDailyVolume !== null
       ? { value: Math.round(chart.avgDailyVolume).toLocaleString(), source: "calculated" }

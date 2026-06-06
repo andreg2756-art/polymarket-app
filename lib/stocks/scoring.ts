@@ -47,13 +47,22 @@ function buildMomentumScore(change1M: number, change3M: number): ScoredMetric {
   };
 }
 
+function volumeLabel(rv: number): string {
+  if (rv > 2.0)  return "High volume";
+  if (rv >= 1.5) return "Elevated volume";
+  if (rv >= 1.0) return "Normal / slightly elevated volume";
+  return "Below average volume";
+}
+
 function buildVolumeScore(relativeVolume: number): ScoredMetric {
-  const score = relativeVolume > 3 ? 95 : relativeVolume > 2 ? 82 : relativeVolume > 1.5 ? 68 : relativeVolume > 1.2 ? 55 : relativeVolume > 1 ? 42 : relativeVolume > 0.7 ? 28 : 15;
+  const score = relativeVolume > 3 ? 95 : relativeVolume > 2 ? 82 : relativeVolume > 1.5 ? 68 : relativeVolume > 1.2 ? 55 : relativeVolume >= 1.0 ? 42 : relativeVolume > 0.7 ? 28 : 15;
   return {
     value: `${relativeVolume.toFixed(1)}x`,
     score: clampScore(score),
     source: "yahoo",
-    reason: score >= 68 ? "Volume significantly above average — buying pressure confirmed" : score >= 50 ? "Volume slightly above average" : "Volume below average — weak conviction",
+    reason: `${volumeLabel(relativeVolume)} (${relativeVolume.toFixed(2)}x avg). ${
+      score >= 68 ? "Strong buying pressure." : score >= 42 ? "Sufficient liquidity." : "Weak conviction — low participation."
+    }`,
   };
 }
 

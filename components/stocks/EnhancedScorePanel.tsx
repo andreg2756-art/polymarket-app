@@ -188,7 +188,9 @@ export default function EnhancedScorePanel({ ticker }: Props) {
                     <span className="text-emerald-400">+{newsDetail.positiveCount} pos</span>
                     <span className="text-red-400">−{newsDetail.negativeCount} neg</span>
                     <span className="text-gray-500">{newsDetail.neutralCount} neutral</span>
-                    <span className="text-gray-600 ml-auto">{newsDetail.source}</span>
+                    <span className={`text-xs ml-auto px-1 rounded ${newsDetail.confidence === "High" ? "text-emerald-600" : newsDetail.confidence === "Medium" ? "text-yellow-700" : "text-gray-600"}`}>
+                      {newsDetail.confidence} conf.
+                    </span>
                   </div>
                   {newsDetail.topPositive && (
                     <a href={newsDetail.topPositive.url} target="_blank" rel="noopener noreferrer"
@@ -215,21 +217,31 @@ export default function EnhancedScorePanel({ ticker }: Props) {
               {/* ── Short Interest ── */}
               <SectionHeader>Short Interest</SectionHeader>
               <div className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500">Short %</span>
-                  <span className={si?.available ? SHORT_RISK_COLORS[si.riskLevel] : "text-gray-600"}>
-                    {si?.displayShortPct ?? "N/A"}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500">Days to Cover</span>
-                  <span className="text-gray-400">{si?.displayDaysToCover ?? "N/A"}</span>
-                </div>
-                {si?.planLimited && (
-                  <p className="text-xs text-gray-600 italic">Unavailable on current Polygon plan</p>
-                )}
-                {si?.reason && !si.planLimited && si.available && (
-                  <p className="text-xs text-gray-600">{si.reason}</p>
+                {si?.isStale ? (
+                  <>
+                    <p className="text-xs text-yellow-700">⚠ Stale data excluded from scoring</p>
+                    <p className="text-xs text-gray-600">{si.reason}</p>
+                    <p className="text-xs text-gray-700">Short interest data must be recent; stale data excluded.</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-500">Short %</span>
+                      <span className={si?.available ? SHORT_RISK_COLORS[si.riskLevel] : "text-gray-600"}>
+                        {si?.displayShortPct ?? "N/A"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-500">Days to Cover</span>
+                      <span className="text-gray-400">{si?.displayDaysToCover ?? "N/A"}</span>
+                    </div>
+                    {si?.planLimited && (
+                      <p className="text-xs text-gray-600 italic">Unavailable on current Polygon plan</p>
+                    )}
+                    {si?.reason && !si.planLimited && si.available && (
+                      <p className="text-xs text-gray-600">{si.reason}</p>
+                    )}
+                  </>
                 )}
               </div>
 

@@ -107,7 +107,8 @@ export default function ResearchChecklist(props: Props) {
 
   // Determine status helpers
   const trendStatus = change1M > 0 && change3M > 0 ? "ok" : change1M < 0 && change3M < 0 ? "warn" : "neutral";
-  const volStatus = relativeVolume > 1.5 ? "ok" : relativeVolume < 0.8 ? "warn" : "neutral";
+  const volStatus: "ok" | "warn" | "neutral" = relativeVolume > 2.0 ? "ok" : relativeVolume >= 1.5 ? "ok" : relativeVolume >= 1.0 ? "neutral" : "warn";
+  const volLabel = relativeVolume > 2.0 ? "High" : relativeVolume >= 1.5 ? "Elevated" : relativeVolume >= 1.0 ? "Normal" : "Below average";
   const capStatus = marketCap >= 500e6 ? "ok" : marketCap >= 200e6 ? "neutral" : "warn";
 
   // Moving averages vs price
@@ -204,6 +205,9 @@ export default function ResearchChecklist(props: Props) {
                   status={revGrowthStatus}
                   source={sourceTag(supp?.revenueGrowth)}
                 />
+                {supp?.revenueGrowth?.reason && (
+                  <p className="text-xs text-gray-600 pb-1 pl-1">{supp.revenueGrowth.reason}</p>
+                )}
                 <Row label="Bullish Score" value={`${bullishScore}/100`} status={bullishScore >= 60 ? "ok" : bullishScore < 30 ? "warn" : "neutral"} />
                 <Row
                   label="Cash Runway"
@@ -239,7 +243,7 @@ export default function ResearchChecklist(props: Props) {
               {/* Liquidity */}
               <section>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Liquidity</h3>
-                <Row label="Relative Volume" value={`${relativeVolume.toFixed(1)}x avg`} status={volStatus} />
+                <Row label="Relative Volume" value={`${relativeVolume.toFixed(1)}x avg — ${volLabel}`} status={volStatus} />
                 <Row
                   label="Avg Daily Volume"
                   value={val(supp?.avgDailyVolume)}
@@ -248,10 +252,15 @@ export default function ResearchChecklist(props: Props) {
                 />
                 <Row
                   label={supp?.shortInterest?.source === "finra" ? "Short Volume Ratio" : "Short Interest"}
-                  value={shortInterestDisplay ?? val(supp?.shortInterest)}
-                  status={shortStatus}
+                  value={supp?.shortInterest?.source === "unavailable" && supp.shortInterest.reason?.includes("Stale")
+                    ? "N/A — stale short interest data"
+                    : shortInterestDisplay ?? val(supp?.shortInterest)}
+                  status={supp?.shortInterest?.source === "unavailable" && supp.shortInterest.reason?.includes("Stale") ? "warn" : shortStatus}
                   source={!shortInterestDisplay ? sourceTag(supp?.shortInterest) : undefined}
                 />
+                {supp?.shortInterest?.source === "unavailable" && supp.shortInterest.reason?.includes("Stale") && (
+                  <p className="text-xs text-yellow-800 pb-1">Short interest data must be recent; stale data excluded.</p>
+                )}
                 {supp?.shortInterest?.source === "finra" && (
                   <p className="text-xs text-yellow-900 pb-1">Not exchange-reported short interest</p>
                 )}
@@ -288,6 +297,53 @@ export default function ResearchChecklist(props: Props) {
                   value={val(supp?.recentRevisions)}
                   status={val(supp?.recentRevisions).toLowerCase().includes("upgrade") ? "ok" : val(supp?.recentRevisions).toLowerCase().includes("downgrade") ? "warn" : "neutral"}
                   source={sourceTag(supp?.recentRevisions)}
+                />
+              </section>
+
+              {/* Small-Cap Risk */}
+              <section>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Small-Cap Risk</h3>
+                <Row
+                  label="Cash"
+                  value={val(supp?.cash)}
+                  status={supp?.cash?.value ? "ok" : "neutral"}
+                  source={sourceTag(supp?.cash)}
+                />
+                <Row
+                  label="Total Debt"
+                  value={val(supp?.totalDebt)}
+                  status={supp?.totalDebt?.value ? "neutral" : "neutral"}
+                  source={sourceTag(supp?.totalDebt)}
+                />
+                <Row
+                  label="Net Cash / Debt"
+                  value={val(supp?.netCash)}
+                  status={val(supp?.netCash).toLowerCase().includes("net cash") ? "ok" : val(supp?.netCash).toLowerCase().includes("net debt") ? "warn" : "neutral"}
+                  source={sourceTag(supp?.netCash)}
+                />
+                <Row
+                  label="Free Cash Flow"
+                  value={val(supp?.freeCashFlow)}
+                  status={val(supp?.freeCashFlow).startsWith("-") ? "warn" : val(supp?.freeCashFlow) !== "N/A" ? "ok" : "neutral"}
+                  source={sourceTag(supp?.freeCashFlow)}
+                />
+                <Row
+                  label="Dilution Risk"
+                  value={val(supp?.dilutionRisk)}
+                  status={val(supp?.dilutionRisk).includes("⚠") ? "warn" : val(supp?.dilutionRisk).toLowerCase().includes("minimal") ? "ok" : "neutral"}
+                  source={sourceTag(supp?.dilutionRisk)}
+                />
+                <Row
+                  label="Insider Ownership"
+                  value={val(supp?.insiderOwnership)}
+                  status={supp?.insiderOwnership?.value ? "neutral" : "neutral"}
+                  source={sourceTag(supp?.insiderOwnership)}
+                />
+                <Row
+                  label="Institutional Ownership"
+                  value={val(supp?.institutionalOwnership)}
+                  status={supp?.institutionalOwnership?.value ? "ok" : "neutral"}
+                  source={sourceTag(supp?.institutionalOwnership)}
                 />
               </section>
 

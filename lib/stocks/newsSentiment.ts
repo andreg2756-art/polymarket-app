@@ -52,6 +52,7 @@ export interface NewsSentimentDetail {
   negativeCount:   number;
   neutralCount:    number;
   articleCount:    number;
+  confidence:      "High" | "Medium" | "Low";
   source:          "polygon" | "yahoo" | "unavailable";
   topPositive:     { title: string; publisher: string; url: string } | null;
   topNegative:     { title: string; publisher: string; url: string } | null;
@@ -125,27 +126,73 @@ function scorePolygonArticles(articles: PolygonArticle[]): NewsSentimentDetail {
   }
 
   if (totalWeight === 0) {
-    return { sentimentScore: 50, positiveCount: 0, negativeCount: 0, neutralCount: 0, articleCount: 0, source: "polygon", topPositive: null, topNegative: null };
+    return { sentimentScore: 50, positiveCount: 0, negativeCount: 0, neutralCount: 0, articleCount: 0, confidence: "Low" as const, source: "polygon", topPositive: null, topNegative: null };
   }
 
   // Weighted net sentiment → 0–100
   const netSentiment = (weightedPos - weightedNeg) / totalWeight;
   const sentimentScore = Math.round(Math.max(0, Math.min(100, 50 + netSentiment * 50)));
 
-  return { sentimentScore, positiveCount, negativeCount, neutralCount, articleCount: articles.length, source: "polygon", topPositive, topNegative };
+  return { sentimentScore, positiveCount, negativeCount, neutralCount, articleCount: articles.length, confidence: sentimentConfidence(articles.length, positiveCount, negativeCount), source: "polygon", topPositive, topNegative };
 }
 
 // ── Yahoo keyword fallback ─────────────────────────────────────────────────
 
-const POSITIVE_WORDS = ["beat","surpass","record","growth","upgrade","strong","raise","accelerat","partnership","win","contract","expand","rally","surge","outperform","buy","profit","revenue","opportunity","momentum","bullish","breakout","approval","launch"];
-const NEGATIVE_WORDS = ["miss","disappoint","downgrade","weak","cut","decline","loss","dilut","lawsuit","recall","warning","risk","fall","drop","plunge","sell","bearish","debt","bankruptcy","investigation","probe","fine","resign","depart","layoff","restructur","withdraw"];
+const POSITIVE_WORDS = [
+  "beat","beats","surpass","record","upgrade","strong","raise","accelerat",
+  "partnership","win","contract","expand","rally","surge","outperform","buy",
+  "opportunity","momentum","bullish","breakout","approval","launch","exceed",
+  "top","above","higher","grew","growth","gains","profit","profitable",
+];
 
-function keywordSentiment(title: string): number {
+// Only clearly bad signals — not generic financial terms
+const NEGATIVE_WORDS = [
+  "miss","misses","disappoint","downgrade","cut","loss","dilut","lawsuit",
+  "recall","bankruptcy","investigation","probe","fine","resign","layoff",
+  "restructur","withdraw","fraud","warning","guidance cut","outlook cut",
+  "weaker","slower","below","plunge","crash","collapse","default",
+];
+
+// Titles containing these phrases are never classified as negative
+// (they describe beats, strong results, or approvals)
+const NEVER_NEGATIVE_PATTERNS = [
+  /\bearnings beat\b/i,
+  /\brevenue beat\b/i,
+  /\beps beat\b/i,
+  /\bbeats estimate/i,
+  /\bbeats expectation/i,
+  /\bexceeds estimate/i,
+  /\bsurpasses estimate/i,
+  /\brecord revenue\b/i,
+  /\brecord earnings\b/i,
+  /\bfda approv/i,
+  /\bapproved by\b/i,
+];
+
+export function classifySentiment(title: string): number {
   const t = title.toLowerCase();
+
+  // Hard override: never classify beats/approvals as negative
+  for (const pat of NEVER_NEGATIVE_PATTERNS) {
+    if (pat.test(title)) return 1; // strongly positive
+  }
+
   const pos = POSITIVE_WORDS.filter((w) => t.includes(w)).length;
   const neg = NEGATIVE_WORDS.filter((w) => t.includes(w)).length;
   if (pos + neg === 0) return 0;
   return (pos - neg) / (pos + neg);
+}
+
+// Backwards-compatible alias used internally
+function keywordSentiment(title: string): number {
+  return classifySentiment(title);
+}
+
+// Confidence label based on article count and signal clarity
+export function sentimentConfidence(articleCount: number, positiveCount: number, negativeCount: number): "High" | "Medium" | "Low" {
+  if (articleCount >= 10 && Math.abs(positiveCount - negativeCount) >= 3) return "High";
+  if (articleCount >= 5)  return "Medium";
+  return "Low";
 }
 
 async function fetchYahooHeadlines(ticker: string): Promise<{ title: string; publisher: string; link: string; published: number }[]> {
@@ -193,10 +240,10 @@ function scoreYahooHeadlines(headlines: Awaited<ReturnType<typeof fetchYahooHead
     }
   }
 
-  if (!totalWeight) return { sentimentScore: 50, positiveCount: 0, negativeCount: 0, neutralCount: 0, articleCount: 0, source: "yahoo", topPositive: null, topNegative: null };
+  if (!totalWeight) return { sentimentScore: 50, positiveCount: 0, negativeCount: 0, neutralCount: 0, articleCount: 0, confidence: "Low" as const, source: "yahoo", topPositive: null, topNegative: null };
 
   const sentimentScore = Math.round(Math.max(0, Math.min(100, 50 + (weightedNet / totalWeight) * 50)));
-  return { sentimentScore, positiveCount, negativeCount, neutralCount, articleCount: headlines.length, source: "yahoo", topPositive, topNegative };
+  return { sentimentScore, positiveCount, negativeCount, neutralCount, articleCount: headlines.length, confidence: sentimentConfidence(headlines.length, positiveCount, negativeCount), source: "yahoo", topPositive, topNegative };
 }
 
 // ── Public export ──────────────────────────────────────────────────────────
