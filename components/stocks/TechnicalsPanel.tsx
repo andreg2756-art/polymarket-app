@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ExtraStockMetrics } from "@/lib/stocks/technicals";
 import type { ShortInterestResult } from "@/lib/stocks/shortInterest";
+import type { FintelShortInterestMetrics } from "@/lib/stocks/fintelShortInterest";
 import { fmtLargeNum, fmtPct } from "@/lib/stocks/technicals";
 
 interface Props {
@@ -10,8 +11,9 @@ interface Props {
 }
 
 interface PanelData {
-  technicals: ExtraStockMetrics | null;
+  technicals:    ExtraStockMetrics | null;
   shortInterest: ShortInterestResult | null;
+  fintel:        FintelShortInterestMetrics | null;
 }
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
@@ -28,7 +30,11 @@ function Row({
   label: string; value: string; highlight?: "green" | "red" | "neutral"; sub?: string;
 }) {
   const isNA = value === "N/A" || value.startsWith("N/A") || value.startsWith("Unavailable");
-  const color = isNA ? "text-gray-600" : highlight === "green" ? "text-emerald-400" : highlight === "red" ? "text-red-400" : "text-gray-300";
+  const color = isNA
+    ? "text-gray-600"
+    : highlight === "green" ? "text-emerald-400"
+    : highlight === "red"   ? "text-red-400"
+    : "text-gray-300";
   return (
     <div className="flex items-start justify-between py-1.5 border-b border-gray-800 last:border-0 gap-2">
       <div className="shrink-0 w-40">
@@ -51,11 +57,24 @@ function siRiskColor(level: ShortInterestResult["riskLevel"]): "green" | "red" |
   return "neutral";
 }
 
+function fmtPct1(n: number | null): string {
+  if (n === null) return "N/A";
+  return `${n.toFixed(1)}%`;
+}
+
+function fmtDays(n: number | null): string {
+  if (n === null) return "N/A";
+  return `${n.toFixed(1)} days`;
+}
+
 export default function TechnicalsPanel({ ticker, currentPrice }: Props) {
   const [panelData, setPanelData] = useState<PanelData | null>(null);
   const [loading, setLoading]     = useState(false);
   const [open, setOpen]           = useState(false);
   const [error, setError]         = useState<string | null>(null);
+
+  // suppress unused warning — currentPrice reserved for future use
+  void currentPrice;
 
   async function load() {
     if (panelData) { setOpen((o) => !o); return; }
@@ -63,13 +82,15 @@ export default function TechnicalsPanel({ ticker, currentPrice }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const [techRes, siRes] = await Promise.allSettled([
+      const [techRes, siRes, fintelRes] = await Promise.allSettled([
         fetch(`/api/stocks/technicals/${ticker}`).then((r) => r.json()),
         fetch(`/api/stocks/short-interest/${ticker}`).then((r) => r.json()),
+        fetch(`/api/stocks/fintel-short-interest/${ticker}`).then((r) => r.json()),
       ]);
       setPanelData({
-        technicals:    techRes.status === "fulfilled" ? techRes.value : null,
-        shortInterest: siRes.status   === "fulfilled" ? siRes.value   : null,
+        technicals:    techRes.status    === "fulfilled" ? techRes.value    : null,
+        shortInterest: siRes.status      === "fulfilled" ? siRes.value      : null,
+        fintel:        fintelRes.status  === "fulfilled" ? fintelRes.value  : null,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
@@ -78,11 +99,12 @@ export default function TechnicalsPanel({ ticker, currentPrice }: Props) {
     }
   }
 
-  const d  = panelData?.technicals ?? null;
-  const si = panelData?.shortInterest ?? null;
+  const d      = panelData?.technicals ?? null;
+  const si     = panelData?.shortInterest ?? null;
+  const fintel = panelData?.fintel ?? null;
 
-  // suppress unused warning
-  void currentPrice;
+  const fintelUrl = fintel?.sourceUrl ?? `https://fintel.io/ss/us/${ticker.toLowerCase()}`;
+  const fintelAvailable = fintel?.source === "fintel_web";
 
   return (
     <div>
@@ -97,7 +119,7 @@ export default function TechnicalsPanel({ ticker, currentPrice }: Props) {
         <div className="mt-2 rounded-lg border border-gray-800 bg-gray-950 p-3 w-72">
           {loading && (
             <div className="space-y-2 animate-pulse">
-              {Array.from({ length: 12 }).map((_, i) => <div key={i} className="h-5 bg-gray-800 rounded" />)}
+              {Array.from({ length: 14 }).map((_, i) => <div key={i} className="h-5 bg-gray-800 rounded" />)}
             </div>
           )}
           {error && <p className="text-xs text-red-400">Error: {error}</p>}
@@ -106,8 +128,8 @@ export default function TechnicalsPanel({ ticker, currentPrice }: Props) {
             <>
               {/* Moving Averages */}
               <SectionHeader>Moving Averages</SectionHeader>
-              <Row label="50-Day SMA"     value={d?.sma50  !== null && d?.sma50  !== undefined ? `$${d.sma50.toFixed(2)}`  : "N/A"} />
-              <Row label="200-Day SMA"    value={d?.sma200 !== null && d?.sma200 !== undefined ? `$${d.sma200.toFixed(2)}` : "N/A"} />
+              <Row label="50-Day SMA"       value={d?.sma50  !== null && d?.sma50  !== undefined ? `$${d.sma50.toFixed(2)}`  : "N/A"} />
+              <Row label="200-Day SMA"      value={d?.sma200 !== null && d?.sma200 !== undefined ? `$${d.sma200.toFixed(2)}` : "N/A"} />
               <Row label="Price vs 50-Day"  value={d?.priceVsSma50Pct  !== null && d?.priceVsSma50Pct  !== undefined ? fmtPct(d.priceVsSma50Pct)  : "N/A"} highlight={maHighlight(d?.priceVsSma50Pct  ?? null)} />
               <Row label="Price vs 200-Day" value={d?.priceVsSma200Pct !== null && d?.priceVsSma200Pct !== undefined ? fmtPct(d.priceVsSma200Pct) : "N/A"} highlight={maHighlight(d?.priceVsSma200Pct ?? null)} />
 
@@ -124,41 +146,76 @@ export default function TechnicalsPanel({ ticker, currentPrice }: Props) {
               {/* Float */}
               <SectionHeader>Float (FMP)</SectionHeader>
               <Row label="Float Shares"       value={fmtLargeNum(d?.floatShares      ?? null)} />
-              <Row label="Free Float %"       value={d?.freeFloatPct      !== null && d?.freeFloatPct      !== undefined ? `${d.freeFloatPct.toFixed(1)}%`                        : "N/A"} />
+              <Row label="Free Float %"       value={d?.freeFloatPct      !== null && d?.freeFloatPct      !== undefined ? `${d.freeFloatPct.toFixed(1)}%`           : "N/A"} />
               <Row label="Outstanding Shares" value={fmtLargeNum(d?.outstandingShares ?? null)} />
-              <Row label="Float Turnover"     value={d?.floatTurnover     !== null && d?.floatTurnover     !== undefined ? `${(d.floatTurnover * 100).toFixed(2)}%`               : "N/A"} highlight={d?.floatTurnover !== null && d?.floatTurnover !== undefined ? (d.floatTurnover > 0.05 ? "green" : "neutral") : "neutral"} />
+              <Row label="Float Turnover"     value={d?.floatTurnover     !== null && d?.floatTurnover     !== undefined ? `${(d.floatTurnover * 100).toFixed(2)}%`  : "N/A"} highlight={d?.floatTurnover !== null && d?.floatTurnover !== undefined ? (d.floatTurnover > 0.05 ? "green" : "neutral") : "neutral"} />
 
-              {/* Short Interest */}
+              {/* Short Interest — Polygon */}
               <SectionHeader>Short Interest (Polygon)</SectionHeader>
               {si?.planLimited ? (
                 <p className="text-xs text-gray-600 py-1">Unavailable on current Polygon plan</p>
               ) : (
                 <>
-                  <Row
-                    label="Shares Short"
-                    value={si?.displaySharesShort ?? "N/A"}
-                  />
+                  <Row label="Shares Short"    value={si?.displaySharesShort ?? "N/A"} />
+                  <Row label="Short % of Float" value={si?.displayShortPct ?? "N/A"}    highlight={si?.riskLevel ? siRiskColor(si.riskLevel) : "neutral"} />
+                  <Row label="Days to Cover"   value={si?.displayDaysToCover ?? "N/A"} highlight={si?.riskLevel === "high" ? "red" : si?.riskLevel === "low" ? "green" : "neutral"} />
+                  <Row label="Settlement Date" value={si?.displaySettlement ?? "N/A"}   sub="Reported ~twice monthly" />
+                </>
+              )}
+
+              {/* Short Interest — Fintel */}
+              <SectionHeader>Short Interest (Fintel)</SectionHeader>
+              {!fintelAvailable ? (
+                <p className="text-xs text-gray-600 py-1">
+                  {fintel === null ? "Not enabled" : "Unavailable"}
+                </p>
+              ) : (
+                <>
+                  <Row label="Shares Short"         value={fmtLargeNum(fintel.sharesShort)} />
                   <Row
                     label="Short % of Float"
-                    value={si?.displayShortPct ?? "N/A"}
-                    highlight={si?.riskLevel ? siRiskColor(si.riskLevel) : "neutral"}
+                    value={fmtPct1(fintel.shortInterestPctFloat)}
+                    highlight={
+                      fintel.shortInterestPctFloat === null ? "neutral"
+                      : fintel.shortInterestPctFloat > 20   ? "red"
+                      : fintel.shortInterestPctFloat < 5    ? "green"
+                      : "neutral"
+                    }
                   />
+                  <Row label="Days to Cover"        value={fmtDays(fintel.daysToCover)} />
                   <Row
-                    label="Days to Cover"
-                    value={si?.displayDaysToCover ?? "N/A"}
-                    highlight={si?.riskLevel === "high" ? "red" : si?.riskLevel === "low" ? "green" : "neutral"}
+                    label="Borrow Fee Rate"
+                    value={fmtPct1(fintel.borrowFeeRate)}
+                    highlight={
+                      fintel.borrowFeeRate === null ? "neutral"
+                      : fintel.borrowFeeRate > 50   ? "red"
+                      : fintel.borrowFeeRate > 10   ? "neutral"
+                      : "green"
+                    }
                   />
-                  <Row
-                    label="Settlement Date"
-                    value={si?.displaySettlement ?? "N/A"}
-                    sub="Reported ~twice monthly"
-                  />
+                  <Row label="Short Shares Avail"   value={fmtLargeNum(fintel.shortSharesAvailable)} />
+                  <Row label="Short Interest Date"  value={fintel.settlementDate ?? "N/A"} sub="Reported ~twice monthly" />
+
+                  <p className="text-xs text-gray-600 mt-1">
+                    Data provided by{" "}
+                    <a
+                      href={fintelUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-gray-400"
+                    >
+                      Fintel.io
+                    </a>
+                  </p>
+                  <p className="text-xs text-yellow-900 mt-0.5">
+                    Short interest data may be delayed and the Fintel Web Data API is being discontinued.
+                  </p>
                 </>
               )}
 
               {/* Footer */}
               <p className="text-xs text-gray-700 mt-2 pt-2 border-t border-gray-800">
-                SMA/volume: Yahoo 1yr daily · Float: FMP · Short interest: Polygon · Cached 1hr
+                SMA/volume: Yahoo 1yr daily · Float: FMP · Short interest: Polygon / Fintel · Cached 1hr+
               </p>
               <p className="text-xs text-yellow-900 mt-1">
                 ⚠ Short interest ≠ short volume. Data is delayed ~2 weeks.
