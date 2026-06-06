@@ -194,6 +194,11 @@ export default function EnhancedScorePanel({ ticker }: Props) {
                       {newsDetail.confidence} conf.
                     </span>
                   </div>
+                  {(newsDetail.lawFirmCount ?? 0) > 0 && (
+                    <p className="text-xs text-gray-600">
+                      {newsDetail.lawFirmCount} law-firm notice{newsDetail.lawFirmCount === 1 ? "" : "s"} excluded from sentiment impact
+                    </p>
+                  )}
                   {newsDetail.topPositive && (
                     <a href={newsDetail.topPositive.url} target="_blank" rel="noopener noreferrer"
                       className="block border-l-2 border-emerald-800 pl-2 hover:border-emerald-500 transition-colors">

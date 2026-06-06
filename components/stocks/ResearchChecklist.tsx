@@ -420,13 +420,23 @@ export default function ResearchChecklist(props: Props) {
                 <Row
                   label="Institutional Ownership"
                   value={val(supp?.institutionalOwnership)}
-                  status={supp?.institutionalOwnership?.value ? "ok" : "neutral"}
+                  status={(() => {
+                    const v = supp?.institutionalOwnership?.value;
+                    if (!v) return "neutral";
+                    const n = parseFloat(String(v));
+                    return n >= 50 ? "ok" : "neutral";
+                  })()}
                   source={sourceTag(supp?.institutionalOwnership)}
                 />
                 <Row
                   label="Insider Ownership"
                   value={val(supp?.insiderOwnership)}
-                  status="neutral"
+                  status={(() => {
+                    const v = supp?.insiderOwnership?.value;
+                    if (!v) return "neutral";
+                    const n = parseFloat(String(v));
+                    return n >= 5 ? "ok" : "neutral";
+                  })()}
                   source={sourceTag(supp?.insiderOwnership)}
                 />
               </section>
