@@ -281,6 +281,7 @@ export default function StocksPage() {
   const [showBacktest, setShowBacktest] = useState(false);
   const [revGrowthMap, setRevGrowthMap] = useState<RevGrowthMap>({});
   const [avgVolMap, setAvgVolMap] = useState<Record<string, number>>({});
+  const [suppMap, setSuppMap] = useState<Record<string, { cash: number | null; debt: number | null; nextEarningsDate: string | null }>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -298,32 +299,55 @@ export default function StocksPage() {
           fetch(`/api/stocks/supplemental/${s.ticker}`)
             .then((r) => r.json())
             .then((d) => ({
-              ticker:    s.ticker,
-              revGrowth: (d?.revenueGrowthTTM?.value ?? d?.revenueGrowth?.value) as string | null ?? null,
-              avgVolRaw: d?.avgDailyVolume?.value as string | number | null ?? null,
+              ticker:          s.ticker,
+              revGrowth:       (d?.revenueGrowthTTM?.value ?? d?.revenueGrowth?.value) as string | null ?? null,
+              avgVolRaw:       d?.avgDailyVolume?.value as string | number | null ?? null,
+              cashRaw:         d?.cash?.value         as string | number | null ?? null,
+              debtRaw:         d?.totalDebt?.value     as string | number | null ?? null,
+              nextEarningsRaw: d?.nextEarnings?.value  as string | null ?? null,
             }))
-            .catch(() => ({ ticker: s.ticker, revGrowth: null, avgVolRaw: null }))
+            .catch(() => ({ ticker: s.ticker, revGrowth: null, avgVolRaw: null, cashRaw: null, debtRaw: null, nextEarningsRaw: null }))
         )
       );
 
       const revMap: RevGrowthMap = {};
       const volMap: Record<string, number> = {};
+      const sm: Record<string, { cash: number | null; debt: number | null; nextEarningsDate: string | null }> = {};
+
       for (const r of suppResults) {
         if (r.status !== "fulfilled") continue;
-        const { ticker, revGrowth, avgVolRaw } = r.value;
-        // Revenue growth fallback for stocks with 0 in DB
+        const { ticker, revGrowth, avgVolRaw, cashRaw, debtRaw, nextEarningsRaw } = r.value;
+
         const s = filtered.find((x) => x.ticker === ticker);
         if (revGrowth && (!s?.revenueGrowth || s.revenueGrowth === 0)) revMap[ticker] = revGrowth;
-        // avgVolume30D — parse "1,234,567" or numeric
+
         if (avgVolRaw !== null && avgVolRaw !== undefined) {
           const n = typeof avgVolRaw === "number"
             ? avgVolRaw
             : parseFloat(String(avgVolRaw).replace(/,/g, ""));
           if (isFinite(n) && n > 0) volMap[ticker] = Math.round(n);
         }
+
+        // Parse currency strings like "$95.2M" or "$1.3B" to numbers for risk flag evaluation
+        function parseCurrency(v: string | number | null): number | null {
+          if (v === null || v === undefined) return null;
+          if (typeof v === "number") return isFinite(v) ? v : null;
+          const s2 = String(v).replace(/[$,\s]/g, "");
+          const mult = s2.endsWith("B") ? 1e9 : s2.endsWith("M") ? 1e6 : s2.endsWith("K") ? 1e3 : 1;
+          const n2 = parseFloat(s2);
+          return isFinite(n2) ? n2 * mult : null;
+        }
+
+        sm[ticker] = {
+          cash:             parseCurrency(cashRaw),
+          debt:             parseCurrency(debtRaw),
+          nextEarningsDate: nextEarningsRaw ?? null,
+        };
       }
+
       if (Object.keys(revMap).length > 0) setRevGrowthMap(revMap);
       if (Object.keys(volMap).length > 0) setAvgVolMap(volMap);
+      if (Object.keys(sm).length > 0)     setSuppMap(sm);
     } finally {
       setLoading(false);
     }
@@ -465,10 +489,10 @@ export default function StocksPage() {
                         averageVolume: avgVolMap[s.ticker] ?? null,
                         revenueGrowth: s.revenueGrowth || null,
                         lastEarningsDate: s.lastEarningsDate,
-                        nextEarningsDate: null,
+                        nextEarningsDate: suppMap[s.ticker]?.nextEarningsDate ?? null,
                         sma200: null,
-                        cash: null,
-                        totalDebt: null,
+                        cash: suppMap[s.ticker]?.cash ?? null,
+                        totalDebt: suppMap[s.ticker]?.debt ?? null,
                       })} />
                       <ResearchChecklist
                         ticker={s.ticker}
