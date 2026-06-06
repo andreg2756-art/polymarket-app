@@ -280,6 +280,7 @@ export default function StocksPage() {
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [showBacktest, setShowBacktest] = useState(false);
   const [revGrowthMap, setRevGrowthMap] = useState<RevGrowthMap>({});
+  const [avgVolMap, setAvgVolMap] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -290,25 +291,39 @@ export default function StocksPage() {
       setStocks(filtered);
       if (data[0]?.updatedAt) setUpdatedAt(data[0].updatedAt);
 
-      // For stocks with no DB revenue growth, fetch from supplemental API in background
-      const missing = filtered.filter((s) => s.revenueGrowth === 0 || s.revenueGrowth === null);
-      if (missing.length > 0) {
-        const results = await Promise.allSettled(
-          missing.map((s) =>
-            fetch(`/api/stocks/supplemental/${s.ticker}`)
-              .then((r) => r.json())
-              .then((d) => ({ ticker: s.ticker, value: (d?.revenueGrowthTTM?.value ?? d?.revenueGrowth?.value) as string | null ?? null }))
-              .catch(() => ({ ticker: s.ticker, value: null }))
-          )
-        );
-        const map: RevGrowthMap = {};
-        for (const r of results) {
-          if (r.status === "fulfilled" && r.value.value) {
-            map[r.value.ticker] = r.value.value;
-          }
+      // Fetch supplemental data in background for all stocks.
+      // Used for: avgVolume30D (all stocks) + revenue growth string (stocks with DB value 0).
+      const suppResults = await Promise.allSettled(
+        filtered.map((s) =>
+          fetch(`/api/stocks/supplemental/${s.ticker}`)
+            .then((r) => r.json())
+            .then((d) => ({
+              ticker:    s.ticker,
+              revGrowth: (d?.revenueGrowthTTM?.value ?? d?.revenueGrowth?.value) as string | null ?? null,
+              avgVolRaw: d?.avgDailyVolume?.value as string | number | null ?? null,
+            }))
+            .catch(() => ({ ticker: s.ticker, revGrowth: null, avgVolRaw: null }))
+        )
+      );
+
+      const revMap: RevGrowthMap = {};
+      const volMap: Record<string, number> = {};
+      for (const r of suppResults) {
+        if (r.status !== "fulfilled") continue;
+        const { ticker, revGrowth, avgVolRaw } = r.value;
+        // Revenue growth fallback for stocks with 0 in DB
+        const s = filtered.find((x) => x.ticker === ticker);
+        if (revGrowth && (!s?.revenueGrowth || s.revenueGrowth === 0)) revMap[ticker] = revGrowth;
+        // avgVolume30D — parse "1,234,567" or numeric
+        if (avgVolRaw !== null && avgVolRaw !== undefined) {
+          const n = typeof avgVolRaw === "number"
+            ? avgVolRaw
+            : parseFloat(String(avgVolRaw).replace(/,/g, ""));
+          if (isFinite(n) && n > 0) volMap[ticker] = Math.round(n);
         }
-        if (Object.keys(map).length > 0) setRevGrowthMap(map);
       }
+      if (Object.keys(revMap).length > 0) setRevGrowthMap(revMap);
+      if (Object.keys(volMap).length > 0) setAvgVolMap(volMap);
     } finally {
       setLoading(false);
     }
@@ -447,7 +462,7 @@ export default function StocksPage() {
                         change1M: s.change1M,
                         change3M: s.change3M,
                         relativeVolume: s.relativeVolume,
-                        averageVolume: null,
+                        averageVolume: avgVolMap[s.ticker] ?? null,
                         revenueGrowth: s.revenueGrowth || null,
                         lastEarningsDate: s.lastEarningsDate,
                         nextEarningsDate: null,
