@@ -300,9 +300,9 @@ export default function ResearchChecklist(props: Props) {
                 />
               </section>
 
-              {/* Small-Cap Risk */}
+              {/* Balance Sheet */}
               <section>
-                <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Small-Cap Risk</h3>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Balance Sheet</h3>
                 <Row
                   label="Cash"
                   value={val(supp?.cash)}
@@ -312,11 +312,11 @@ export default function ResearchChecklist(props: Props) {
                 <Row
                   label="Total Debt"
                   value={val(supp?.totalDebt)}
-                  status={supp?.totalDebt?.value ? "neutral" : "neutral"}
+                  status="neutral"
                   source={sourceTag(supp?.totalDebt)}
                 />
                 <Row
-                  label="Net Cash / Debt"
+                  label="Net Cash / Net Debt"
                   value={val(supp?.netCash)}
                   status={val(supp?.netCash).toLowerCase().includes("net cash") ? "ok" : val(supp?.netCash).toLowerCase().includes("net debt") ? "warn" : "neutral"}
                   source={sourceTag(supp?.netCash)}
@@ -333,17 +333,22 @@ export default function ResearchChecklist(props: Props) {
                   status={val(supp?.dilutionRisk).includes("⚠") ? "warn" : val(supp?.dilutionRisk).toLowerCase().includes("minimal") ? "ok" : "neutral"}
                   source={sourceTag(supp?.dilutionRisk)}
                 />
-                <Row
-                  label="Insider Ownership"
-                  value={val(supp?.insiderOwnership)}
-                  status={supp?.insiderOwnership?.value ? "neutral" : "neutral"}
-                  source={sourceTag(supp?.insiderOwnership)}
-                />
+              </section>
+
+              {/* Ownership */}
+              <section>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Ownership</h3>
                 <Row
                   label="Institutional Ownership"
                   value={val(supp?.institutionalOwnership)}
                   status={supp?.institutionalOwnership?.value ? "ok" : "neutral"}
                   source={sourceTag(supp?.institutionalOwnership)}
+                />
+                <Row
+                  label="Insider Ownership"
+                  value={val(supp?.insiderOwnership)}
+                  status="neutral"
+                  source={sourceTag(supp?.insiderOwnership)}
                 />
               </section>
 

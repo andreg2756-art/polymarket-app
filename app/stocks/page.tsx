@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { SHARES_OUTSTANDING } from "@/lib/small-cap-universe";
 import { TableSkeleton } from "@/components/Skeleton";
 import { exportCSV } from "@/lib/analytics";
 import Disclaimer from "@/components/stocks/Disclaimer";
@@ -97,6 +98,17 @@ function Change({ v }: { v: number }) {
   if (!isFinite(v)) return <span className="text-gray-500">N/A</span>;
   const color = v > 0 ? "text-emerald-400" : v < 0 ? "text-red-400" : "text-gray-500";
   return <span className={color}>{v > 0 ? "+" : ""}{v.toFixed(1)}%</span>;
+}
+
+// Market cap validation helpers
+function marketCapCalculated(s: Stock): number {
+  const shares = SHARES_OUTSTANDING[s.ticker] ?? 0;
+  return shares > 0 ? Math.round(s.price * shares * 1_000_000) : 0;
+}
+function marketCapDiscrepancy(s: Stock): boolean {
+  const calc = marketCapCalculated(s);
+  if (!s.marketCap || !calc) return false;
+  return Math.abs(calc - s.marketCap) / s.marketCap > 0.1;
 }
 
 // Risk badges — multiple can apply
@@ -201,6 +213,9 @@ function MediaOutlook({ ticker }: { ticker: string }) {
   );
 }
 
+// Revenue growth strings fetched lazily for stocks with 0 in DB
+type RevGrowthMap = Record<string, string>;
+
 export default function StocksPage() {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [loading, setLoading] = useState(true);
@@ -208,14 +223,36 @@ export default function StocksPage() {
   const [msg, setMsg] = useState("");
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [showBacktest, setShowBacktest] = useState(false);
+  const [revGrowthMap, setRevGrowthMap] = useState<RevGrowthMap>({});
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/stocks/screener?sortBy=rank`);
       const data = await res.json();
-      setStocks(data.filter((s: Stock) => s.rank <= 50));
+      const filtered: Stock[] = data.filter((s: Stock) => s.rank <= 50);
+      setStocks(filtered);
       if (data[0]?.updatedAt) setUpdatedAt(data[0].updatedAt);
+
+      // For stocks with no DB revenue growth, fetch from supplemental API in background
+      const missing = filtered.filter((s) => s.revenueGrowth === 0 || s.revenueGrowth === null);
+      if (missing.length > 0) {
+        const results = await Promise.allSettled(
+          missing.map((s) =>
+            fetch(`/api/stocks/supplemental/${s.ticker}`)
+              .then((r) => r.json())
+              .then((d) => ({ ticker: s.ticker, value: d?.revenueGrowth?.value as string | null ?? null }))
+              .catch(() => ({ ticker: s.ticker, value: null }))
+          )
+        );
+        const map: RevGrowthMap = {};
+        for (const r of results) {
+          if (r.status === "fulfilled" && r.value.value) {
+            map[r.value.ticker] = r.value.value;
+          }
+        }
+        if (Object.keys(map).length > 0) setRevGrowthMap(map);
+      }
     } finally {
       setLoading(false);
     }
@@ -300,7 +337,12 @@ export default function StocksPage() {
                   <td className="px-3 py-3 max-w-[160px] pt-4">
                     <p className="truncate text-gray-200 text-xs">{s.name}</p>
                     <span className="text-xs bg-gray-800 px-1.5 py-0.5 rounded text-gray-500 mt-0.5 inline-block">{s.sector || "—"}</span>
-                    <p className="text-xs text-gray-600 mt-0.5">{fmtCap(s.marketCap)}</p>
+                    <p className="text-xs text-gray-600 mt-0.5">
+                      {fmtCap(s.marketCap)}
+                      {marketCapDiscrepancy(s) && (
+                        <span className="ml-1 text-yellow-700 cursor-help" title={`Market cap discrepancy: stored ${fmtCap(s.marketCap)} vs price×shares ${fmtCap(marketCapCalculated(s))}. Prefer most recent data source.`}>⚠</span>
+                      )}
+                    </p>
                   </td>
 
                   <td className="px-3 py-3 text-white font-medium pt-4">${fmt(s.price)}</td>
@@ -308,11 +350,13 @@ export default function StocksPage() {
                   <td className="px-3 py-3 pt-4"><Change v={s.change3M} /></td>
                   <td className="px-3 py-3 text-gray-300 pt-4">{s.relativeVolume?.toFixed(1) ?? "N/A"}x</td>
 
-                  {/* Revenue Growth */}
+                  {/* Revenue Growth — DB value first, supplemental string fallback */}
                   <td className="px-3 py-3 pt-4">
-                    {s.revenueGrowth !== 0
+                    {s.revenueGrowth !== 0 && s.revenueGrowth !== null
                       ? <Change v={s.revenueGrowth} />
-                      : <span className="text-gray-600 text-xs">N/A</span>}
+                      : revGrowthMap[s.ticker]
+                        ? <span className={`text-xs ${revGrowthMap[s.ticker].startsWith("-") ? "text-red-400" : "text-emerald-400"}`}>{revGrowthMap[s.ticker]}</span>
+                        : <span className="text-gray-600 text-xs">N/A</span>}
                   </td>
 
                   {/* Risk badges */}

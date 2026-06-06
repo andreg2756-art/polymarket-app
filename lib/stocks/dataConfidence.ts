@@ -1,5 +1,5 @@
 // /lib/stocks/dataConfidence.ts
-// Calculates a data confidence score based on how many factors are available.
+// Weighted confidence score — high-importance fields count more than low-importance ones.
 
 import type { EnhancedStockScore } from "./types";
 import type { ShortInterestResult } from "./shortInterest";
@@ -16,9 +16,14 @@ export interface DataConfidenceResult {
   missingFactors: string[];
 }
 
-interface FactorCheck {
+// Weight tiers:
+//   high   = 3  (market cap, revenue growth, cash/debt)
+//   medium = 2  (float, ownership, earnings date, RS rank)
+//   low    = 1  (short interest, news sentiment, moving averages)
+interface WeightedFactor {
   name: string;
   available: boolean;
+  weight: 1 | 2 | 3;
 }
 
 function isAvailable(value: unknown): boolean {
@@ -31,39 +36,53 @@ function isAvailable(value: unknown): boolean {
 export function computeDataConfidence(
   score: EnhancedStockScore,
   shortInterest: ShortInterestResult | null,
-  marketCap: number | null
+  marketCap: number | null,
+  // Optional supplemental fields for cash/debt/ownership confidence
+  suppAvailable?: {
+    cash?: boolean;
+    totalDebt?: boolean;
+    insiderOwnership?: boolean;
+    institutionalOwnership?: boolean;
+  }
 ): DataConfidenceResult {
-  const checks: FactorCheck[] = [
-    { name: "Revenue Growth",   available: isAvailable(score.revenueGrowthScore?.value) },
-    { name: "Analyst/Risk Rating", available: isAvailable(score.riskQualityScore?.score) },
-    { name: "Earnings Date",    available: isAvailable(score.earningsRiskScore?.value) },
-    { name: "Short Interest",   available: shortInterest?.available === true && shortInterest?.isStale !== true },
-    { name: "News Sentiment",   available: isAvailable(score.newsSentiment?.score) },
-    { name: "Beta/Volatility",  available: isAvailable(score.volatilityScore?.score) },
-    { name: "Relative Volume",  available: isAvailable(score.volumeScore?.score) },
-    { name: "Moving Averages",  available: isAvailable(score?.volatilityScore?.score) }, // Available via TechnicalsPanel (separate fetch)
-    { name: "Market Cap",       available: isAvailable(marketCap) },
-    { name: "RS Rank",          available: isAvailable(score.rsRank?.score) },
+  const factors: WeightedFactor[] = [
+    // High importance
+    { name: "Market Cap",       available: isAvailable(marketCap),                         weight: 3 },
+    { name: "Revenue Growth",   available: isAvailable(score.revenueGrowthScore?.value),   weight: 3 },
+    { name: "Cash / Debt",      available: suppAvailable?.cash === true || suppAvailable?.totalDebt === true, weight: 3 },
+    // Medium importance
+    { name: "Float",            available: isAvailable(score.volumeScore?.score),           weight: 2 },
+    { name: "Earnings Date",    available: isAvailable(score.earningsRiskScore?.value),     weight: 2 },
+    { name: "RS Rank",          available: isAvailable(score.rsRank?.score),                weight: 2 },
+    { name: "Ownership",        available: suppAvailable?.insiderOwnership === true || suppAvailable?.institutionalOwnership === true, weight: 2 },
+    { name: "Risk Quality",     available: isAvailable(score.riskQualityScore?.score),      weight: 2 },
+    // Low-medium importance
+    { name: "Short Interest",   available: shortInterest?.available === true && shortInterest?.isStale !== true, weight: 1 },
+    { name: "News Sentiment",   available: isAvailable(score.newsSentiment?.score),         weight: 1 },
+    { name: "Moving Averages",  available: isAvailable(score.volatilityScore?.score),       weight: 1 },
   ];
 
-  const available = checks.filter((c) => c.available);
-  const missing   = checks.filter((c) => !c.available);
-  const pct = Math.round((available.length / checks.length) * 100);
+  const totalWeight     = factors.reduce((s, f) => s + f.weight, 0);
+  const availableWeight = factors.filter((f) => f.available).reduce((s, f) => s + f.weight, 0);
+  const pct = Math.round((availableWeight / totalWeight) * 100);
+
+  const available = factors.filter((f) => f.available);
+  const missing   = factors.filter((f) => !f.available);
 
   let label: DataConfidenceResult["label"] = "Low";
   let color = "text-red-400";
-  if (pct >= 80) { label = "High";   color = "text-emerald-400"; }
-  else if (pct >= 50) { label = "Medium"; color = "text-yellow-400"; }
+  if (pct >= 75) { label = "High";   color = "text-emerald-400"; }
+  else if (pct >= 45) { label = "Medium"; color = "text-yellow-400"; }
 
   return {
     confidencePct: pct,
     score: pct,
     availableCount: available.length,
-    totalFactors: checks.length,
+    totalFactors: factors.length,
     level: label,
     label,
     color,
-    availableFactors: available.map((c) => c.name),
-    missingFactors: missing.map((c) => c.name),
+    availableFactors: available.map((f) => f.name),
+    missingFactors: missing.map((f) => f.name),
   };
 }

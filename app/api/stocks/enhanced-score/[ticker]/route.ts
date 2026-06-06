@@ -4,6 +4,7 @@ import { getShortInterest } from "@/lib/stocks/shortInterest";
 import { computeDataConfidence } from "@/lib/stocks/dataConfidence";
 import { prisma } from "@/lib/prisma";
 import { getExtraStockMetrics, fetchYahooDailyCandles } from "@/lib/stocks/technicals";
+import { getSupplementalStockData } from "@/lib/stockSupplementalData";
 
 export async function GET(
   _req: Request,
@@ -31,12 +32,20 @@ export async function GET(
     const floatTurnover = techMetrics?.floatTurnover ?? null;
 
     // All fetches in parallel — each has its own null fallback
-    const [enhancedScore, shortInterest] = await Promise.all([
+    const [enhancedScore, shortInterest, suppData] = await Promise.all([
       computeEnhancedScore(ticker, change1M, change3M, relativeVolume, revenueGrowth, floatTurnover),
       getShortInterest(ticker).catch(() => null),
+      getSupplementalStockData(ticker).catch(() => null),
     ]);
 
-    const confidence = computeDataConfidence(enhancedScore, shortInterest, marketCap);
+    const suppAvailable = {
+      cash:                   suppData?.cash?.value !== null && suppData?.cash?.value !== undefined,
+      totalDebt:              suppData?.totalDebt?.value !== null && suppData?.totalDebt?.value !== undefined,
+      insiderOwnership:       suppData?.insiderOwnership?.value !== null && suppData?.insiderOwnership?.value !== undefined,
+      institutionalOwnership: suppData?.institutionalOwnership?.value !== null && suppData?.institutionalOwnership?.value !== undefined,
+    };
+
+    const confidence = computeDataConfidence(enhancedScore, shortInterest, marketCap, suppAvailable);
 
     return NextResponse.json({
       ...enhancedScore,
