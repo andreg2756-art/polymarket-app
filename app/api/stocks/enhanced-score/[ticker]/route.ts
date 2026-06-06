@@ -50,10 +50,28 @@ export async function GET(
 
     const confidence = computeDataConfidence(enhancedScore, shortInterest, marketCap, suppAvailable);
 
+    // Compute revenue trend for panel display
+    const ttm    = revRaw.ttm;
+    const qtr    = revRaw.qtrYoY;
+    const revTrend: {
+      ttm: number | null; qtr: number | null;
+      status: "Positive" | "Negative" | "Mixed" | null;
+      modifier: number;
+    } = {
+      ttm,
+      qtr,
+      status: ttm !== null && qtr !== null
+        ? (ttm > 0 && qtr > 0 ? "Positive" : ttm < 0 && qtr < 0 ? "Negative" : "Mixed")
+        : ttm !== null ? (ttm > 0 ? "Positive" : "Negative")
+        : null,
+      modifier: enhancedScore.revenueGrowthScore?.modifier ?? 0,
+    };
+
     return NextResponse.json({
       ...enhancedScore,
       shortInterest,
       dataConfidence: confidence,
+      revTrend,
     });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });

@@ -9,25 +9,50 @@ import { fetchPolygonNews, type PolygonArticle } from "./massive";
 // ── Publisher weights ──────────────────────────────────────────────────────
 
 const PUBLISHER_WEIGHTS: Record<string, number> = {
-  "reuters":        1.0,
-  "bloomberg":      1.0,
-  "barrons":        0.9,
-  "barron's":       0.9,
-  "wall street journal": 0.9,
-  "wsj":            0.9,
-  "financial times": 0.85,
-  "ft":             0.85,
-  "cnbc":           0.75,
-  "marketwatch":    0.7,
-  "seeking alpha":  0.65,
-  "business wire":  0.6,
-  "pr newswire":    0.6,
-  "globe newswire": 0.6,
-  "benzinga":       0.55,
-  "motley fool":    0.5,
+  // Tier 1 — major newswires & financial press
+  "reuters":              1.0,
+  "associated press":     1.0,
+  "ap news":              1.0,
+  "bloomberg":            1.0,
+  "barrons":              0.9,
+  "barron's":             0.9,
+  "wall street journal":  0.9,
+  "wsj":                  0.9,
+  "financial times":      0.85,
+  "ft":                   0.85,
+  // Tier 2 — financial media
+  "cnbc":                 0.75,
+  "marketwatch":          0.75,
+  "zacks":                0.75,
+  "motley fool":          0.75,
+  "investing.com":        0.75,
+  "thestreet":            0.7,
+  "seeking alpha":        0.65,
+  // Tier 3 — press releases (factual but unverified/promotional)
+  "business wire":        0.4,
+  "pr newswire":          0.4,
+  "globe newswire":       0.4,
+  "accesswire":           0.4,
+  "benzinga":             0.45,
 };
 
-function publisherWeight(name: string): number {
+// Law-firm solicitation patterns — class-action notices have near-zero signal value
+const LAW_FIRM_PATTERNS = [
+  /\bclass.?action\b/i,
+  /\bshareholder.{0,20}(rights|lawsuit|suit|notice|alert|investigation)\b/i,
+  /\binvestor.{0,20}(rights|alert|notice|lawsuit)\b/i,
+  /\b(levi|faruqi|pomerantz|rosen law|robbins geller|bernstein liebhard)\b/i,
+  /\bsecurities (fraud|violation|class)\b/i,
+  /\bencourage.{0,30}contact.{0,30}attorney\b/i,
+];
+
+function publisherWeight(name: string, title?: string): number {
+  // Suppress law-firm solicitations regardless of publisher
+  if (title) {
+    for (const pat of LAW_FIRM_PATTERNS) {
+      if (pat.test(title)) return 0.1;
+    }
+  }
   const lower = name.toLowerCase();
   for (const [key, w] of Object.entries(PUBLISHER_WEIGHTS)) {
     if (lower.includes(key)) return w;
@@ -66,7 +91,7 @@ function scorePolygonArticles(articles: PolygonArticle[]): NewsSentimentDetail {
   let topPosWeight = -1, topNegWeight = -1;
 
   for (const article of articles) {
-    const pubWeight  = publisherWeight(article.publisher?.name ?? "");
+    const pubWeight  = publisherWeight(article.publisher?.name ?? "", article.title);
     const recWeight  = recencyMultiplier(article.published_utc);
     const weight     = pubWeight * recWeight;
     totalWeight     += weight;
@@ -257,7 +282,7 @@ function scoreYahooHeadlines(headlines: Awaited<ReturnType<typeof fetchYahooHead
 
   for (const h of headlines) {
     const raw    = keywordSentiment(h.title);
-    const pubW   = publisherWeight(h.publisher);
+    const pubW   = publisherWeight(h.publisher, h.title);
     const recW   = h.published ? recencyMultiplier(new Date(h.published * 1000).toISOString()) : 0.5;
     const weight = pubW * recW;
     totalWeight += weight;
