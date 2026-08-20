@@ -25,13 +25,20 @@ export async function GET() {
     traders.map((t) => {
       const ps = byWallet.get(t.proxyWallet) ?? [];
       const sorted = [...ps].sort((a, b) => b.cashPnl - a.cashPnl);
+      const totalCurrentValue = ps.reduce((s, p) => s + p.currentValue, 0);
+      const totalCashPnl = ps.reduce((s, p) => s + p.cashPnl, 0);
+      const costBasis = totalCurrentValue - totalCashPnl;
+      const roiPct = costBasis > 0 ? Math.round((totalCashPnl / costBasis) * 1000) / 10 : 0;
+      const winRate = ps.length > 0 ? Math.round((ps.filter((p) => p.cashPnl > 0).length / ps.length) * 100) : 0;
       return {
         ...t,
         positionCount: ps.length,
-        totalCurrentValue: ps.reduce((s, p) => s + p.currentValue, 0),
+        totalCurrentValue,
         totalSize: ps.reduce((s, p) => s + p.size, 0),
         bestPosition: sorted[0] ?? null,
         worstPosition: sorted[sorted.length - 1] ?? null,
+        roiPct,
+        winRate,
       };
     })
   );

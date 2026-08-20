@@ -140,11 +140,14 @@ model StockNews {
 }
 
 model WatchlistItem {
-  id        String   @id @default(cuid())
-  ticker    String
-  stock     Stock    @relation(fields: [ticker], references: [ticker], onDelete: Cascade)
-  listName  String   @default("default")
-  createdAt DateTime @default(now())
+  id            String    @id @default(cuid())
+  ticker        String
+  stock         Stock     @relation(fields: [ticker], references: [ticker], onDelete: Cascade)
+  listName      String    @default("default")
+  targetPrice   Float?
+  targetScore   Float?
+  lastAlertedAt DateTime?
+  createdAt     DateTime  @default(now())
 
   @@unique([ticker, listName])
 }

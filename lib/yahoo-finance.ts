@@ -19,6 +19,36 @@ export interface YahooChart {
   week52Low:  number | null; // from meta.fiftyTwoWeekLow
 }
 
+export interface YahooHistoryPoint {
+  date: string; // YYYY-MM-DD
+  close: number;
+}
+
+export async function getYahooHistory(ticker: string): Promise<YahooHistoryPoint[] | null> {
+  try {
+    const res = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`,
+      { headers: { "User-Agent": "Mozilla/5.0" }, next: { revalidate: 3600 } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const result = data?.chart?.result?.[0];
+    if (!result) return null;
+
+    const timestamps: number[] = result.timestamp ?? [];
+    const closes: (number | null)[] = result.indicators?.quote?.[0]?.close ?? [];
+    const points: YahooHistoryPoint[] = [];
+    for (let i = 0; i < timestamps.length; i++) {
+      const close = closes[i];
+      if (close === null || close === undefined) continue;
+      points.push({ date: new Date(timestamps[i] * 1000).toISOString().slice(0, 10), close });
+    }
+    return points;
+  } catch {
+    return null;
+  }
+}
+
 export async function getYahooChart(ticker: string): Promise<YahooChart | null> {
   try {
     // Use 1yr range so avg30Vol and 3M change both have enough data

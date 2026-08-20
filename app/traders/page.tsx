@@ -16,11 +16,16 @@ interface TraderRow {
   totalSize: number;
   bestPosition: { marketTitle: string; cashPnl: number } | null;
   worstPosition: { marketTitle: string; cashPnl: number } | null;
+  roiPct: number;
+  winRate: number;
 }
+
+type SortKey = "rank" | "roiPct" | "winRate";
 
 export default function TradersPage() {
   const [traders, setTraders] = useState<TraderRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<SortKey>("rank");
 
   useEffect(() => {
     fetch("/api/traders")
@@ -28,6 +33,10 @@ export default function TradersPage() {
       .then(setTraders)
       .finally(() => setLoading(false));
   }, []);
+
+  const sorted = [...traders].sort((a, b) =>
+    sortBy === "rank" ? a.rank - b.rank : b[sortBy] - a[sortBy]
+  );
 
   function handleExport() {
     exportCSV(
@@ -40,6 +49,8 @@ export default function TradersPage() {
         positions: t.positionCount,
         totalValue: t.totalCurrentValue,
         totalSize: t.totalSize,
+        roiPct: t.roiPct,
+        winRate: t.winRate,
       })),
       "whale-traders.csv"
     );
@@ -49,23 +60,34 @@ export default function TradersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Top 100 Traders</h1>
-        <button onClick={handleExport} className="text-xs text-blue-400 hover:text-blue-300 border border-blue-800 px-3 py-1 rounded">
-          Export CSV
-        </button>
+        <div className="flex items-center gap-3">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortKey)}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-blue-500"
+          >
+            <option value="rank">Sort: Rank</option>
+            <option value="roiPct">Sort: ROI %</option>
+            <option value="winRate">Sort: Win Rate</option>
+          </select>
+          <button onClick={handleExport} className="text-xs text-blue-400 hover:text-blue-300 border border-blue-800 px-3 py-1 rounded">
+            Export CSV
+          </button>
+        </div>
       </div>
 
-      {loading ? <TableSkeleton rows={10} cols={9} /> : (
+      {loading ? <TableSkeleton rows={10} cols={11} /> : (
         <div className="rounded-xl border border-gray-800 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-900 text-gray-400 text-xs uppercase">
               <tr>
-                {["Rank","Username","Wallet","Monthly PnL","Volume","Positions","Total Value","Best","Worst"].map((h) => (
+                {["Rank","Username","Wallet","Monthly PnL","Volume","Positions","Total Value","ROI %","Win Rate","Best","Worst"].map((h) => (
                   <th key={h} className="px-4 py-3 text-left whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
-              {traders.map((t) => (
+              {sorted.map((t) => (
                 <tr key={t.id} className="hover:bg-gray-900/50">
                   <td className="px-4 py-3 text-gray-500">#{t.rank}</td>
                   <td className="px-4 py-3">
@@ -76,6 +98,10 @@ export default function TradersPage() {
                   <td className="px-4 py-3 text-gray-300">{t.monthlyVolume > 0 ? formatUSD(t.monthlyVolume) : "N/A"}</td>
                   <td className="px-4 py-3 text-gray-300">{t.positionCount}</td>
                   <td className="px-4 py-3 text-green-400">{formatUSD(t.totalCurrentValue)}</td>
+                  <td className={`px-4 py-3 font-medium ${t.roiPct >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    {t.roiPct >= 0 ? "+" : ""}{t.roiPct.toFixed(1)}%
+                  </td>
+                  <td className="px-4 py-3 text-gray-300">{t.winRate}%</td>
                   <td className="px-4 py-3 text-xs max-w-[140px]">
                     {t.bestPosition ? (
                       <span className="text-green-400 truncate block" title={t.bestPosition.marketTitle}>

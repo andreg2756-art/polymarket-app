@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
+import { runBacktest } from "@/lib/backtest";
 
-// TODO: Connect a real backtest engine (e.g. Backtrader, Zipline, or a data vendor)
-// that can replay historical screener rankings and compute forward returns.
 export async function GET() {
-  return NextResponse.json({
-    available: false,
-    message: "Backtest engine not connected yet",
-  });
+  const result = await runBacktest();
+  return NextResponse.json(result);
 }

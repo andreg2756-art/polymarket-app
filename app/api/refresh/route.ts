@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchLeaderboard, fetchPositions } from "@/lib/polymarket";
 import { groupPositions } from "@/lib/analytics";
+import { sendEmail } from "@/lib/notify";
+
+const FAILED_USERS_ALERT_THRESHOLD = 10;
 
 export async function POST() {
   const run = await prisma.refreshRun.create({ data: { status: "running" } });
@@ -75,6 +78,13 @@ export async function POST() {
       },
     });
 
+    if (failedUsers > FAILED_USERS_ALERT_THRESHOLD) {
+      await sendEmail({
+        subject: `Polymarket refresh: ${failedUsers} traders failed to load`,
+        html: `<p>Refresh run <code>${run.id}</code> completed but ${failedUsers} of ${traders.length} traders failed to load positions.</p>`,
+      });
+    }
+
     return NextResponse.json({ success: true, run: updated });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -82,6 +92,12 @@ export async function POST() {
       where: { id: run.id },
       data: { status: "failed", completedAt: new Date(), errorMessage: msg },
     });
+    await sendEmail({
+      subject: "Polymarket refresh failed",
+      html: `<p>Refresh run <code>${run.id}</code> failed with error:</p><pre>${msg}</pre>`,
+    });
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
+
+export const GET = POST;

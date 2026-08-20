@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getYahooChart, TICKER_SECTOR } from "@/lib/yahoo-finance";
 import { SMALL_CAP_UNIVERSE, SHARES_OUTSTANDING, SECTOR_UNIVERSE } from "@/lib/small-cap-universe";
 import { getRevenueGrowthScore } from "@/lib/stocks/revenueGrowth";
+import { sendEmail } from "@/lib/notify";
+import { checkWatchlistAlerts } from "@/lib/watchlistAlerts";
 
 export const maxDuration = 60;
 
@@ -114,11 +116,23 @@ export async function POST() {
       where: { ticker: { notIn: SMALL_CAP_UNIVERSE } },
     });
 
+    try {
+      await checkWatchlistAlerts();
+    } catch (err) {
+      console.error("checkWatchlistAlerts failed:", err);
+    }
+
     return NextResponse.json({ success: true, count: ranked.length, sectors: Object.keys(SECTOR_UNIVERSE).length });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    await sendEmail({
+      subject: "Stocks refresh failed",
+      html: `<p>The stocks screener refresh failed with error:</p><pre>${msg}</pre>`,
+    });
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
+
+export const GET = POST;
 
 type YahooChart = NonNullable<Awaited<ReturnType<typeof getYahooChart>>>;

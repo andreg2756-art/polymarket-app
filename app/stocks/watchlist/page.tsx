@@ -8,6 +8,8 @@ interface WatchlistItem {
   id: string;
   ticker: string;
   listName: string;
+  targetPrice: number | null;
+  targetScore: number | null;
   stock: {
     ticker: string; name: string; price: number; bullishScore: number;
     change1M: number; revenueGrowth: number; analystRating: string | null; marketCap: number;
@@ -17,9 +19,24 @@ interface WatchlistItem {
 export default function WatchlistPage() {
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [drafts, setDrafts] = useState<Record<string, { targetPrice: string; targetScore: string }>>({});
+  const [saving, setSaving] = useState<string | null>(null);
 
   const load = () => {
-    fetch("/api/stocks/watchlist").then((r) => r.json()).then(setItems).finally(() => setLoading(false));
+    fetch("/api/stocks/watchlist")
+      .then((r) => r.json())
+      .then((data: WatchlistItem[]) => {
+        setItems(data);
+        setDrafts(
+          Object.fromEntries(
+            data.map((i) => [
+              i.ticker,
+              { targetPrice: i.targetPrice?.toString() ?? "", targetScore: i.targetScore?.toString() ?? "" },
+            ])
+          )
+        );
+      })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
@@ -27,6 +44,22 @@ export default function WatchlistPage() {
   async function remove(ticker: string) {
     await fetch("/api/stocks/watchlist", { method: "DELETE", body: JSON.stringify({ ticker }), headers: { "Content-Type": "application/json" } });
     load();
+  }
+
+  async function saveTargets(ticker: string) {
+    setSaving(ticker);
+    const draft = drafts[ticker];
+    await fetch("/api/stocks/watchlist", {
+      method: "PATCH",
+      body: JSON.stringify({
+        ticker,
+        targetPrice: draft.targetPrice === "" ? null : Number(draft.targetPrice),
+        targetScore: draft.targetScore === "" ? null : Number(draft.targetScore),
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+    load();
+    setSaving(null);
   }
 
   return (
@@ -47,8 +80,8 @@ export default function WatchlistPage() {
         <div className="rounded-xl border border-gray-800 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-900 text-gray-400 text-xs uppercase">
-              <tr>{["Ticker","Company","Price","1M","Rev Growth","Rating","Score",""].map((h) => (
-                <th key={h} className="px-4 py-3 text-left">{h}</th>
+              <tr>{["Ticker","Company","Price","1M","Rev Growth","Rating","Score","Alert Price","Alert Score",""].map((h) => (
+                <th key={h} className="px-4 py-3 text-left whitespace-nowrap">{h}</th>
               ))}</tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
@@ -62,6 +95,31 @@ export default function WatchlistPage() {
                   <td className={`px-4 py-3 text-xs ${item.stock.analystRating?.includes("Buy") ? "text-emerald-400" : "text-gray-400"}`}>{item.stock.analystRating || "N/A"}</td>
                   <td className="px-4 py-3"><span className="bg-emerald-900 text-emerald-300 text-xs px-2 py-0.5 rounded-full">{item.stock.bullishScore}</span></td>
                   <td className="px-4 py-3">
+                    <input
+                      type="number"
+                      value={drafts[item.ticker]?.targetPrice ?? ""}
+                      onChange={(e) => setDrafts((d) => ({ ...d, [item.ticker]: { ...d[item.ticker], targetPrice: e.target.value } }))}
+                      placeholder="—"
+                      className="w-20 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs focus:outline-none focus:border-emerald-500"
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="number"
+                      value={drafts[item.ticker]?.targetScore ?? ""}
+                      onChange={(e) => setDrafts((d) => ({ ...d, [item.ticker]: { ...d[item.ticker], targetScore: e.target.value } }))}
+                      placeholder="—"
+                      className="w-16 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs focus:outline-none focus:border-emerald-500"
+                    />
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <button
+                      onClick={() => saveTargets(item.ticker)}
+                      disabled={saving === item.ticker}
+                      className="text-xs text-emerald-400 hover:text-emerald-300 mr-3 disabled:opacity-50"
+                    >
+                      {saving === item.ticker ? "Saving…" : "Save"}
+                    </button>
                     <button onClick={() => remove(item.ticker)} className="text-xs text-red-400 hover:text-red-300">Remove</button>
                   </td>
                 </tr>

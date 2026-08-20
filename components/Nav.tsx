@@ -6,6 +6,7 @@ const whaleLinks = [
   { href: "/", label: "Dashboard" },
   { href: "/markets", label: "Markets" },
   { href: "/traders", label: "Traders" },
+  { href: "/signals", label: "Signals" },
   { href: "/history", label: "History" },
 ];
 

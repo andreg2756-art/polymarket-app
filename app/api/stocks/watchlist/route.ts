@@ -24,3 +24,15 @@ export async function DELETE(req: Request) {
   await prisma.watchlistItem.deleteMany({ where: { ticker, listName } });
   return NextResponse.json({ success: true });
 }
+
+export async function PATCH(req: Request) {
+  const { ticker, listName = "default", targetPrice, targetScore } = await req.json();
+  const item = await prisma.watchlistItem.updateMany({
+    where: { ticker, listName },
+    data: {
+      targetPrice: targetPrice === null || targetPrice === undefined ? null : Number(targetPrice),
+      targetScore: targetScore === null || targetScore === undefined ? null : Number(targetScore),
+    },
+  });
+  return NextResponse.json({ success: true, updated: item.count });
+}
