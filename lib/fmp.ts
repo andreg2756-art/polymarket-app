@@ -134,10 +134,10 @@ export interface FMPProfile {
 export interface FMPEarnings {
   date: string;
   symbol: string;
-  eps: number;
-  epsEstimated: number;
-  revenue: number;
-  revenueEstimated: number;
+  epsActual: number | null;
+  epsEstimated: number | null;
+  revenueActual: number | null;
+  revenueEstimated: number | null;
 }
 
 export async function screenSmallCaps(): Promise<FMPScreenerResult[]> {
@@ -190,7 +190,8 @@ export async function getProfile(ticker: string): Promise<FMPProfile | null> {
 }
 
 export async function getIncomeStatements(ticker: string): Promise<FMPIncomeStatement[]> {
-  return get<FMPIncomeStatement[]>(`/income-statement`, { symbol: ticker, limit: "8" });
+  // Current plan caps 'limit' at 5 for this endpoint — only [0]/[1] are used anyway.
+  return get<FMPIncomeStatement[]>(`/income-statement`, { symbol: ticker, limit: "5" });
 }
 
 export async function getInsiderTrades(ticker: string): Promise<FMPInsiderTrade[]> {
@@ -207,7 +208,7 @@ export async function getNews(ticker: string): Promise<FMPNews[]> {
 }
 
 export async function getEarnings(ticker: string): Promise<FMPEarnings[]> {
-  return get<FMPEarnings[]>(`/historical/earning_calendar`, { symbol: ticker, limit: "4" });
+  return get<FMPEarnings[]>(`/earnings`, { symbol: ticker, limit: "4" });
 }
 
 export async function getPriceHistory(ticker: string, from: string, to: string) {

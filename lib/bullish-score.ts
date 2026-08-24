@@ -48,8 +48,10 @@ export function computeBullishScore(inputs: ScoreInputs): ScoreBreakdown {
 
   // Earnings beat (15 pts)
   const lastEarnings = earnings[0];
-  const earningsBeat = lastEarnings ? lastEarnings.eps > lastEarnings.epsEstimated : false;
-  const revenueBeat = lastEarnings ? lastEarnings.revenue > lastEarnings.revenueEstimated : false;
+  const earningsBeat = lastEarnings?.epsActual !== null && lastEarnings?.epsActual !== undefined && lastEarnings?.epsEstimated !== null
+    ? lastEarnings.epsActual > lastEarnings.epsEstimated! : false;
+  const revenueBeat = lastEarnings?.revenueActual !== null && lastEarnings?.revenueActual !== undefined && lastEarnings?.revenueEstimated !== null
+    ? lastEarnings.revenueActual > lastEarnings.revenueEstimated! : false;
   const earningsScore = (earningsBeat ? 10 : 0) + (revenueBeat ? 5 : 0);
 
   // Revenue growth (15 pts)

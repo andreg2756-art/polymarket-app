@@ -6,6 +6,7 @@ import { getRevenueGrowthScore } from "@/lib/stocks/revenueGrowth";
 import { sendEmail } from "@/lib/notify";
 import { checkWatchlistAlerts } from "@/lib/watchlistAlerts";
 import { computeEnhancedScore } from "@/lib/stocks/scoring";
+import { getEarningsPerformance } from "@/lib/stocks/earningsPerformance";
 
 export const maxDuration = 180;
 
@@ -147,16 +148,37 @@ export async function POST() {
       }
     }
 
+    // Real earnings/revenue-beat + EPS growth from FMP, replacing what used
+    // to be hardcoded false/0 for every stock. Scoped to the same shortlist
+    // as the enhanced score to keep FMP call volume bounded and predictable.
+    const earningsResults = await Promise.allSettled(
+      shortlist.map((s) => getEarningsPerformance(s.ticker).then((e) => ({ ticker: s.ticker, ...e })))
+    );
+    const earningsMap = new Map<string, Awaited<ReturnType<typeof getEarningsPerformance>>>();
+    for (const r of earningsResults) {
+      if (r.status === "fulfilled") earningsMap.set(r.value.ticker, r.value);
+    }
+
     const reranked = [...shortlist].sort(
       (a, b) => (finalScoreMap.get(b.ticker) ?? 0) - (finalScoreMap.get(a.ticker) ?? 0)
     );
     await Promise.all(
-      reranked.map((s, i) =>
-        prisma.stock.update({
+      reranked.map((s, i) => {
+        const earnings = earningsMap.get(s.ticker);
+        return prisma.stock.update({
           where: { ticker: s.ticker },
-          data: { bullishScore: finalScoreMap.get(s.ticker) ?? s.bullishScore, rank: i + 1 },
-        })
-      )
+          data: {
+            bullishScore: finalScoreMap.get(s.ticker) ?? s.bullishScore,
+            rank: i + 1,
+            ...(earnings ? {
+              earningsBeat: earnings.earningsBeat,
+              revenueBeat: earnings.revenueBeat,
+              epsGrowth: earnings.epsGrowth,
+              lastEarningsDate: earnings.lastEarningsDate,
+            } : {}),
+          },
+        });
+      })
     );
 
     // Snapshot history reflects the final (enhanced, where available) score

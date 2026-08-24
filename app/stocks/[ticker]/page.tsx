@@ -23,7 +23,7 @@ interface StockDetail {
   income: { date: string; revenue: number; netIncome: number; eps: number }[];
   insiders: { reportingName: string; transactionType: string; securitiesTransacted: number; price: number; transactionDate: string }[];
   analyst: { analystRatingsStrongBuy: number; analystRatingsBuy: number; analystRatingsHold: number; analystRatingsSell: number; analystRatingsStrongSell: number } | null;
-  earnings: { date: string; eps: number; epsEstimated: number; revenue: number; revenueEstimated: number }[];
+  earnings: { date: string; epsActual: number | null; epsEstimated: number | null; revenueActual: number | null; revenueEstimated: number | null }[];
   priceHistory: { date: string; close: number; volume: number }[];
 }
 
@@ -207,12 +207,12 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
                 {earnings.map((e, i) => (
                   <tr key={i} className="hover:bg-gray-900/50">
                     <td className="px-4 py-3 text-gray-400">{e.date}</td>
-                    <td className="px-4 py-3">${fmtNum(e.eps)}</td>
-                    <td className="px-4 py-3 text-gray-500">${fmtNum(e.epsEstimated)}</td>
-                    <td className="px-4 py-3">{e.eps > e.epsEstimated ? <span className="text-emerald-400">✓ Beat</span> : <span className="text-red-400">✗ Miss</span>}</td>
-                    <td className="px-4 py-3">${(e.revenue / 1e6).toFixed(1)}M</td>
-                    <td className="px-4 py-3 text-gray-500">${(e.revenueEstimated / 1e6).toFixed(1)}M</td>
-                    <td className="px-4 py-3">{e.revenue > e.revenueEstimated ? <span className="text-emerald-400">✓ Beat</span> : <span className="text-red-400">✗ Miss</span>}</td>
+                    <td className="px-4 py-3">{e.epsActual !== null ? `$${fmtNum(e.epsActual)}` : "—"}</td>
+                    <td className="px-4 py-3 text-gray-500">{e.epsEstimated !== null ? `$${fmtNum(e.epsEstimated)}` : "—"}</td>
+                    <td className="px-4 py-3">{e.epsActual === null || e.epsEstimated === null ? <span className="text-gray-500">Pending</span> : e.epsActual > e.epsEstimated ? <span className="text-emerald-400">✓ Beat</span> : <span className="text-red-400">✗ Miss</span>}</td>
+                    <td className="px-4 py-3">{e.revenueActual !== null ? `$${(e.revenueActual / 1e6).toFixed(1)}M` : "—"}</td>
+                    <td className="px-4 py-3 text-gray-500">{e.revenueEstimated !== null ? `$${(e.revenueEstimated / 1e6).toFixed(1)}M` : "—"}</td>
+                    <td className="px-4 py-3">{e.revenueActual === null || e.revenueEstimated === null ? <span className="text-gray-500">Pending</span> : e.revenueActual > e.revenueEstimated ? <span className="text-emerald-400">✓ Beat</span> : <span className="text-red-400">✗ Miss</span>}</td>
                   </tr>
                 ))}
               </tbody>
