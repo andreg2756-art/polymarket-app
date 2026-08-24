@@ -9,11 +9,16 @@ function getKey(): string | null {
   return process.env.POLYGON_API_KEY ?? null;
 }
 
-async function polygonGet<T>(path: string, params: Record<string, string> = {}): Promise<T | null> {
+interface PolygonGetResult<T> {
+  data: T | null;
+  planLimited: boolean; // true only for an actual 403 (plan restriction)
+}
+
+async function polygonGet<T>(path: string, params: Record<string, string> = {}): Promise<PolygonGetResult<T>> {
   const key = getKey();
   if (!key) {
     console.warn("[massive] POLYGON_API_KEY not set — skipping request");
-    return null;
+    return { data: null, planLimited: false };
   }
 
   const url = new URL(`${BASE}${path}`);
@@ -24,16 +29,16 @@ async function polygonGet<T>(path: string, params: Record<string, string> = {}):
     const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
     if (res.status === 403) {
       console.warn(`[massive] 403 Forbidden — endpoint may require higher plan: ${path}`);
-      return null;
+      return { data: null, planLimited: true };
     }
     if (!res.ok) {
       console.warn(`[massive] HTTP ${res.status} for ${path}`);
-      return null;
+      return { data: null, planLimited: false };
     }
-    return (await res.json()) as T;
+    return { data: (await res.json()) as T, planLimited: false };
   } catch (err) {
     console.warn(`[massive] fetch failed for ${path}:`, err);
-    return null;
+    return { data: null, planLimited: false };
   }
 }
 
@@ -60,7 +65,7 @@ interface PolygonNewsResponse {
 }
 
 export async function fetchPolygonNews(ticker: string, limit = 20): Promise<PolygonArticle[]> {
-  const data = await polygonGet<PolygonNewsResponse>("/v2/reference/news", {
+  const { data } = await polygonGet<PolygonNewsResponse>("/v2/reference/news", {
     ticker,
     limit: String(limit),
     order: "desc",
@@ -104,13 +109,13 @@ export async function fetchShortInterest(ticker: string): Promise<PolygonShortIn
 
   if (!key) return empty;
 
-  const data = await polygonGet<{ results?: PolygonSIRecord[] }>(
+  const { data, planLimited } = await polygonGet<{ results?: PolygonSIRecord[] }>(
     "/stocks/v1/short-interest",
-    { ticker, limit: "1" }
+    { ticker, limit: "1", sort: "settlement_date.desc" }
   );
 
-  // 403/null = plan limited
-  if (!data) return { ...empty, planLimited: true };
+  if (planLimited) return { ...empty, planLimited: true };
+  if (!data) return empty;
 
   const r = data?.results?.[0];
   if (!r) return empty;
@@ -135,7 +140,7 @@ export async function fetchPolygonDailyCandles(
   fromDate: string, // YYYY-MM-DD
   toDate:   string
 ): Promise<PolygonCandle[]> {
-  const data = await polygonGet<{ results?: { c: number; v: number; t: number }[] }>(
+  const { data } = await polygonGet<{ results?: { c: number; v: number; t: number }[] }>(
     `/v2/aggs/ticker/${encodeURIComponent(ticker.toUpperCase())}/range/1/day/${fromDate}/${toDate}`,
     { adjusted: "true", sort: "asc", limit: "300" }
   );
