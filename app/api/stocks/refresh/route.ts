@@ -155,8 +155,21 @@ export async function POST() {
       shortlist.map((s) => getEarningsPerformance(s.ticker).then((e) => ({ ticker: s.ticker, ...e })))
     );
     const earningsMap = new Map<string, Awaited<ReturnType<typeof getEarningsPerformance>>>();
+    let earningsOkCount = 0;
     for (const r of earningsResults) {
-      if (r.status === "fulfilled") earningsMap.set(r.value.ticker, r.value);
+      if (r.status === "fulfilled") {
+        earningsMap.set(r.value.ticker, r.value);
+        if (r.value.ok) earningsOkCount++;
+      }
+    }
+    // If most of the shortlist failed to get real earnings data (e.g. FMP
+    // rate limit), that's silent otherwise — the screener just falls back
+    // to stale/empty values with no visible error.
+    if (shortlist.length > 0 && earningsOkCount / shortlist.length < 0.5) {
+      await sendEmail({
+        subject: "Stocks refresh: earnings data mostly unavailable",
+        html: `<p>Only ${earningsOkCount} of ${shortlist.length} shortlisted stocks got real earnings/revenue-beat data from FMP this run — likely a rate limit or API issue. Check your FMP plan usage.</p>`,
+      });
     }
 
     const reranked = [...shortlist].sort(

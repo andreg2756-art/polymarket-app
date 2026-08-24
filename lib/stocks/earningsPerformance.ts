@@ -12,6 +12,7 @@ export interface EarningsPerformance {
   revenueBeat: boolean;
   epsGrowth: number;
   lastEarningsDate: string | null;
+  ok: boolean; // false if both FMP calls failed/were empty — distinguishes a real "no data" from a rate-limit/API failure
 }
 
 const EMPTY: EarningsPerformance = {
@@ -19,14 +20,18 @@ const EMPTY: EarningsPerformance = {
   revenueBeat: false,
   epsGrowth: 0,
   lastEarningsDate: null,
+  ok: false,
 };
 
 export async function getEarningsPerformance(ticker: string): Promise<EarningsPerformance> {
   try {
-    const [earnings, income] = await Promise.all([
-      getEarnings(ticker).catch(() => []),
-      getIncomeStatements(ticker).catch(() => []),
+    const [earningsSettled, incomeSettled] = await Promise.allSettled([
+      getEarnings(ticker),
+      getIncomeStatements(ticker),
     ]);
+    const earnings = earningsSettled.status === "fulfilled" ? earningsSettled.value : [];
+    const income = incomeSettled.status === "fulfilled" ? incomeSettled.value : [];
+    const ok = earningsSettled.status === "fulfilled" || incomeSettled.status === "fulfilled";
 
     // Most recent *reported* result — skip future/scheduled entries where
     // actuals aren't in yet.
@@ -51,6 +56,7 @@ export async function getEarningsPerformance(ticker: string): Promise<EarningsPe
       revenueBeat,
       epsGrowth,
       lastEarningsDate: lastReported?.date ?? null,
+      ok,
     };
   } catch {
     return EMPTY;
