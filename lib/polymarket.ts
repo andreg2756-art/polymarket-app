@@ -36,9 +36,9 @@ export async function fetchLeaderboard(): Promise<NormalizedTrader[]> {
   const entries = normalize<LeaderboardEntry>(raw);
   return entries.map((e, i) => ({
     proxyWallet: e.proxyWallet ?? "",
-    username: e.name ?? e.username ?? e.displayName ?? e.proxyWallet?.slice(0, 8) ?? "Unknown",
+    username: e.userName ?? e.name ?? e.username ?? e.displayName ?? e.proxyWallet?.slice(0, 8) ?? "Unknown",
     monthlyPnl: typeof e.pnl === "number" ? e.pnl : 0,
-    monthlyVolume: typeof e.volume === "number" ? e.volume : 0,
+    monthlyVolume: typeof e.vol === "number" ? e.vol : typeof e.volume === "number" ? e.volume : 0,
     rank: typeof e.rank === "number" ? e.rank : i + 1,
   })).filter((t) => t.proxyWallet);
 }
@@ -61,7 +61,7 @@ export async function fetchPositions(
     currentValue: toNum(p.currentValue ?? p.value),
     size: toNum(p.size ?? p.shares),
     cashPnl: toNum(p.cashPnl ?? p.pnl),
-    volume: toNum(p.volume),
+    volume: toNum(p.volume ?? p.totalBought),
   })).filter((p) => p.conditionId && p.currentValue > 0);
 }
 

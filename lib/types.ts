@@ -3,8 +3,10 @@ export interface LeaderboardEntry {
   name?: string;
   username?: string;
   displayName?: string;
+  userName?: string;
   pnl?: number;
   volume?: number;
+  vol?: number;
   rank?: number;
 }
 
@@ -24,6 +26,7 @@ export interface PolyPosition {
   cashPnl?: number;
   pnl?: number;
   volume?: number;
+  totalBought?: number;
   category?: string;
   asset?: string;
 }
