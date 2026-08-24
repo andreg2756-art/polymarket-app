@@ -5,8 +5,16 @@ import { SMALL_CAP_UNIVERSE, SHARES_OUTSTANDING, SECTOR_UNIVERSE } from "@/lib/s
 import { getRevenueGrowthScore } from "@/lib/stocks/revenueGrowth";
 import { sendEmail } from "@/lib/notify";
 import { checkWatchlistAlerts } from "@/lib/watchlistAlerts";
+import { computeEnhancedScore } from "@/lib/stocks/scoring";
 
-export const maxDuration = 60;
+export const maxDuration = 180;
+
+// How many of the top cheap-momentum picks get re-ranked with the fuller
+// pipeline (relative strength vs. peers, earnings-proximity penalty, risk
+// quality). Wider than 50 so a stock outside the raw top 50 can still be
+// promoted in if it scores better on those factors, and so a raw top-5 name
+// that's dangerously overextended can actually fall out of the top 50.
+const ENHANCED_SHORTLIST_SIZE = 80;
 
 function computeScore(change1M: number, change3M: number, relativeVolume: number): number {
   const mom1M = change1M > 30 ? 30 : change1M > 20 ? 24 : change1M > 10 ? 18 : change1M > 5 ? 12 : change1M > 0 ? 6 : change1M > -5 ? 2 : 0;
@@ -97,7 +105,9 @@ export async function POST() {
       }
     }
 
-    // Upsert all into DB
+    // Upsert cheap-momentum results into DB first — the enhanced pass below
+    // (relative-strength rank) reads the universe back out of the DB, so it
+    // needs this run's numbers committed before it runs.
     for (const s of ranked) {
       const revenueGrowth = revenueGrowthMap.get(s.ticker) ?? s.revenueGrowth;
       const row = { ...s, revenueGrowth };
@@ -106,14 +116,58 @@ export async function POST() {
         create: row,
         update: row,
       });
-      await prisma.stockSnapshot.create({
-        data: { ticker: s.ticker, bullishScore: s.bullishScore, price: s.price, marketCap: s.marketCap },
-      });
     }
 
     // Remove stale tickers not in current universe
     await prisma.stock.deleteMany({
       where: { ticker: { notIn: SMALL_CAP_UNIVERSE } },
+    });
+
+    // Re-rank the top slice with the fuller scoring pipeline: relative
+    // strength vs. the rest of the universe, an earnings-proximity penalty,
+    // and a risk/quality factor — instead of raw momentum alone, which tends
+    // to rate a stock highest right as it's topping out.
+    const shortlist = ranked.slice(0, ENHANCED_SHORTLIST_SIZE);
+    const enhancedResults = await Promise.allSettled(
+      shortlist.map((s) =>
+        computeEnhancedScore(
+          s.ticker,
+          s.change1M,
+          s.change3M,
+          s.relativeVolume,
+          revenueGrowthMap.get(s.ticker) ?? null
+        ).then((e) => ({ ticker: s.ticker, riskAdjustedScore: e.riskAdjustedScore }))
+      )
+    );
+
+    const finalScoreMap = new Map<string, number>(ranked.map((s) => [s.ticker, s.bullishScore]));
+    for (const r of enhancedResults) {
+      if (r.status === "fulfilled" && r.value.riskAdjustedScore !== null) {
+        finalScoreMap.set(r.value.ticker, r.value.riskAdjustedScore);
+      }
+    }
+
+    const reranked = [...shortlist].sort(
+      (a, b) => (finalScoreMap.get(b.ticker) ?? 0) - (finalScoreMap.get(a.ticker) ?? 0)
+    );
+    await Promise.all(
+      reranked.map((s, i) =>
+        prisma.stock.update({
+          where: { ticker: s.ticker },
+          data: { bullishScore: finalScoreMap.get(s.ticker) ?? s.bullishScore, rank: i + 1 },
+        })
+      )
+    );
+
+    // Snapshot history reflects the final (enhanced, where available) score
+    // so the backtest engine picks the same stocks the screener actually shows.
+    await prisma.stockSnapshot.createMany({
+      data: ranked.map((s) => ({
+        ticker: s.ticker,
+        bullishScore: finalScoreMap.get(s.ticker) ?? s.bullishScore,
+        price: s.price,
+        marketCap: s.marketCap,
+      })),
     });
 
     try {
