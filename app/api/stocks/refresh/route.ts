@@ -7,6 +7,7 @@ import { sendEmail } from "@/lib/notify";
 import { checkWatchlistAlerts } from "@/lib/watchlistAlerts";
 import { computeEnhancedScore } from "@/lib/stocks/scoring";
 import { getEarningsPerformance } from "@/lib/stocks/earningsPerformance";
+import { getFmpFloatData } from "@/lib/stocks/technicals";
 
 export const maxDuration = 180;
 
@@ -148,11 +149,19 @@ export async function POST() {
       }
     }
 
+    const reranked = [...shortlist].sort(
+      (a, b) => (finalScoreMap.get(b.ticker) ?? 0) - (finalScoreMap.get(a.ticker) ?? 0)
+    );
+
     // Real earnings/revenue-beat + EPS growth from FMP, replacing what used
-    // to be hardcoded false/0 for every stock. Scoped to the same shortlist
-    // as the enhanced score to keep FMP call volume bounded and predictable.
+    // to be hardcoded false/0 for every stock. A single run can use up to
+    // 2 FMP calls per ticker, and a low-tier FMP plan's daily quota doesn't
+    // comfortably cover the full 80-ticker enhanced-scoring shortlist — so
+    // this is scoped to just the tickers that actually end up in the final
+    // displayed Top 50, not the wider re-ranking shortlist.
+    const earningsScope = reranked.slice(0, 50);
     const earningsResults = await Promise.allSettled(
-      shortlist.map((s) => getEarningsPerformance(s.ticker).then((e) => ({ ticker: s.ticker, ...e })))
+      earningsScope.map((s) => getEarningsPerformance(s.ticker).then((e) => ({ ticker: s.ticker, ...e })))
     );
     const earningsMap = new Map<string, Awaited<ReturnType<typeof getEarningsPerformance>>>();
     let earningsOkCount = 0;
@@ -162,22 +171,33 @@ export async function POST() {
         if (r.value.ok) earningsOkCount++;
       }
     }
-    // If most of the shortlist failed to get real earnings data (e.g. FMP
-    // rate limit), that's silent otherwise — the screener just falls back
-    // to stale/empty values with no visible error.
-    if (shortlist.length > 0 && earningsOkCount / shortlist.length < 0.5) {
+    // If most of the scope failed to get real earnings data (e.g. FMP rate
+    // limit), that's silent otherwise — the screener just falls back to
+    // stale/empty values with no visible error.
+    if (earningsScope.length > 0 && earningsOkCount / earningsScope.length < 0.5) {
       await sendEmail({
         subject: "Stocks refresh: earnings data mostly unavailable",
-        html: `<p>Only ${earningsOkCount} of ${shortlist.length} shortlisted stocks got real earnings/revenue-beat data from FMP this run — likely a rate limit or API issue. Check your FMP plan usage.</p>`,
+        html: `<p>Only ${earningsOkCount} of ${earningsScope.length} Top 50 stocks got real earnings/revenue-beat data from FMP this run — likely a rate limit or API issue. Check your FMP plan usage.</p>`,
       });
     }
 
-    const reranked = [...shortlist].sort(
-      (a, b) => (finalScoreMap.get(b.ticker) ?? 0) - (finalScoreMap.get(a.ticker) ?? 0)
+    // Float shares — same endpoint the ticker-detail page already uses
+    // (lib/stocks/technicals.ts), just never called from the bulk refresh.
+    // Reuses the same Top 50 scope to keep this on the same FMP budget.
+    const floatResults = await Promise.allSettled(
+      earningsScope.map((s) => getFmpFloatData(s.ticker).then((f) => ({ ticker: s.ticker, ...f })))
     );
+    const floatMap = new Map<string, number | null>();
+    for (const r of floatResults) {
+      if (r.status === "fulfilled" && r.value.floatShares !== null) {
+        floatMap.set(r.value.ticker, r.value.floatShares);
+      }
+    }
+
     await Promise.all(
       reranked.map((s, i) => {
         const earnings = earningsMap.get(s.ticker);
+        const float = floatMap.get(s.ticker);
         return prisma.stock.update({
           where: { ticker: s.ticker },
           data: {
@@ -189,6 +209,7 @@ export async function POST() {
               epsGrowth: earnings.epsGrowth,
               lastEarningsDate: earnings.lastEarningsDate,
             } : {}),
+            ...(float !== undefined ? { float } : {}),
           },
         });
       })
