@@ -109,16 +109,15 @@ export async function POST() {
 
     // Upsert cheap-momentum results into DB first — the enhanced pass below
     // (relative-strength rank) reads the universe back out of the DB, so it
-    // needs this run's numbers committed before it runs.
-    for (const s of ranked) {
-      const revenueGrowth = revenueGrowthMap.get(s.ticker) ?? s.revenueGrowth;
-      const row = { ...s, revenueGrowth };
-      await prisma.stock.upsert({
-        where: { ticker: s.ticker },
-        create: row,
-        update: row,
-      });
-    }
+    // needs this run's numbers committed before it runs. Parallelized: this
+    // was previously one upsert at a time, ~100+ sequential DB round-trips.
+    await Promise.all(
+      ranked.map((s) => {
+        const revenueGrowth = revenueGrowthMap.get(s.ticker) ?? s.revenueGrowth;
+        const row = { ...s, revenueGrowth };
+        return prisma.stock.upsert({ where: { ticker: s.ticker }, create: row, update: row });
+      })
+    );
 
     // Remove stale tickers not in current universe
     await prisma.stock.deleteMany({
@@ -130,17 +129,33 @@ export async function POST() {
     // and a risk/quality factor — instead of raw momentum alone, which tends
     // to rate a stock highest right as it's topping out.
     const shortlist = ranked.slice(0, ENHANCED_SHORTLIST_SIZE);
-    const enhancedResults = await Promise.allSettled(
-      shortlist.map((s) =>
-        computeEnhancedScore(
-          s.ticker,
-          s.change1M,
-          s.change3M,
-          s.relativeVolume,
-          revenueGrowthMap.get(s.ticker) ?? null
-        ).then((e) => ({ ticker: s.ticker, riskAdjustedScore: e.riskAdjustedScore }))
-      )
-    );
+
+    // Earnings/float (FMP) only depend on ticker identity, not on the
+    // enhanced-score re-ranking below — so run all three network-bound
+    // passes concurrently instead of chaining them. Scoped to the top 50 by
+    // cheap score (a close proxy for the final top 50 — re-ranking mostly
+    // reorders this same set rather than swapping in different tickers) so
+    // this can start immediately without waiting on the enhanced pass.
+    const earningsFloatScope = shortlist.slice(0, 50);
+    const [enhancedResults, earningsResults, floatResults] = await Promise.all([
+      Promise.allSettled(
+        shortlist.map((s) =>
+          computeEnhancedScore(
+            s.ticker,
+            s.change1M,
+            s.change3M,
+            s.relativeVolume,
+            revenueGrowthMap.get(s.ticker) ?? null
+          ).then((e) => ({ ticker: s.ticker, riskAdjustedScore: e.riskAdjustedScore }))
+        )
+      ),
+      Promise.allSettled(
+        earningsFloatScope.map((s) => getEarningsPerformance(s.ticker).then((e) => ({ ticker: s.ticker, ...e })))
+      ),
+      Promise.allSettled(
+        earningsFloatScope.map((s) => getFmpFloatData(s.ticker).then((f) => ({ ticker: s.ticker, ...f })))
+      ),
+    ]);
 
     const finalScoreMap = new Map<string, number>(ranked.map((s) => [s.ticker, s.bullishScore]));
     for (const r of enhancedResults) {
@@ -153,16 +168,6 @@ export async function POST() {
       (a, b) => (finalScoreMap.get(b.ticker) ?? 0) - (finalScoreMap.get(a.ticker) ?? 0)
     );
 
-    // Real earnings/revenue-beat + EPS growth from FMP, replacing what used
-    // to be hardcoded false/0 for every stock. A single run can use up to
-    // 2 FMP calls per ticker, and a low-tier FMP plan's daily quota doesn't
-    // comfortably cover the full 80-ticker enhanced-scoring shortlist — so
-    // this is scoped to just the tickers that actually end up in the final
-    // displayed Top 50, not the wider re-ranking shortlist.
-    const earningsScope = reranked.slice(0, 50);
-    const earningsResults = await Promise.allSettled(
-      earningsScope.map((s) => getEarningsPerformance(s.ticker).then((e) => ({ ticker: s.ticker, ...e })))
-    );
     const earningsMap = new Map<string, Awaited<ReturnType<typeof getEarningsPerformance>>>();
     let earningsOkCount = 0;
     for (const r of earningsResults) {
@@ -174,19 +179,13 @@ export async function POST() {
     // If most of the scope failed to get real earnings data (e.g. FMP rate
     // limit), that's silent otherwise — the screener just falls back to
     // stale/empty values with no visible error.
-    if (earningsScope.length > 0 && earningsOkCount / earningsScope.length < 0.5) {
+    if (earningsFloatScope.length > 0 && earningsOkCount / earningsFloatScope.length < 0.5) {
       await sendEmail({
         subject: "Stocks refresh: earnings data mostly unavailable",
-        html: `<p>Only ${earningsOkCount} of ${earningsScope.length} Top 50 stocks got real earnings/revenue-beat data from FMP this run — likely a rate limit or API issue. Check your FMP plan usage.</p>`,
+        html: `<p>Only ${earningsOkCount} of ${earningsFloatScope.length} Top 50 stocks got real earnings/revenue-beat data from FMP this run — likely a rate limit or API issue. Check your FMP plan usage.</p>`,
       });
     }
 
-    // Float shares — same endpoint the ticker-detail page already uses
-    // (lib/stocks/technicals.ts), just never called from the bulk refresh.
-    // Reuses the same Top 50 scope to keep this on the same FMP budget.
-    const floatResults = await Promise.allSettled(
-      earningsScope.map((s) => getFmpFloatData(s.ticker).then((f) => ({ ticker: s.ticker, ...f })))
-    );
     const floatMap = new Map<string, number | null>();
     for (const r of floatResults) {
       if (r.status === "fulfilled" && r.value.floatShares !== null) {
