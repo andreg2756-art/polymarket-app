@@ -119,9 +119,14 @@ export async function POST() {
       })
     );
 
-    // Remove stale tickers not in current universe
+    // Remove tickers that either dropped out of the universe or failed to
+    // fetch this run (e.g. delisted — Yahoo 404s "symbol may be delisted").
+    // Previously this only checked against the static universe list, so a
+    // delisted ticker still nominally "in" that list would keep its stale
+    // rank/score forever instead of being dropped — confirmed today with 4
+    // tickers frozen since June that Yahoo no longer has data for at all.
     await prisma.stock.deleteMany({
-      where: { ticker: { notIn: SMALL_CAP_UNIVERSE } },
+      where: { ticker: { notIn: ranked.map((s) => s.ticker) } },
     });
 
     // Re-rank the top slice with the fuller scoring pipeline: relative
