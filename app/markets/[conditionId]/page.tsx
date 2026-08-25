@@ -32,6 +32,7 @@ interface TimelineEntry {
   totalCurrentValue: number;
   consensusScore: number;
   createdAt: string;
+  refreshRunId: string;
 }
 
 interface MarketData {
@@ -56,13 +57,10 @@ export default function MarketDetailPage({ params }: { params: Promise<{ conditi
   if (loading) return <div className="space-y-4"><Skeleton className="h-12" /><Skeleton className="h-64" /></div>;
   if (!data || !data.groups?.length) return <div className="py-32 text-center text-gray-500">Market not found or no data.</div>;
 
-  const title = data.positions[0]?.outcome ? data.groups[0] : null;
-  const marketTitle = data.positions[0] ? `Market ${conditionId.slice(0, 8)}...` : conditionId;
-
   const timelineByOutcome = new Map<string, { date: string; holderCount: number; consensusScore: number; totalCurrentValue: number }[]>();
   for (const t of data.timeline) {
     if (!timelineByOutcome.has(t.outcome)) timelineByOutcome.set(t.outcome, []);
-    const run = data.runs.find((r) => r.id === (t as unknown as { refreshRunId?: string }).refreshRunId);
+    const run = data.runs.find((r) => r.id === t.refreshRunId);
     timelineByOutcome.get(t.outcome)!.push({
       date: run?.completedAt ? new Date(run.completedAt).toLocaleDateString() : new Date(t.createdAt).toLocaleDateString(),
       holderCount: t.holderCount,

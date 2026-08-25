@@ -195,7 +195,11 @@ export async function getIncomeStatements(ticker: string): Promise<FMPIncomeStat
 }
 
 export async function getInsiderTrades(ticker: string): Promise<FMPInsiderTrade[]> {
-  return get<FMPInsiderTrade[]>(`/insider-trading`, { symbol: ticker, limit: "20" });
+  // Note: this endpoint is plan-restricted (HTTP 402 "Restricted Endpoint")
+  // on the current FMP plan even with the correct path — insider trading
+  // data is genuinely unavailable until that plan is upgraded, separate
+  // from this path fix.
+  return get<FMPInsiderTrade[]>(`/insider-trading/search`, { symbol: ticker, limit: "20" });
 }
 
 export async function getAnalystRatings(ticker: string): Promise<FMPAnalystRating | null> {

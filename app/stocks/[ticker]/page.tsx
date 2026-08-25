@@ -66,7 +66,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
   ].filter(Boolean) as string[];
 
   const bearCase = [
-    !stock.earningsBeat && "Missed earnings estimates recently",
+    stock.lastEarningsDate && !stock.earningsBeat && "Missed earnings estimates recently",
     stock.revenueGrowth < 0 && `Revenue declining ${Math.abs(stock.revenueGrowth).toFixed(1)}% YoY`,
     stock.shortInterest && stock.shortInterest > 10 && `High short interest (${stock.shortInterest.toFixed(1)}%)`,
     stock.change1M < -10 && `Weak price action (${stock.change1M.toFixed(1)}% last month)`,
