@@ -22,6 +22,7 @@ export interface YahooChart {
 export interface YahooHistoryPoint {
   date: string; // YYYY-MM-DD
   close: number;
+  volume: number;
 }
 
 export async function getYahooHistory(ticker: string): Promise<YahooHistoryPoint[] | null> {
@@ -37,11 +38,12 @@ export async function getYahooHistory(ticker: string): Promise<YahooHistoryPoint
 
     const timestamps: number[] = result.timestamp ?? [];
     const closes: (number | null)[] = result.indicators?.quote?.[0]?.close ?? [];
+    const volumes: (number | null)[] = result.indicators?.quote?.[0]?.volume ?? [];
     const points: YahooHistoryPoint[] = [];
     for (let i = 0; i < timestamps.length; i++) {
       const close = closes[i];
       if (close === null || close === undefined) continue;
-      points.push({ date: new Date(timestamps[i] * 1000).toISOString().slice(0, 10), close });
+      points.push({ date: new Date(timestamps[i] * 1000).toISOString().slice(0, 10), close, volume: volumes[i] ?? 0 });
     }
     return points;
   } catch {
