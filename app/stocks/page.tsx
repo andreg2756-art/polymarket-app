@@ -288,7 +288,7 @@ export default function StocksPage() {
     try {
       const res = await fetch(`/api/stocks/screener?sortBy=rank`);
       const data = await res.json();
-      const filtered: Stock[] = data.filter((s: Stock) => s.rank <= 50);
+      const filtered: Stock[] = data.filter((s: Stock) => s.rank >= 1 && s.rank <= 50);
       setStocks(filtered);
       if (data[0]?.updatedAt) setUpdatedAt(data[0].updatedAt);
 
@@ -377,8 +377,8 @@ export default function StocksPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-emerald-400">Top 50 Momentum Stocks</h1>
-          <p className="text-gray-500 text-sm mt-1">Best 50 across 10 sectors · momentum, volume &amp; trend scored</p>
+          <h1 className="text-2xl font-bold text-emerald-400">High-Growth / Speculative</h1>
+          <p className="text-gray-500 text-sm mt-1">Top 50 by momentum, relative strength, and risk-adjusted score — the "betting on what the business could become" lens</p>
           {updatedAt && (
             <p className="text-gray-600 text-xs">
               Market data last updated:{" "}

@@ -194,6 +194,29 @@ export async function getIncomeStatements(ticker: string): Promise<FMPIncomeStat
   return get<FMPIncomeStatement[]>(`/income-statement`, { symbol: ticker, limit: "5" });
 }
 
+export interface FMPBalanceSheet {
+  date: string;
+  cashAndCashEquivalents: number;
+  totalCurrentAssets: number;
+  totalDebt: number;
+  netDebt: number;
+}
+
+export async function getBalanceSheets(ticker: string): Promise<FMPBalanceSheet[]> {
+  return get<FMPBalanceSheet[]>(`/balance-sheet-statement`, { symbol: ticker, limit: "5" });
+}
+
+export interface FMPCashFlow {
+  date: string;
+  operatingCashFlow: number;
+  capitalExpenditure: number;
+  freeCashFlow: number;
+}
+
+export async function getCashFlows(ticker: string): Promise<FMPCashFlow[]> {
+  return get<FMPCashFlow[]>(`/cash-flow-statement`, { symbol: ticker, limit: "5" });
+}
+
 export async function getInsiderTrades(ticker: string): Promise<FMPInsiderTrade[]> {
   // Note: this endpoint is plan-restricted (HTTP 402 "Restricted Endpoint")
   // on the current FMP plan even with the correct path — insider trading

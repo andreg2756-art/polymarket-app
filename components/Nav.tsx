@@ -11,7 +11,9 @@ const whaleLinks = [
 ];
 
 const stockLinks = [
-  { href: "/stocks", label: "Top 50" },
+  { href: "/stocks", label: "Speculative" },
+  { href: "/stocks/quality", label: "Quality" },
+  { href: "/stocks/value", label: "Value" },
   { href: "/stocks/screener", label: "Screener" },
   { href: "/stocks/ideas", label: "Ideas" },
   { href: "/stocks/watchlist", label: "Watchlist" },
@@ -33,7 +35,7 @@ export default function Nav() {
 
       <div className="w-px h-5 bg-gray-700 mx-3 shrink-0" />
 
-      <span className="text-emerald-400 font-bold text-base tracking-tight whitespace-nowrap">📈 Small Cap Stocks</span>
+      <span className="text-emerald-400 font-bold text-base tracking-tight whitespace-nowrap">📈 Stocks</span>
       <div className="flex gap-5 ml-2">
         {stockLinks.map((l) => (
           <Link key={l.href} href={l.href}

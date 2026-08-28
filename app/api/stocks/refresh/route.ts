@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getYahooChart, TICKER_SECTOR } from "@/lib/yahoo-finance";
-import { SMALL_CAP_UNIVERSE, SHARES_OUTSTANDING, SECTOR_UNIVERSE } from "@/lib/small-cap-universe";
+import { getYahooChart } from "@/lib/yahoo-finance";
+import { fetchScreenerQuotes, SPECULATIVE_SCREENS } from "@/lib/stocks/yahooScreener";
 import { getRevenueGrowthScore } from "@/lib/stocks/revenueGrowth";
 import { sendEmail } from "@/lib/notify";
 import { checkWatchlistAlerts } from "@/lib/watchlistAlerts";
 import { computeEnhancedScore } from "@/lib/stocks/scoring";
 import { getEarningsPerformance } from "@/lib/stocks/earningsPerformance";
 import { getFmpFloatData } from "@/lib/stocks/technicals";
+import { runQualityPipeline } from "@/lib/stocks/runQualityPipeline";
+import { runTurnaroundPipeline } from "@/lib/stocks/runTurnaroundPipeline";
 
 export const maxDuration = 180;
 
@@ -37,11 +39,17 @@ type StockRow = {
 
 export async function POST() {
   try {
-    // Fetch all Yahoo data in parallel — no API key needed
+    // Speculative/High-Growth universe: sourced live from Yahoo's free
+    // predefined screeners (aggressive small caps + small-cap gainers)
+    // instead of a hand-maintained static ticker list — a static list
+    // silently accumulates delisted ghost tickers (found and fixed
+    // elsewhere: 4 tickers frozen for months once Yahoo stopped having
+    // data for them at all). A live screener can't return a delisted stock.
+    const speculativeQuotes = await fetchScreenerQuotes(SPECULATIVE_SCREENS);
+    const speculativeTickers = speculativeQuotes.map((q) => q.symbol);
+
     const yahooResults = await Promise.allSettled(
-      SMALL_CAP_UNIVERSE.map((ticker) =>
-        getYahooChart(ticker).then((d) => ({ ticker, data: d }))
-      )
+      speculativeTickers.map((ticker) => getYahooChart(ticker).then((d) => ({ ticker, data: d })))
     );
 
     const yahooMap = new Map<string, YahooChart>();
@@ -51,46 +59,26 @@ export async function POST() {
       }
     }
 
-    // Build per-sector top 15 by score, then take top 50 overall
+    // Score every fetched ticker on raw momentum (sector-based grouping is
+    // gone along with the static per-sector universe — Yahoo's screener
+    // doesn't return sector, so this is a flat rank across the whole pool).
     const allScored: StockRow[] = [];
-
-    for (const [sector, tickers] of Object.entries(SECTOR_UNIVERSE)) {
-      const sectorStocks: StockRow[] = [];
-      for (const ticker of tickers) {
-        const y = yahooMap.get(ticker);
-        if (!y) continue;
-        // Prefer live Yahoo market cap; fall back to price × SHARES_OUTSTANDING estimate
-        const shares = SHARES_OUTSTANDING[ticker] ?? 0;
-        const marketCap = y.marketCap > 0
-          ? y.marketCap
-          : shares > 0 ? Math.round(y.price * shares * 1_000_000) : 0;
-        const bullishScore = computeScore(y.change1M, y.change3M, y.relativeVolume);
-        sectorStocks.push({
-          ticker, name: y.name, exchange: "", sector,
-          industry: sector, description: "", marketCap,
-          price: y.price, change1M: y.change1M, change3M: y.change3M,
-          revenueGrowth: 0, epsGrowth: 0, analystRating: "N/A", analystCount: 0,
-          bullishScore, lastEarningsDate: null, float: null, shortInterest: null,
-          institutionalOwn: null, insiderBuying: 0, relativeVolume: y.relativeVolume,
-          earningsBeat: false, revenueBeat: false, guidanceUp: false, rank: 0,
-        });
-      }
-      // Top 15 per sector
-      sectorStocks.sort((a, b) => b.bullishScore - a.bullishScore);
-      allScored.push(...sectorStocks.slice(0, 15));
+    for (const ticker of speculativeTickers) {
+      const y = yahooMap.get(ticker);
+      if (!y) continue;
+      const bullishScore = computeScore(y.change1M, y.change3M, y.relativeVolume);
+      allScored.push({
+        ticker, name: y.name, exchange: "", sector: "", industry: "",
+        description: "", marketCap: y.marketCap, price: y.price, change1M: y.change1M, change3M: y.change3M,
+        revenueGrowth: 0, epsGrowth: 0, analystRating: "N/A", analystCount: 0,
+        bullishScore, lastEarningsDate: null, float: null, shortInterest: null,
+        institutionalOwn: null, insiderBuying: 0, relativeVolume: y.relativeVolume,
+        earningsBeat: false, revenueBeat: false, guidanceUp: false, rank: 0,
+      });
     }
 
-    // Deduplicate (some tickers appear in multiple sectors)
-    const seen = new Set<string>();
-    const deduped = allScored.filter((s) => {
-      if (seen.has(s.ticker)) return false;
-      seen.add(s.ticker);
-      return true;
-    });
-
-    // Top 50 overall get rank 1-50, rest get rank 51+
-    deduped.sort((a, b) => b.bullishScore - a.bullishScore);
-    const ranked = deduped.map((s, i) => ({ ...s, rank: i + 1 }));
+    allScored.sort((a, b) => b.bullishScore - a.bullishScore);
+    const ranked = allScored.map((s, i) => ({ ...s, rank: i + 1 }));
 
     // Fetch revenue growth from SEC EDGAR in parallel (free, no API key)
     // Results are cached via next.revalidate so this is fast on repeat runs
@@ -109,8 +97,7 @@ export async function POST() {
 
     // Upsert cheap-momentum results into DB first — the enhanced pass below
     // (relative-strength rank) reads the universe back out of the DB, so it
-    // needs this run's numbers committed before it runs. Parallelized: this
-    // was previously one upsert at a time, ~100+ sequential DB round-trips.
+    // needs this run's numbers committed before it runs.
     await Promise.all(
       ranked.map((s) => {
         const revenueGrowth = revenueGrowthMap.get(s.ticker) ?? s.revenueGrowth;
@@ -118,16 +105,6 @@ export async function POST() {
         return prisma.stock.upsert({ where: { ticker: s.ticker }, create: row, update: row });
       })
     );
-
-    // Remove tickers that either dropped out of the universe or failed to
-    // fetch this run (e.g. delisted — Yahoo 404s "symbol may be delisted").
-    // Previously this only checked against the static universe list, so a
-    // delisted ticker still nominally "in" that list would keep its stale
-    // rank/score forever instead of being dropped — confirmed today with 4
-    // tickers frozen since June that Yahoo no longer has data for at all.
-    await prisma.stock.deleteMany({
-      where: { ticker: { notIn: ranked.map((s) => s.ticker) } },
-    });
 
     // Re-rank the top slice with the fuller scoring pipeline: relative
     // strength vs. the rest of the universe, an earnings-proximity penalty,
@@ -140,9 +117,10 @@ export async function POST() {
     // passes concurrently instead of chaining them. Scoped to the top 50 by
     // cheap score (a close proxy for the final top 50 — re-ranking mostly
     // reorders this same set rather than swapping in different tickers) so
-    // this can start immediately without waiting on the enhanced pass.
+    // this can start immediately without waiting on the enhanced pass. The
+    // Quality and Turnaround pipelines run concurrently with all of this too.
     const earningsFloatScope = shortlist.slice(0, 50);
-    const [enhancedResults, earningsResults, floatResults] = await Promise.all([
+    const [enhancedResults, earningsResults, floatResults, qualityResult, turnaroundResult] = await Promise.all([
       Promise.allSettled(
         shortlist.map((s) =>
           computeEnhancedScore(
@@ -160,7 +138,21 @@ export async function POST() {
       Promise.allSettled(
         earningsFloatScope.map((s) => getFmpFloatData(s.ticker).then((f) => ({ ticker: s.ticker, ...f })))
       ),
+      runQualityPipeline(),
+      runTurnaroundPipeline(),
     ]);
+
+    // Remove tickers that aren't valid in ANY of the three lenses this run
+    // — either dropped out of a screener pool, or failed to fetch (e.g.
+    // delisted). A stock only needs to belong to one pool to be kept.
+    const allValidTickers = new Set([
+      ...ranked.map((s) => s.ticker),
+      ...qualityResult.tickers,
+      ...turnaroundResult.tickers,
+    ]);
+    await prisma.stock.deleteMany({
+      where: { ticker: { notIn: Array.from(allValidTickers) } },
+    });
 
     const finalScoreMap = new Map<string, number>(ranked.map((s) => [s.ticker, s.bullishScore]));
     for (const r of enhancedResults) {
@@ -236,7 +228,12 @@ export async function POST() {
       console.error("checkWatchlistAlerts failed:", err);
     }
 
-    return NextResponse.json({ success: true, count: ranked.length, sectors: Object.keys(SECTOR_UNIVERSE).length });
+    return NextResponse.json({
+      success: true,
+      speculative: ranked.length,
+      quality: qualityResult.tickers.length,
+      turnaround: turnaroundResult.tickers.length,
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     await sendEmail({

@@ -102,6 +102,23 @@ model Stock {
   revenueBeat         Boolean        @default(false)
   guidanceUp          Boolean        @default(false)
   rank                Int            @default(0)
+
+  // Quality/Growth lens
+  qualityScore        Float?
+  qualityRank         Int?
+
+  // Value/Turnaround lens
+  turnaroundScore     Float?
+  turnaroundRank      Int?
+
+  // Shared fundamentals (FMP balance-sheet/income/cash-flow) backing both lenses
+  netIncome           Float?
+  totalDebt           Float?
+  cashAndEquivalents  Float?
+  freeCashFlow        Float?
+  trailingPE          Float?
+  priceToBook         Float?
+
   updatedAt           DateTime       @updatedAt
   createdAt           DateTime       @default(now())
   snapshots           StockSnapshot[]
@@ -110,6 +127,8 @@ model Stock {
 
   @@index([bullishScore])
   @@index([rank])
+  @@index([qualityRank])
+  @@index([turnaroundRank])
 }
 
 model StockSnapshot {
