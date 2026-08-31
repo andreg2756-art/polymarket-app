@@ -16,28 +16,34 @@ interface BacktestResponse {
 
 const PERIODS = ["1M Fwd", "3M Fwd", "6M Fwd", "12M Fwd"];
 
-export default function BacktestSummary() {
+interface BacktestSummaryProps {
+  lens?: "speculative" | "quality" | "turnaround";
+  title?: string;
+}
+
+export default function BacktestSummary({ lens = "speculative", title = "Strategy Backtest" }: BacktestSummaryProps) {
   const [result, setResult] = useState<BacktestResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/backtest")
+    setLoading(true);
+    fetch(`/api/backtest?lens=${lens}`)
       .then((r) => r.json())
       .then(setResult)
       .finally(() => setLoading(false));
-  }, []);
+  }, [lens]);
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-base font-semibold text-white">Strategy Backtest</h2>
+          <h2 className="text-base font-semibold text-white">{title}</h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            Simulated: top 10 ranked stocks · monthly rebalance · vs SPY
+            Top 10 ranked stocks · monthly rebalance · vs SPY
           </p>
         </div>
-        <span className="text-xs bg-yellow-900/50 text-yellow-300 px-2 py-0.5 rounded border border-yellow-800">
-          Simulated — not live
+        <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800">
+          Live — real daily snapshots
         </span>
       </div>
 
@@ -48,12 +54,7 @@ export default function BacktestSummary() {
       ) : !result?.available ? (
         <div className="rounded-lg border border-dashed border-gray-700 py-8 text-center space-y-2">
           <p className="text-gray-400 text-sm font-medium">Backtest data unavailable</p>
-          <p className="text-gray-600 text-xs">{result?.message ?? "No backtest engine connected."}</p>
-          <p className="text-gray-700 text-xs mt-2">
-            {/* TODO: Connect historical screener data to enable this section */}
-            To enable: connect a backtest engine with historical price data and
-            replay screener rankings monthly to compute forward returns.
-          </p>
+          <p className="text-gray-600 text-xs">{result?.message ?? "No snapshot history yet."}</p>
         </div>
       ) : (
         <div className="overflow-x-auto">

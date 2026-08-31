@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { TableSkeleton } from "@/components/Skeleton";
 import { exportCSV } from "@/lib/analytics";
+import BacktestSummary from "@/components/stocks/BacktestSummary";
 
 interface Stock {
   id: string;
@@ -22,6 +23,7 @@ interface Stock {
 export default function ValueTurnaroundPage() {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showBacktest, setShowBacktest] = useState(false);
 
   useEffect(() => {
     fetch("/api/stocks/turnaround").then((r) => r.json()).then(setStocks).finally(() => setLoading(false));
@@ -45,11 +47,19 @@ export default function ValueTurnaroundPage() {
             not by price action
           </p>
         </div>
-        <button onClick={() => exportCSV(stocks as unknown as Record<string, unknown>[], "turnaround.csv")}
-          className="text-xs text-emerald-400 border border-emerald-800 px-3 py-1 rounded hover:bg-emerald-900/30">
-          Export CSV
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={() => setShowBacktest(!showBacktest)}
+            className="text-xs text-gray-400 border border-gray-700 px-3 py-1.5 rounded hover:border-gray-500 transition-colors">
+            {showBacktest ? "Hide Backtest" : "Show Backtest"}
+          </button>
+          <button onClick={() => exportCSV(stocks as unknown as Record<string, unknown>[], "turnaround.csv")}
+            className="text-xs text-emerald-400 border border-emerald-800 px-3 py-1 rounded hover:bg-emerald-900/30">
+            Export CSV
+          </button>
+        </div>
       </div>
+
+      {showBacktest && <BacktestSummary lens="turnaround" title="Value/Turnaround Lens Backtest" />}
 
       {loading ? <TableSkeleton rows={12} cols={8} /> : (
         <div className="rounded-xl border border-gray-800 overflow-hidden">

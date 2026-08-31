@@ -222,6 +222,36 @@ export async function POST() {
       })),
     });
 
+    // Same idea for the Quality and Turnaround lenses — snapshot today's
+    // score/rank for each so the live backtest engine can track their forward
+    // returns too, not just Speculative's. Read back from Stock rather than
+    // threading scores through the pipeline return value, since both
+    // pipelines already upsert qualityScore/turnaroundScore there.
+    const [qualityStocks, turnaroundStocks] = await Promise.all([
+      qualityResult.tickers.length > 0
+        ? prisma.stock.findMany({
+            where: { ticker: { in: qualityResult.tickers } },
+            select: { ticker: true, qualityScore: true, price: true, marketCap: true },
+          })
+        : [],
+      turnaroundResult.tickers.length > 0
+        ? prisma.stock.findMany({
+            where: { ticker: { in: turnaroundResult.tickers } },
+            select: { ticker: true, turnaroundScore: true, price: true, marketCap: true },
+          })
+        : [],
+    ]);
+    await prisma.stockSnapshot.createMany({
+      data: [
+        ...qualityStocks
+          .filter((s) => s.qualityScore !== null)
+          .map((s) => ({ ticker: s.ticker, lens: "quality", qualityScore: s.qualityScore, price: s.price, marketCap: s.marketCap })),
+        ...turnaroundStocks
+          .filter((s) => s.turnaroundScore !== null)
+          .map((s) => ({ ticker: s.ticker, lens: "turnaround", turnaroundScore: s.turnaroundScore, price: s.price, marketCap: s.marketCap })),
+      ],
+    });
+
     try {
       await checkWatchlistAlerts();
     } catch (err) {

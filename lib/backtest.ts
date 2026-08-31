@@ -52,8 +52,22 @@ function priceNear(points: { date: string; price: number }[], targetDate: string
   return daysBetween(best.date, targetDate) <= toleranceDays ? best.price : null;
 }
 
-export async function runBacktest(): Promise<BacktestResult> {
+export type BacktestLens = "speculative" | "quality" | "turnaround";
+
+const LENS_SCORE_FIELD: Record<BacktestLens, "bullishScore" | "qualityScore" | "turnaroundScore"> = {
+  speculative: "bullishScore",
+  quality: "qualityScore",
+  turnaround: "turnaroundScore",
+};
+
+export async function runBacktest(lens: BacktestLens = "speculative"): Promise<BacktestResult> {
+  const scoreField = LENS_SCORE_FIELD[lens];
+  // Filtered by lens tag rather than inferred from which score field is
+  // non-null — a ticker can be snapshotted once per lens per day, and
+  // without the tag two same-day rows for the same ticker (e.g. it's both
+  // a Quality and a Turnaround pick) would collide in the day-map below.
   const snapshots = await prisma.stockSnapshot.findMany({
+    where: { lens },
     orderBy: [{ ticker: "asc" }, { createdAt: "asc" }],
   });
 
@@ -61,14 +75,15 @@ export async function runBacktest(): Promise<BacktestResult> {
     return { available: false, message: "No snapshot history yet — data accumulates once daily refresh has run for a while." };
   }
 
-  // One price per ticker per day (last snapshot of the day wins), plus one bullishScore-ranking per day across all tickers.
-  const byTickerDay = new Map<string, Map<string, { price: number; bullishScore: number }>>();
+  // One price + score per ticker per day (last snapshot of the day wins).
+  const byTickerDay = new Map<string, Map<string, { price: number; score: number }>>();
   const allDays = new Set<string>();
   for (const s of snapshots) {
     const day = dateKey(s.createdAt);
     allDays.add(day);
     if (!byTickerDay.has(s.ticker)) byTickerDay.set(s.ticker, new Map());
-    byTickerDay.get(s.ticker)!.set(day, { price: s.price, bullishScore: s.bullishScore });
+    const score = s[scoreField] ?? 0;
+    byTickerDay.get(s.ticker)!.set(day, { price: s.price, score });
   }
   const sortedDays = Array.from(allDays).sort();
 
@@ -94,13 +109,13 @@ export async function runBacktest(): Promise<BacktestResult> {
       const targetDate = addDays(day, days);
       if (targetDate > dateKey(new Date())) continue; // period hasn't elapsed yet
 
-      // Rank tickers by bullishScore as of this pick day, take top 10.
-      const dayRanking: { ticker: string; price: number; bullishScore: number }[] = [];
+      // Rank tickers by this lens's score as of this pick day, take top 10.
+      const dayRanking: { ticker: string; price: number; score: number }[] = [];
       for (const [ticker, byDay] of byTickerDay) {
         const entry = byDay.get(day);
         if (entry) dayRanking.push({ ticker, ...entry });
       }
-      dayRanking.sort((a, b) => b.bullishScore - a.bullishScore);
+      dayRanking.sort((a, b) => b.score - a.score);
       const picks = dayRanking.slice(0, 10);
       if (picks.length === 0) continue;
 

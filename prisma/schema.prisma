@@ -132,15 +132,19 @@ model Stock {
 }
 
 model StockSnapshot {
-  id           String   @id @default(cuid())
-  ticker       String
-  stock        Stock    @relation(fields: [ticker], references: [ticker], onDelete: Cascade)
-  bullishScore Float    @default(0)
-  price        Float    @default(0)
-  marketCap    Float    @default(0)
+  id              String   @id @default(cuid())
+  ticker          String
+  stock           Stock    @relation(fields: [ticker], references: [ticker], onDelete: Cascade)
+  lens            String   @default("speculative") // "speculative" | "quality" | "turnaround" — a ticker can be snapshotted once per lens per day, so this disambiguates rows instead of relying on which score field is non-null
+  bullishScore    Float    @default(0)
+  qualityScore    Float?
+  turnaroundScore Float?
+  price           Float    @default(0)
+  marketCap       Float    @default(0)
   createdAt    DateTime @default(now())
 
   @@index([ticker])
+  @@index([lens])
 }
 
 model StockNews {
