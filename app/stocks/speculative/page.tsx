@@ -276,8 +276,6 @@ type RevGrowthMap = Record<string, string>;
 export default function StocksPage() {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [msg, setMsg] = useState("");
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [showBacktest, setShowBacktest] = useState(false);
   const [revGrowthMap, setRevGrowthMap] = useState<RevGrowthMap>({});
@@ -366,23 +364,6 @@ export default function StocksPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function handleRefresh() {
-    setRefreshing(true);
-    setMsg("Scanning all sectors...");
-    try {
-      const res = await fetch("/api/stocks/refresh", { method: "POST" });
-      const data = await res.json();
-      if (data.success) {
-        setMsg(`Done — ${data.count} stocks across ${data.sectors} sectors`);
-        load();
-      } else {
-        setMsg(`Error: ${data.error}`);
-      }
-    } finally {
-      setRefreshing(false);
-    }
-  }
-
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -406,11 +387,6 @@ export default function StocksPage() {
             className="text-xs text-emerald-400 border border-emerald-800 px-3 py-1 rounded hover:bg-emerald-900/30">
             Export CSV
           </button>
-          <button onClick={handleRefresh} disabled={refreshing}
-            className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 rounded-lg text-sm font-medium transition-colors">
-            {refreshing ? "Scanning..." : "Scan Market"}
-          </button>
-          {msg && <span className="text-sm text-gray-400">{msg}</span>}
         </div>
       </div>
 
