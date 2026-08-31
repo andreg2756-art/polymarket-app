@@ -5,7 +5,12 @@ import { qualityFirstPass, qualityFinalScore } from "@/lib/stocks/qualityScore";
 import { getFundamentals } from "@/lib/stocks/fundamentals";
 import { sendEmail } from "@/lib/notify";
 
-const FUNDAMENTALS_SHORTLIST_SIZE = 15;
+// Polygon's plan caps at 5 requests/min SHARED across every Polygon call in
+// this process (confirmed by testing), including Turnaround's concurrent
+// fundamentals pass — so this and Turnaround's shortlist combined need to
+// fit the refresh route's 180s maxDuration once throttled. 7+7=14 fits with
+// headroom; 15+15 would take ~6 minutes serialized and kill the whole run.
+const FUNDAMENTALS_SHORTLIST_SIZE = 7;
 
 export interface QualityPipelineResult {
   tickers: string[]; // every ticker touched this run, for the shared cleanup step

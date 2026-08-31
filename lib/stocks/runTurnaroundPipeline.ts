@@ -4,7 +4,9 @@ import { turnaroundFirstPass, turnaroundFinalScore } from "@/lib/stocks/turnarou
 import { getFundamentals } from "@/lib/stocks/fundamentals";
 import { sendEmail } from "@/lib/notify";
 
-const FUNDAMENTALS_SHORTLIST_SIZE = 15;
+// Kept in sync with Quality's shortlist size — see that file's comment.
+// Polygon's 5-req/min cap is shared across both pipelines' concurrent calls.
+const FUNDAMENTALS_SHORTLIST_SIZE = 7;
 
 export interface TurnaroundPipelineResult {
   tickers: string[];

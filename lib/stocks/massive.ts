@@ -14,7 +14,34 @@ interface PolygonGetResult<T> {
   planLimited: boolean; // true only for an actual 403 (plan restriction)
 }
 
-async function polygonGet<T>(path: string, params: Record<string, string> = {}): Promise<PolygonGetResult<T>> {
+// Confirmed by direct testing: the current plan allows exactly 5 requests/min
+// across ALL Polygon endpoints combined (not per-endpoint, not per-caller) —
+// a burst of 8 calls got 5x 200 then 3x 429. Shared module-level gate so
+// every caller in this process (news, candles, short-interest, financials —
+// including two pipelines running concurrently) queues through one limiter
+// instead of each independently bursting past it.
+const RATE_LIMIT = 5;
+const RATE_WINDOW_MS = 60_000;
+let recentRequestTimestamps: number[] = [];
+
+async function waitForPolygonRateLimit(): Promise<void> {
+  for (;;) {
+    const now = Date.now();
+    recentRequestTimestamps = recentRequestTimestamps.filter((t) => now - t < RATE_WINDOW_MS);
+    if (recentRequestTimestamps.length < RATE_LIMIT) {
+      recentRequestTimestamps.push(now);
+      return;
+    }
+    const waitMs = RATE_WINDOW_MS - (now - recentRequestTimestamps[0]) + 200;
+    await new Promise((r) => setTimeout(r, waitMs));
+  }
+}
+
+async function polygonGet<T>(
+  path: string,
+  params: Record<string, string> = {},
+  revalidateSeconds = 3600
+): Promise<PolygonGetResult<T>> {
   const key = getKey();
   if (!key) {
     console.warn("[massive] POLYGON_API_KEY not set — skipping request");
@@ -25,21 +52,32 @@ async function polygonGet<T>(path: string, params: Record<string, string> = {}):
   url.searchParams.set("apiKey", key);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
 
-  try {
-    const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
-    if (res.status === 403) {
-      console.warn(`[massive] 403 Forbidden — endpoint may require higher plan: ${path}`);
-      return { data: null, planLimited: true };
-    }
-    if (!res.ok) {
-      console.warn(`[massive] HTTP ${res.status} for ${path}`);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await waitForPolygonRateLimit();
+    try {
+      const res = await fetch(url.toString(), { next: { revalidate: revalidateSeconds } });
+      if (res.status === 403) {
+        console.warn(`[massive] 403 Forbidden — endpoint may require higher plan: ${path}`);
+        return { data: null, planLimited: true };
+      }
+      if (res.status === 429) {
+        // Shared limiter should prevent this, but stay defensive against
+        // races or another process sharing the same key.
+        if (attempt === 0) continue;
+        console.warn(`[massive] HTTP 429 for ${path} (after retry)`);
+        return { data: null, planLimited: false };
+      }
+      if (!res.ok) {
+        console.warn(`[massive] HTTP ${res.status} for ${path}`);
+        return { data: null, planLimited: false };
+      }
+      return { data: (await res.json()) as T, planLimited: false };
+    } catch (err) {
+      console.warn(`[massive] fetch failed for ${path}:`, err);
       return { data: null, planLimited: false };
     }
-    return { data: (await res.json()) as T, planLimited: false };
-  } catch (err) {
-    console.warn(`[massive] fetch failed for ${path}:`, err);
-    return { data: null, planLimited: false };
   }
+  return { data: null, planLimited: false };
 }
 
 // ── News ───────────────────────────────────────────────────────────────────
@@ -197,11 +235,15 @@ function mapPolygonPeriod(p: PolygonFinancialsPeriodRaw | undefined): PolygonFin
 export async function fetchPolygonFinancials(
   ticker: string
 ): Promise<{ current: PolygonFinancialsPeriod | null; previous: PolygonFinancialsPeriod | null }> {
-  const { data } = await polygonGet<PolygonFinancialsResponse>("/vX/reference/financials", {
-    ticker,
-    timeframe: "annual",
-    limit: "2",
-  });
+  // 24h cache, not the usual 3600s default — annual financials don't change
+  // between refreshes, and stretching the cache window is what lets the
+  // 5-req/min budget cover more of the shortlist across successive days
+  // instead of re-spending it on the same tickers every run.
+  const { data } = await polygonGet<PolygonFinancialsResponse>(
+    "/vX/reference/financials",
+    { ticker, timeframe: "annual", limit: "2" },
+    86_400
+  );
   const results = data?.results ?? [];
   return { current: mapPolygonPeriod(results[0]), previous: mapPolygonPeriod(results[1]) };
 }
