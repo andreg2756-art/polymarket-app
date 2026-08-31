@@ -33,10 +33,9 @@ function sourceTag(metric: SupplementalStockData[keyof SupplementalStockData] | 
     yahoo:      "text-blue-600",
     sec:        "text-purple-600",
     calculated: "text-gray-600",
-    finra:      "text-yellow-700",
+    polygon:    "text-fuchsia-600",
   };
-  const label = metric.source === "finra" ? "finra (short vol)" : metric.source;
-  return <span className={`text-xs ${colors[metric.source] ?? "text-gray-700"}`}>[{label}]</span>;
+  return <span className={`text-xs ${colors[metric.source] ?? "text-gray-700"}`}>[{metric.source}]</span>;
 }
 
 function Row({
@@ -310,7 +309,7 @@ export default function ResearchChecklist(props: Props) {
                   source={sourceTag(supp?.avgDailyVolume)}
                 />
                 <Row
-                  label={supp?.shortInterest?.source === "finra" ? "Short Volume Ratio" : "Short Interest"}
+                  label="Short Interest"
                   value={supp?.shortInterest?.source === "unavailable" && supp.shortInterest.reason?.includes("Stale")
                     ? "N/A — stale short interest data"
                     : shortInterestDisplay ?? val(supp?.shortInterest)}
@@ -319,9 +318,6 @@ export default function ResearchChecklist(props: Props) {
                 />
                 {supp?.shortInterest?.source === "unavailable" && supp.shortInterest.reason?.includes("Stale") && (
                   <p className="text-xs text-yellow-800 pb-1">Short interest data must be recent; stale data excluded.</p>
-                )}
-                {supp?.shortInterest?.source === "finra" && (
-                  <p className="text-xs text-yellow-900 pb-1">Not exchange-reported short interest</p>
                 )}
               </section>
 

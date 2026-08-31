@@ -1,15 +1,15 @@
 // /lib/stockSupplementalData.ts
 // Supplemental data layer — fills missing checklist fields.
-// Uses Yahoo Finance quoteSummary (with crumb auth) + FINRA short volume fallback.
+// Uses Yahoo Finance quoteSummary (with crumb auth) for most fields.
 // Each field fails independently — the page never crashes if one source is down.
 
-import { getFinraShortVolume } from "./finraShortVolume";
+import { getShortInterestData } from "./stocks/shortInterest";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type SupplementalMetric = {
   value: string | number | null;
-  source: "yahoo" | "sec" | "calculated" | "finra" | "unavailable";
+  source: "yahoo" | "sec" | "calculated" | "polygon" | "unavailable";
   reason?: string;
 };
 
@@ -415,56 +415,34 @@ function calcNextEarnings(qs: Record<string, unknown> | null): SupplementalMetri
 
 // ── Short Interest ─────────────────────────────────────────────────────────
 // Prefer Yahoo defaultKeyStatistics (real short interest).
-// Fall back to FINRA short volume ratio with a clear label.
-
-const STALE_DAYS = 45;
-
-function isStaleMs(rawTs: unknown): boolean {
-  const ts = raw(rawTs);
-  if (ts === null) return false;
-  return (Date.now() - ts * 1000) / 86400000 > STALE_DAYS;
-}
+// Sourced from Polygon exclusively — the same authoritative, exchange-
+// reported data the dedicated Short Interest page uses (lib/stocks/
+// shortInterest.ts). Previously this fell back through Yahoo's
+// shortPercentOfFloat, then FINRA short *volume* (a different metric
+// entirely, mislabeled here as a proxy) — three sources answering the same
+// question three different ways depending which page you were on. Polygon
+// confirmed working even for microcaps (tested RFL, $90M market cap) with
+// real exchange-reported shares-short and days-to-cover, so there's no
+// coverage reason left to keep the fallback chain.
+//
+// floatShares comes from the same Yahoo quoteSummary object already fetched
+// for other fields on this page — no extra network call — so the % of float
+// figure Polygon doesn't return directly can still be derived.
 
 async function calcShortInterest(
   symbol: string,
   qs: Record<string, unknown> | null
 ): Promise<SupplementalMetric> {
-  try {
-    const ks = qs?.defaultKeyStatistics as Record<string, unknown> | undefined;
-    const pct   = raw(ks?.shortPercentOfFloat);
-    const ratio = raw(ks?.shortRatio);
-    const date  = fmtDate(ks?.dateShortInterest) ?? fmt(ks?.dateShortInterest);
-    const stale = isStaleMs(ks?.dateShortInterest);
+  const ks = qs?.defaultKeyStatistics as Record<string, unknown> | undefined;
+  const floatShares = raw(ks?.floatShares);
 
-    if (stale) {
-      return {
-        value: null, source: "unavailable",
-        reason: `Stale short interest data — as of ${date ?? "unknown date"}, older than ${STALE_DAYS} days. Short interest data must be recent; stale data excluded.`,
-      };
-    }
+  const result = await getShortInterestData(symbol, floatShares);
 
-    if (pct !== null) {
-      const pctDisplay = (pct * 100).toFixed(1);
-      let display = `${pctDisplay}% of float`;
-      if (ratio !== null) display += ` · ${ratio.toFixed(1)} days to cover`;
-      if (date)           display += ` · as of ${date}`;
-      return { value: display, source: "yahoo" };
-    }
-  } catch { /* fall through to FINRA */ }
+  if (!result.available) {
+    return missing(result.reason || "Short interest unavailable");
+  }
 
-  // FINRA short volume fallback
-  try {
-    const finra = await getFinraShortVolume(symbol);
-    if (finra.source === "finra" && finra.shortVolumeRatio !== null) {
-      return {
-        value:  `${finra.shortVolumeRatio.toFixed(1)}% short volume ratio · ${finra.tradeDate}`,
-        source: "finra",
-        reason: "Not exchange-reported short interest",
-      };
-    }
-  } catch { /* fall through */ }
-
-  return missing("Short interest unavailable — Polygon plan required for exchange data");
+  return { value: result.reason, source: "polygon" };
 }
 
 // ── Insider Activity ───────────────────────────────────────────────────────
