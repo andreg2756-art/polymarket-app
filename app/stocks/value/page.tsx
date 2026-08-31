@@ -4,6 +4,7 @@ import Link from "next/link";
 import { TableSkeleton } from "@/components/Skeleton";
 import { exportCSV } from "@/lib/analytics";
 import BacktestSummary from "@/components/stocks/BacktestSummary";
+import DataWarningBanner from "@/components/stocks/DataWarningBanner";
 
 interface Stock {
   id: string;
@@ -28,6 +29,13 @@ export default function ValueTurnaroundPage() {
   useEffect(() => {
     fetch("/api/stocks/turnaround").then((r) => r.json()).then(setStocks).finally(() => setLoading(false));
   }, []);
+
+  // Mirrors fundamentals.ts's EMPTY fallback — all three null means the FMP
+  // fetch for this ticker failed (or was plan-restricted), so the score
+  // below is first-pass only, missing survival/trend evidence.
+  function missingFundamentals(s: Stock): boolean {
+    return s.totalDebt === null && s.cashAndEquivalents === null && s.freeCashFlow === null;
+  }
 
   function runway(s: Stock): string {
     if (s.freeCashFlow === null) return "—";
@@ -60,6 +68,14 @@ export default function ValueTurnaroundPage() {
       </div>
 
       {showBacktest && <BacktestSummary lens="turnaround" title="Value/Turnaround Lens Backtest" />}
+
+      {!loading && (
+        <DataWarningBanner
+          incompleteCount={stocks.filter(missingFundamentals).length}
+          totalCount={stocks.length}
+          label="Fundamentals (debt, cash, FCF)"
+        />
+      )}
 
       {loading ? <TableSkeleton rows={12} cols={8} /> : (
         <div className="rounded-xl border border-gray-800 overflow-hidden">
@@ -94,6 +110,12 @@ export default function ValueTurnaroundPage() {
                     }`}>
                       {s.turnaroundScore ?? "—"}
                     </span>
+                    {missingFundamentals(s) && (
+                      <span title="Fundamentals unavailable (likely FMP plan restriction) — score reflects valuation/off-high only, not survival/trend evidence"
+                        className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-yellow-900/50 text-yellow-400 border border-yellow-800 cursor-help">
+                        Partial
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

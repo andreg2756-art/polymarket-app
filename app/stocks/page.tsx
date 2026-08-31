@@ -7,6 +7,7 @@ import { TableSkeleton } from "@/components/Skeleton";
 import { exportCSV } from "@/lib/analytics";
 import Disclaimer from "@/components/stocks/Disclaimer";
 import BacktestSummary from "@/components/stocks/BacktestSummary";
+import DataWarningBanner from "@/components/stocks/DataWarningBanner";
 import ScoreBreakdown from "@/components/stocks/ScoreBreakdown";
 import ResearchChecklist from "@/components/stocks/ResearchChecklist";
 import EnhancedScorePanel from "@/components/stocks/EnhancedScorePanel";
@@ -409,6 +410,14 @@ export default function StocksPage() {
       {/* Backtest */}
       {showBacktest && <BacktestSummary />}
 
+      {!loading && (
+        <DataWarningBanner
+          incompleteCount={stocks.filter((s) => s.lastEarningsDate === null).length}
+          totalCount={stocks.length}
+          label="Earnings data"
+        />
+      )}
+
       {/* Table */}
       {loading ? <TableSkeleton rows={10} cols={9} /> : (
         <div className="rounded-xl border border-gray-800 overflow-hidden">
@@ -466,6 +475,12 @@ export default function StocksPage() {
                   <td className="px-3 py-3 pt-4">
                     <div className="space-y-1">
                       <ScoreBadge score={s.bullishScore} stock={s} />
+                      {s.lastEarningsDate === null && (
+                        <span title="Earnings data unavailable (likely FMP plan restriction) — score doesn't include earnings/revenue-beat signal"
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-900/50 text-yellow-400 border border-yellow-800 cursor-help inline-block">
+                          Partial
+                        </span>
+                      )}
                       <ScoreBreakdown
                         ticker={s.ticker}
                         score={s.bullishScore}

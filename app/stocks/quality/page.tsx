@@ -4,6 +4,7 @@ import Link from "next/link";
 import { TableSkeleton } from "@/components/Skeleton";
 import { exportCSV, formatUSD } from "@/lib/analytics";
 import BacktestSummary from "@/components/stocks/BacktestSummary";
+import DataWarningBanner from "@/components/stocks/DataWarningBanner";
 
 interface Stock {
   id: string;
@@ -25,6 +26,13 @@ function Change({ v }: { v: number }) {
   if (!isFinite(v)) return <span className="text-gray-500">N/A</span>;
   const color = v > 0 ? "text-emerald-400" : v < 0 ? "text-red-400" : "text-gray-500";
   return <span className={color}>{v > 0 ? "+" : ""}{v.toFixed(1)}%</span>;
+}
+
+// Mirrors fundamentals.ts's EMPTY fallback — all four null means the FMP
+// fetch for this ticker failed (or was plan-restricted), so the score below
+// is first-pass only, missing margin/debt/FCF.
+function missingFundamentals(s: Stock): boolean {
+  return s.netIncome === null && s.totalDebt === null && s.cashAndEquivalents === null && s.freeCashFlow === null;
 }
 
 export default function QualityScreenPage() {
@@ -59,6 +67,14 @@ export default function QualityScreenPage() {
       </div>
 
       {showBacktest && <BacktestSummary lens="quality" title="Quality Lens Backtest" />}
+
+      {!loading && (
+        <DataWarningBanner
+          incompleteCount={stocks.filter(missingFundamentals).length}
+          totalCount={stocks.length}
+          label="Fundamentals (net income, debt, cash, FCF)"
+        />
+      )}
 
       {loading ? <TableSkeleton rows={12} cols={9} /> : (
         <div className="rounded-xl border border-gray-800 overflow-hidden">
@@ -100,6 +116,12 @@ export default function QualityScreenPage() {
                     }`}>
                       {s.qualityScore ?? "—"}
                     </span>
+                    {missingFundamentals(s) && (
+                      <span title="Fundamentals unavailable (likely FMP plan restriction) — score reflects valuation/growth only, not margin/debt/FCF"
+                        className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-yellow-900/50 text-yellow-400 border border-yellow-800 cursor-help">
+                        Partial
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}
