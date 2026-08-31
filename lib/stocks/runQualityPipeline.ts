@@ -5,14 +5,13 @@ import { qualityFirstPass, qualityFinalScore } from "@/lib/stocks/qualityScore";
 import { getFundamentals } from "@/lib/stocks/fundamentals";
 import { sendEmail } from "@/lib/notify";
 
-// Polygon's plan caps at 5 requests/min SHARED across every Polygon call in
-// this process (confirmed by testing), including Turnaround's concurrent
-// fundamentals pass. 7+7=14 combined caused a confirmed FUNCTION_INVOCATION_
-// TIMEOUT in production (the SEC EDGAR revenue-growth pass above already
-// eats an unmeasured chunk of the 180s budget before this even starts) —
-// temporarily set very small to measure real remaining headroom safely
-// before sizing this back up.
-const FUNDAMENTALS_SHORTLIST_SIZE = 2;
+// Polygon's plan caps at 5 requests/min, shared across every Polygon call
+// that opts into waiting for quota (see massive.ts — only fetchPolygonFinancials
+// does; news/candles/short-interest stay fail-fast so they can't queue behind
+// this). This and Turnaround's shortlist combined (10) clear in ~2 batches
+// of the 5/min window, ~65s worst case — safe inside the refresh route's
+// 180s maxDuration alongside the ~26s measured screener+EDGAR overhead above.
+const FUNDAMENTALS_SHORTLIST_SIZE = 5;
 
 export interface QualityPipelineResult {
   tickers: string[]; // every ticker touched this run, for the shared cleanup step

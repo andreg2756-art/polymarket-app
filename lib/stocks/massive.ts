@@ -37,11 +37,21 @@ async function waitForPolygonRateLimit(): Promise<void> {
   }
 }
 
+// waitForQuota defaults to false — fail fast on 429, same as before the rate
+// limiter existed. This matters: news/candles/short-interest are called for
+// large concurrent shortlists (up to 80 tickers for the enhanced-score
+// pass) and were already designed to tolerate a failed lookup and move on.
+// Making the shared polygonGet block+wait for ALL callers by default turned
+// that fail-fast pass into 80 calls queuing behind one 5/min gate and caused
+// a confirmed FUNCTION_INVOCATION_TIMEOUT — waiting for quota is only safe
+// to opt into for a caller with a small, known request count, which is why
+// fetchPolygonFinancials passes waitForQuota: true and nothing else does.
 async function polygonGet<T>(
   path: string,
   params: Record<string, string> = {},
-  revalidateSeconds = 3600
+  options: { revalidateSeconds?: number; waitForQuota?: boolean } = {}
 ): Promise<PolygonGetResult<T>> {
+  const { revalidateSeconds = 3600, waitForQuota = false } = options;
   const key = getKey();
   if (!key) {
     console.warn("[massive] POLYGON_API_KEY not set — skipping request");
@@ -52,8 +62,9 @@ async function polygonGet<T>(
   url.searchParams.set("apiKey", key);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
 
-  for (let attempt = 0; attempt < 2; attempt++) {
-    await waitForPolygonRateLimit();
+  const attempts = waitForQuota ? 2 : 1;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    if (waitForQuota) await waitForPolygonRateLimit();
     try {
       const res = await fetch(url.toString(), { next: { revalidate: revalidateSeconds } });
       if (res.status === 403) {
@@ -61,11 +72,8 @@ async function polygonGet<T>(
         return { data: null, planLimited: true };
       }
       if (res.status === 429) {
-        // Shared limiter should prevent this, but stay defensive against
-        // races or another process sharing the same key.
-        if (attempt === 0) continue;
-        console.warn(`[massive] HTTP 429 for ${path} (after retry)`);
-        return { data: null, planLimited: false };
+        if (waitForQuota && attempt === 0) continue; // shared limiter should prevent this; stay defensive
+        return { data: null, planLimited: false }; // fail-fast path: expected under load, not worth logging every time
       }
       if (!res.ok) {
         console.warn(`[massive] HTTP ${res.status} for ${path}`);
@@ -242,7 +250,7 @@ export async function fetchPolygonFinancials(
   const { data } = await polygonGet<PolygonFinancialsResponse>(
     "/vX/reference/financials",
     { ticker, timeframe: "annual", limit: "2" },
-    86_400
+    { revalidateSeconds: 86_400, waitForQuota: true }
   );
   const results = data?.results ?? [];
   return { current: mapPolygonPeriod(results[0]), previous: mapPolygonPeriod(results[1]) };
