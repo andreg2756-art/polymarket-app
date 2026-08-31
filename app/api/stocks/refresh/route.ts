@@ -10,6 +10,7 @@ import { getEarningsPerformance } from "@/lib/stocks/earningsPerformance";
 import { getFmpFloatData } from "@/lib/stocks/technicals";
 import { runQualityPipeline } from "@/lib/stocks/runQualityPipeline";
 import { runTurnaroundPipeline } from "@/lib/stocks/runTurnaroundPipeline";
+import { captureServerException } from "@/lib/posthog-server";
 
 export const maxDuration = 180;
 
@@ -266,6 +267,10 @@ export async function POST() {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    // Caught here rather than left to the global onRequestError hook — this
+    // route already handles the error itself (email + a normal 500 JSON
+    // response), so it never propagates up to where that hook would see it.
+    await captureServerException(err, { route: "/api/stocks/refresh" });
     await sendEmail({
       subject: "Stocks refresh failed",
       html: `<p>The stocks screener refresh failed with error:</p><pre>${msg}</pre>`,
