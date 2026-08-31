@@ -135,6 +135,77 @@ export async function fetchShortInterest(ticker: string): Promise<PolygonShortIn
 
 export interface PolygonCandle { close: number; volume: number; timestamp: number }
 
+// ── Financials (balance sheet / income statement / cash flow) ────────────────
+// Replaces FMP's balance-sheet-statement/income-statement/cash-flow-statement
+// endpoints, which reject (402) almost every symbol outside a small mega-cap
+// allowlist on the current plan — confirmed by direct testing. Polygon's
+// financials are aggregated from the same SEC XBRL filings every public
+// company must submit, so coverage isn't gated by market cap: tested against
+// 8 names spanning insurance, tech, mining, and financial services and all 8
+// returned real net income/revenue/margin data.
+//
+// KNOWN GAP: across that same sample, no company had a standardized "cash"
+// line item (folded into current_assets without being broken out) and no
+// cash-flow statement had a capital-expenditure line, so cashAndEquivalents
+// and freeCashFlow are left null rather than guessed at — this is a real
+// limitation of Polygon's standardized taxonomy, not a bug. "long_term_debt"
+// is present roughly a third of the time, so totalDebt is partial too.
+
+interface PolygonFinancialValue { value: number; unit: string; label: string; order: number }
+
+interface PolygonFinancialsPeriodRaw {
+  fiscal_period: string;
+  fiscal_year: string;
+  timeframe: string;
+  financials: {
+    income_statement?: Record<string, PolygonFinancialValue>;
+    balance_sheet?: Record<string, PolygonFinancialValue>;
+    cash_flow_statement?: Record<string, PolygonFinancialValue>;
+  };
+}
+
+interface PolygonFinancialsResponse {
+  results: PolygonFinancialsPeriodRaw[];
+  status: string;
+}
+
+export interface PolygonFinancialsPeriod {
+  netIncome: number | null;
+  revenue: number | null;
+  grossProfit: number | null;
+  operatingIncome: number | null;
+  totalDebt: number | null;
+  cashAndEquivalents: number | null; // not available from Polygon's standardized financials — see note above
+  freeCashFlow: number | null;       // not available from Polygon's standardized financials — see note above
+}
+
+function mapPolygonPeriod(p: PolygonFinancialsPeriodRaw | undefined): PolygonFinancialsPeriod | null {
+  if (!p) return null;
+  const inc = p.financials.income_statement ?? {};
+  const bs = p.financials.balance_sheet ?? {};
+  return {
+    netIncome: inc.net_income_loss?.value ?? null,
+    revenue: inc.revenues?.value ?? null,
+    grossProfit: inc.gross_profit?.value ?? null,
+    operatingIncome: inc.operating_income_loss?.value ?? null,
+    totalDebt: bs.long_term_debt?.value ?? null,
+    cashAndEquivalents: null,
+    freeCashFlow: null,
+  };
+}
+
+export async function fetchPolygonFinancials(
+  ticker: string
+): Promise<{ current: PolygonFinancialsPeriod | null; previous: PolygonFinancialsPeriod | null }> {
+  const { data } = await polygonGet<PolygonFinancialsResponse>("/vX/reference/financials", {
+    ticker,
+    timeframe: "annual",
+    limit: "2",
+  });
+  const results = data?.results ?? [];
+  return { current: mapPolygonPeriod(results[0]), previous: mapPolygonPeriod(results[1]) };
+}
+
 export async function fetchPolygonDailyCandles(
   ticker: string,
   fromDate: string, // YYYY-MM-DD

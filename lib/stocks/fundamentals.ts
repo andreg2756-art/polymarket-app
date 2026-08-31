@@ -1,9 +1,12 @@
-// Bounded FMP fundamentals fetch (balance sheet + cash flow + income) —
-// used only on a capped shortlist per lens, never the full expanded
-// universe, to keep FMP call volume predictable (confirmed today: FMP's
-// daily quota can be exhausted by a single heavy pass).
+// Bounded fundamentals fetch (balance sheet + income, annual + prior year) —
+// used only on a capped shortlist per lens, never the full expanded universe.
+// Sourced from Polygon rather than FMP: FMP's current plan rejects (402)
+// financial-statement requests for anything outside a small mega-cap
+// allowlist, which made this silently empty for virtually every small/mid
+// cap the screener actually targets. Polygon has no such allowlist (see
+// massive.ts for the coverage test and the cash/FCF gap this trades in).
 
-import { getIncomeStatements, getBalanceSheets, getCashFlows } from "@/lib/fmp";
+import { fetchPolygonFinancials } from "@/lib/stocks/massive";
 
 export interface Fundamentals {
   netIncome: number | null;
@@ -27,31 +30,20 @@ const EMPTY: Fundamentals = {
 
 export async function getFundamentals(ticker: string): Promise<Fundamentals> {
   try {
-    const [income, balance, cashFlow] = await Promise.all([
-      getIncomeStatements(ticker).catch(() => []),
-      getBalanceSheets(ticker).catch(() => []),
-      getCashFlows(ticker).catch(() => []),
-    ]);
-
-    const inc0 = income[0];
-    const inc1 = income[1];
-    const bal0 = balance[0];
-    const cf0 = cashFlow[0];
-    const cf1 = cashFlow[1];
-
-    if (!inc0 && !bal0 && !cf0) return EMPTY;
+    const { current, previous } = await fetchPolygonFinancials(ticker);
+    if (!current) return EMPTY;
 
     return {
-      netIncome: inc0?.netIncome ?? null,
-      revenue: inc0?.revenue ?? null,
-      grossProfit: inc0?.grossProfit ?? null,
-      operatingIncome: inc0?.operatingIncome ?? null,
-      totalDebt: bal0?.totalDebt ?? null,
-      cashAndEquivalents: bal0?.cashAndCashEquivalents ?? null,
-      freeCashFlow: cf0?.freeCashFlow ?? null,
-      prevRevenue: inc1?.revenue ?? null,
-      prevOperatingIncome: inc1?.operatingIncome ?? null,
-      prevFreeCashFlow: cf1?.freeCashFlow ?? null,
+      netIncome: current.netIncome,
+      revenue: current.revenue,
+      grossProfit: current.grossProfit,
+      operatingIncome: current.operatingIncome,
+      totalDebt: current.totalDebt,
+      cashAndEquivalents: current.cashAndEquivalents,
+      freeCashFlow: current.freeCashFlow,
+      prevRevenue: previous?.revenue ?? null,
+      prevOperatingIncome: previous?.operatingIncome ?? null,
+      prevFreeCashFlow: previous?.freeCashFlow ?? null,
     };
   } catch {
     return EMPTY;
