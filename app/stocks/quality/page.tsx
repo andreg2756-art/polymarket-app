@@ -77,7 +77,7 @@ export default function QualityScreenPage() {
       )}
 
       {loading ? <TableSkeleton rows={12} cols={9} /> : (
-        <div className="rounded-xl border border-gray-800 overflow-hidden">
+        <div className="rounded-xl border border-gray-800 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-900 text-gray-400 text-xs uppercase">
               <tr>

@@ -16,6 +16,11 @@ interface StockDetail {
     insiderBuying: number; relativeVolume: number; change1M: number; rank: number;
     lastEarningsDate: string | null; float: number | null; shortInterest: number | null;
     institutionalOwn: number | null;
+    qualityScore: number | null; qualityRank: number | null;
+    turnaroundScore: number | null; turnaroundRank: number | null;
+    netIncome: number | null; totalDebt: number | null;
+    cashAndEquivalents: number | null; freeCashFlow: number | null;
+    trailingPE: number | null; priceToBook: number | null;
   };
   news: { id: string; headline: string; publisher: string | null; publishedAt: string | null; url: string; summary: string | null; sentiment: number }[];
   snapshots: { createdAt: string; bullishScore: number; price: number }[];
@@ -54,42 +59,84 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
   const totalHold = analyst?.analystRatingsHold ?? 0;
   const totalAnalysts = totalBuy + totalSell + totalHold;
 
+  // Momentum/earnings signals only exist for stocks the Speculative pipeline
+  // has actually scored (rank > 0 — 0 is the unset default for stocks that
+  // only came from the Quality/Turnaround lenses), so gate on that instead
+  // of treating a default 0/false as a real "no momentum" reading.
+  const hasSpeculativeData = stock.rank > 0;
+
   const bullCase = [
-    stock.earningsBeat && "Beat earnings estimates last quarter",
-    stock.revenueBeat && "Beat revenue estimates last quarter",
+    hasSpeculativeData && stock.earningsBeat && "Beat earnings estimates last quarter",
+    hasSpeculativeData && stock.revenueBeat && "Beat revenue estimates last quarter",
     stock.revenueGrowth > 15 && `Revenue growing ${stock.revenueGrowth.toFixed(1)}% YoY`,
-    stock.epsGrowth > 20 && `EPS growing ${stock.epsGrowth.toFixed(1)}% YoY`,
-    stock.insiderBuying > 0 && `Insider buying activity detected ($${fmtNum(stock.insiderBuying)})`,
+    hasSpeculativeData && stock.epsGrowth > 20 && `EPS growing ${stock.epsGrowth.toFixed(1)}% YoY`,
+    hasSpeculativeData && stock.insiderBuying > 0 && `Insider buying activity detected ($${fmtNum(stock.insiderBuying)})`,
     stock.analystRating?.includes("Buy") && `Analyst consensus: ${stock.analystRating}`,
-    stock.relativeVolume > 1.5 && `High relative volume (${stock.relativeVolume.toFixed(1)}x average)`,
-    stock.change1M > 10 && `Strong 1-month momentum (+${stock.change1M.toFixed(1)}%)`,
+    hasSpeculativeData && stock.relativeVolume > 1.5 && `High relative volume (${stock.relativeVolume.toFixed(1)}x average)`,
+    hasSpeculativeData && stock.change1M > 10 && `Strong 1-month momentum (+${stock.change1M.toFixed(1)}%)`,
+    // Quality/Turnaround-lens signals — these are the only ones available for
+    // stocks not part of the Speculative universe (see missing-fundamentals
+    // banner on those tabs), so a stock like that shouldn't fall through to
+    // "no signals detected" just because it has no momentum data.
+    stock.netIncome !== null && stock.netIncome > 0 && `Profitable (net income $${fmtNum(stock.netIncome / 1e6)}M)`,
+    stock.freeCashFlow !== null && stock.freeCashFlow >= 0 && "Self-sustaining free cash flow",
+    stock.totalDebt !== null && stock.cashAndEquivalents !== null && stock.totalDebt <= stock.cashAndEquivalents &&
+      "Cash on hand covers total debt",
+    stock.priceToBook !== null && stock.priceToBook > 0 && stock.priceToBook < 1 &&
+      `Trading below book value (P/B ${stock.priceToBook.toFixed(2)})`,
+    stock.trailingPE !== null && stock.trailingPE > 0 && stock.trailingPE <= 15 &&
+      `Cheap on trailing earnings (P/E ${stock.trailingPE.toFixed(1)})`,
   ].filter(Boolean) as string[];
 
   const bearCase = [
-    stock.lastEarningsDate && !stock.earningsBeat && "Missed earnings estimates recently",
+    hasSpeculativeData && stock.lastEarningsDate && !stock.earningsBeat && "Missed earnings estimates recently",
     stock.revenueGrowth < 0 && `Revenue declining ${Math.abs(stock.revenueGrowth).toFixed(1)}% YoY`,
     stock.shortInterest && stock.shortInterest > 10 && `High short interest (${stock.shortInterest.toFixed(1)}%)`,
-    stock.change1M < -10 && `Weak price action (${stock.change1M.toFixed(1)}% last month)`,
+    hasSpeculativeData && stock.change1M < -10 && `Weak price action (${stock.change1M.toFixed(1)}% last month)`,
     totalAnalysts > 0 && totalSell > totalBuy && `More sell ratings than buy ratings`,
+    stock.netIncome !== null && stock.netIncome < 0 && `Unprofitable (net loss $${fmtNum(Math.abs(stock.netIncome) / 1e6)}M)`,
+    stock.freeCashFlow !== null && stock.freeCashFlow < 0 && stock.cashAndEquivalents !== null &&
+      `Burning cash — ${(stock.cashAndEquivalents / Math.abs(stock.freeCashFlow)).toFixed(1)}y runway at current rate`,
+    stock.totalDebt !== null && stock.cashAndEquivalents !== null && stock.totalDebt > stock.cashAndEquivalents * 4 &&
+      "High debt relative to cash reserves",
+    stock.priceToBook !== null && stock.priceToBook < 0 && "Negative book value (liabilities exceed assets)",
   ].filter(Boolean) as string[];
 
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-3xl font-bold text-emerald-400">{ticker}</h1>
-            <span className={`text-sm px-3 py-1 rounded-full font-semibold ${stock.bullishScore >= 70 ? "bg-emerald-900 text-emerald-300" : "bg-blue-900 text-blue-300"}`}>
-              Score {stock.bullishScore}
-            </span>
-            <span className="text-sm text-gray-500">Rank #{stock.rank}</span>
+            {hasSpeculativeData && (
+              <span className={`text-sm px-3 py-1 rounded-full font-semibold ${stock.bullishScore >= 70 ? "bg-emerald-900 text-emerald-300" : "bg-blue-900 text-blue-300"}`}>
+                Speculative {stock.bullishScore} · Rank #{stock.rank}
+              </span>
+            )}
+            {stock.turnaroundRank !== null && (
+              <span className="text-sm px-3 py-1 rounded-full font-semibold bg-purple-900 text-purple-300">
+                Value {stock.turnaroundScore} · Rank #{stock.turnaroundRank}
+              </span>
+            )}
+            {stock.qualityRank !== null && (
+              <span className="text-sm px-3 py-1 rounded-full font-semibold bg-teal-900 text-teal-300">
+                Quality {stock.qualityScore} · Rank #{stock.qualityRank}
+              </span>
+            )}
+            {!hasSpeculativeData && stock.turnaroundRank === null && stock.qualityRank === null && (
+              <span className="text-sm text-gray-500">Not currently ranked in any lens</span>
+            )}
           </div>
           <p className="text-xl text-gray-300 mt-1">{stock.name}</p>
           <p className="text-gray-500 text-sm">{stock.sector} · {stock.industry}</p>
         </div>
         <div className="text-right">
           <p className="text-3xl font-bold">${fmtNum(stock.price)}</p>
-          <p className={`text-sm ${stock.change1M >= 0 ? "text-emerald-400" : "text-red-400"}`}>{stock.change1M >= 0 ? "+" : ""}{stock.change1M.toFixed(1)}% (1M)</p>
+          {hasSpeculativeData ? (
+            <p className={`text-sm ${stock.change1M >= 0 ? "text-emerald-400" : "text-red-400"}`}>{stock.change1M >= 0 ? "+" : ""}{stock.change1M.toFixed(1)}% (1M)</p>
+          ) : (
+            <p className="text-sm text-gray-600">1M change not tracked</p>
+          )}
         </div>
       </div>
 

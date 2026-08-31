@@ -87,7 +87,7 @@ export default function ScreenerPage() {
       </div>
 
       {loading ? <TableSkeleton rows={12} cols={9} /> : (
-        <div className="rounded-xl border border-gray-800 overflow-hidden">
+        <div className="rounded-xl border border-gray-800 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-900 text-gray-400 text-xs uppercase">
               <tr>
@@ -97,9 +97,25 @@ export default function ScreenerPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
-              {stocks.map((s) => (
+              {stocks.map((s, idx) => {
+                // rank stays at its 0 default for any ticker the Speculative
+                // (momentum) pipeline never scored — most of the universe,
+                // since Quality/Turnaround tickers are sourced from separate
+                // pipelines that don't populate rank/bullishScore/change1M/
+                // change3M/relativeVolume/sector at all. Showing those as a
+                // literal 0/0.0% reads as "scored and bad" rather than "not
+                // scored" — the same distinction Value/Quality already make
+                // with their "Partial" badge for missing fundamentals.
+                const notScored = s.rank === 0;
+                // "#" reflects position in the current sort/filter, not the
+                // stored `rank` column — this table can be resorted by score
+                // or market cap, and the stored rank (meaningful only for the
+                // Speculative lens, and only loosely even then) doesn't track
+                // that, which produced a "#1, #3, #2, #4, #12…" display order
+                // whenever sorting by anything other than rank itself.
+                return (
                 <tr key={s.id} className="hover:bg-gray-900/40 transition-colors">
-                  <td className="px-3 py-3 text-gray-500 text-xs">#{s.rank}</td>
+                  <td className="px-3 py-3 text-gray-500 text-xs">#{idx + 1}</td>
                   <td className="px-3 py-3">
                     <div className="flex flex-col gap-0.5">
                       <Link href={`/stocks/${s.ticker}`} className="text-emerald-400 font-bold hover:underline">{s.ticker}</Link>
@@ -111,16 +127,24 @@ export default function ScreenerPage() {
                     <span className="text-xs bg-gray-800 px-2 py-0.5 rounded text-gray-400 whitespace-nowrap">{s.sector || "—"}</span>
                   </td>
                   <td className="px-3 py-3 text-white font-medium">${s.price.toFixed(2)}</td>
-                  <td className="px-3 py-3"><Change v={s.change1M} /></td>
-                  <td className="px-3 py-3"><Change v={s.change3M} /></td>
-                  <td className="px-3 py-3 text-gray-300">{s.relativeVolume?.toFixed(1) ?? "—"}x</td>
+                  <td className="px-3 py-3">{notScored ? <span className="text-gray-600">N/A</span> : <Change v={s.change1M} />}</td>
+                  <td className="px-3 py-3">{notScored ? <span className="text-gray-600">N/A</span> : <Change v={s.change3M} />}</td>
+                  <td className="px-3 py-3 text-gray-300">{notScored ? "—" : `${s.relativeVolume?.toFixed(1) ?? "—"}x`}</td>
                   <td className="px-3 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${s.bullishScore >= 70 ? "bg-emerald-900 text-emerald-300" : s.bullishScore >= 45 ? "bg-blue-900 text-blue-300" : "bg-gray-800 text-gray-400"}`}>
-                      {s.bullishScore}
-                    </span>
+                    {notScored ? (
+                      <span title="Not part of the Speculative/momentum screener universe — no momentum score computed for this ticker"
+                        className="text-xs px-2 py-0.5 rounded-full font-semibold bg-gray-800 text-gray-500 cursor-help">
+                        Not scored
+                      </span>
+                    ) : (
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${s.bullishScore >= 70 ? "bg-emerald-900 text-emerald-300" : s.bullishScore >= 45 ? "bg-blue-900 text-blue-300" : "bg-gray-800 text-gray-400"}`}>
+                        {s.bullishScore}
+                      </span>
+                    )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           {stocks.length === 0 && (

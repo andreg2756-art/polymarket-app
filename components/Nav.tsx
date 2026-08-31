@@ -11,7 +11,7 @@ const whaleLinks = [
 ];
 
 const stockLinks = [
-  { href: "/stocks", label: "Speculative" },
+  { href: "/stocks/speculative", label: "Speculative" },
   { href: "/stocks/quality", label: "Quality" },
   { href: "/stocks/value", label: "Value" },
   { href: "/stocks/screener", label: "Screener" },
