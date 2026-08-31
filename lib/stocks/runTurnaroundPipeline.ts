@@ -6,7 +6,7 @@ import { sendEmail } from "@/lib/notify";
 
 // Kept in sync with Quality's shortlist size — see that file's comment.
 // Polygon's 5-req/min cap is shared across both pipelines' concurrent calls.
-const FUNDAMENTALS_SHORTLIST_SIZE = 7;
+const FUNDAMENTALS_SHORTLIST_SIZE = 2;
 
 export interface TurnaroundPipelineResult {
   tickers: string[];
@@ -14,16 +14,20 @@ export interface TurnaroundPipelineResult {
 }
 
 export async function runTurnaroundPipeline(): Promise<TurnaroundPipelineResult> {
+  const t0 = Date.now();
   const quotes = await fetchScreenerQuotes(TURNAROUND_SCREENS);
   if (quotes.length === 0) return { tickers: [], candidateCount: 0 };
+  console.log(`[turnaround-pipeline] screener fetch: ${Date.now() - t0}ms, ${quotes.length} candidates`);
 
   const scored = quotes.map((q) => ({ quote: q, firstPass: turnaroundFirstPass(q) }));
   scored.sort((a, b) => b.firstPass - a.firstPass);
 
   const shortlist = scored.slice(0, FUNDAMENTALS_SHORTLIST_SIZE);
+  const tFund0 = Date.now();
   const fundamentalsResults = await Promise.allSettled(
     shortlist.map((s) => getFundamentals(s.quote.symbol).then((f) => ({ ticker: s.quote.symbol, f })))
   );
+  console.log(`[turnaround-pipeline] Polygon fundamentals pass: ${Date.now() - tFund0}ms for ${shortlist.length} tickers`);
   const fundamentalsMap = new Map<string, Awaited<ReturnType<typeof getFundamentals>>>();
   let fundamentalsOkCount = 0;
   for (const r of fundamentalsResults) {
@@ -35,9 +39,10 @@ export async function runTurnaroundPipeline(): Promise<TurnaroundPipelineResult>
   if (shortlist.length > 0 && fundamentalsOkCount / shortlist.length < 0.5) {
     await sendEmail({
       subject: "Stocks refresh: Turnaround lens fundamentals mostly unavailable",
-      html: `<p>Only ${fundamentalsOkCount} of ${shortlist.length} Turnaround-lens candidates got real balance-sheet/cash-flow data from FMP this run — likely a rate limit or API issue.</p>`,
+      html: `<p>Only ${fundamentalsOkCount} of ${shortlist.length} Turnaround-lens candidates got real balance-sheet/cash-flow data from Polygon this run — likely a rate limit or API issue.</p>`,
     });
   }
+  console.log(`[turnaround-pipeline] total: ${Date.now() - t0}ms`);
 
   const finalScored = scored.map((s) => {
     const f = fundamentalsMap.get(s.quote.symbol);

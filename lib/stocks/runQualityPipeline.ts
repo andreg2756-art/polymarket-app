@@ -7,10 +7,12 @@ import { sendEmail } from "@/lib/notify";
 
 // Polygon's plan caps at 5 requests/min SHARED across every Polygon call in
 // this process (confirmed by testing), including Turnaround's concurrent
-// fundamentals pass — so this and Turnaround's shortlist combined need to
-// fit the refresh route's 180s maxDuration once throttled. 7+7=14 fits with
-// headroom; 15+15 would take ~6 minutes serialized and kill the whole run.
-const FUNDAMENTALS_SHORTLIST_SIZE = 7;
+// fundamentals pass. 7+7=14 combined caused a confirmed FUNCTION_INVOCATION_
+// TIMEOUT in production (the SEC EDGAR revenue-growth pass above already
+// eats an unmeasured chunk of the 180s budget before this even starts) —
+// temporarily set very small to measure real remaining headroom safely
+// before sizing this back up.
+const FUNDAMENTALS_SHORTLIST_SIZE = 2;
 
 export interface QualityPipelineResult {
   tickers: string[]; // every ticker touched this run, for the shared cleanup step
@@ -18,12 +20,16 @@ export interface QualityPipelineResult {
 }
 
 export async function runQualityPipeline(): Promise<QualityPipelineResult> {
+  const t0 = Date.now();
   const quotes = await fetchScreenerQuotes(QUALITY_SCREENS);
   if (quotes.length === 0) return { tickers: [], candidateCount: 0 };
+  console.log(`[quality-pipeline] screener fetch: ${Date.now() - t0}ms, ${quotes.length} candidates`);
 
+  const tRev0 = Date.now();
   const revenueGrowthResults = await Promise.allSettled(
     quotes.map((q) => getRevenueGrowthScore(q.symbol, null).then((r) => ({ ticker: q.symbol, value: r.value })))
   );
+  console.log(`[quality-pipeline] SEC EDGAR revenue-growth pass: ${Date.now() - tRev0}ms`);
   const revenueGrowthMap = new Map<string, number>();
   for (const r of revenueGrowthResults) {
     if (r.status === "fulfilled" && r.value.value !== null) {
@@ -42,9 +48,11 @@ export async function runQualityPipeline(): Promise<QualityPipelineResult> {
   scored.sort((a, b) => b.firstPass - a.firstPass);
 
   const shortlist = scored.slice(0, FUNDAMENTALS_SHORTLIST_SIZE);
+  const tFund0 = Date.now();
   const fundamentalsResults = await Promise.allSettled(
     shortlist.map((s) => getFundamentals(s.quote.symbol).then((f) => ({ ticker: s.quote.symbol, f })))
   );
+  console.log(`[quality-pipeline] Polygon fundamentals pass: ${Date.now() - tFund0}ms for ${shortlist.length} tickers`);
   const fundamentalsMap = new Map<string, Awaited<ReturnType<typeof getFundamentals>>>();
   let fundamentalsOkCount = 0;
   for (const r of fundamentalsResults) {
@@ -56,9 +64,10 @@ export async function runQualityPipeline(): Promise<QualityPipelineResult> {
   if (shortlist.length > 0 && fundamentalsOkCount / shortlist.length < 0.5) {
     await sendEmail({
       subject: "Stocks refresh: Quality lens fundamentals mostly unavailable",
-      html: `<p>Only ${fundamentalsOkCount} of ${shortlist.length} Quality-lens candidates got real balance-sheet/income data from FMP this run — likely a rate limit or API issue.</p>`,
+      html: `<p>Only ${fundamentalsOkCount} of ${shortlist.length} Quality-lens candidates got real balance-sheet/income data from Polygon this run — likely a rate limit or API issue.</p>`,
     });
   }
+  console.log(`[quality-pipeline] total: ${Date.now() - t0}ms`);
 
   const finalScored = scored.map((s) => {
     const f = fundamentalsMap.get(s.quote.symbol);
