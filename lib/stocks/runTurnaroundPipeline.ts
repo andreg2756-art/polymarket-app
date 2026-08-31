@@ -21,7 +21,19 @@ export async function runTurnaroundPipeline(): Promise<TurnaroundPipelineResult>
   const scored = quotes.map((q) => ({ quote: q, firstPass: turnaroundFirstPass(q) }));
   scored.sort((a, b) => b.firstPass - a.firstPass);
 
-  const shortlist = scored.slice(0, FUNDAMENTALS_SHORTLIST_SIZE);
+  // Rotate toward uncovered tickers instead of always re-fetching the same
+  // top-N — see runQualityPipeline.ts's comment for why.
+  const existingCoverage = await prisma.stock.findMany({
+    where: { ticker: { in: scored.map((s) => s.quote.symbol) } },
+    select: { ticker: true, netIncome: true, totalDebt: true },
+  });
+  const coveredSet = new Set(
+    existingCoverage.filter((s) => s.netIncome !== null || s.totalDebt !== null).map((s) => s.ticker)
+  );
+  const notCovered = scored.filter((s) => !coveredSet.has(s.quote.symbol));
+  const shortlist = notCovered.length >= FUNDAMENTALS_SHORTLIST_SIZE
+    ? notCovered.slice(0, FUNDAMENTALS_SHORTLIST_SIZE)
+    : [...notCovered, ...scored.filter((s) => coveredSet.has(s.quote.symbol))].slice(0, FUNDAMENTALS_SHORTLIST_SIZE);
   const tFund0 = Date.now();
   const fundamentalsResults = await Promise.allSettled(
     shortlist.map((s) => getFundamentals(s.quote.symbol).then((f) => ({ ticker: s.quote.symbol, f })))

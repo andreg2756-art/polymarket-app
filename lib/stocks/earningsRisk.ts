@@ -4,65 +4,7 @@
 // Falls back to Nasdaq earnings calendar if available.
 
 import type { ScoredMetric } from "./types";
-
-interface TickerEntry { cik_str: number; ticker: string }
-interface SECFiling { filed: string; form: string; accn: string }
-
-async function getCIK(ticker: string): Promise<string | null> {
-  try {
-    const res = await fetch("https://www.sec.gov/files/company_tickers.json", {
-      headers: { "User-Agent": "polymarket-app/1.0 admin@example.com" },
-      next: { revalidate: 86400 },
-    });
-    if (!res.ok) return null;
-    const data: Record<string, TickerEntry> = await res.json();
-    const match = Object.values(data).find(
-      (v) => v.ticker.toUpperCase() === ticker.toUpperCase()
-    );
-    return match ? String(match.cik_str).padStart(10, "0") : null;
-  } catch {
-    return null;
-  }
-}
-
-// Get most recent 10-Q/10-K filing date from SEC submissions
-async function getRecentFilingDate(cik: string): Promise<{ lastFiled: Date | null; nextEstimate: Date | null }> {
-  try {
-    const res = await fetch(`https://data.sec.gov/submissions/CIK${cik}.json`, {
-      headers: { "User-Agent": "polymarket-app/1.0 admin@example.com" },
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return { lastFiled: null, nextEstimate: null };
-    const data = await res.json();
-
-    const filings: { form: string[]; filingDate: string[] } = data?.filings?.recent ?? {};
-    const forms: string[] = filings.form ?? [];
-    const dates: string[] = filings.filingDate ?? [];
-
-    // Find the most recent quarterly/annual report
-    const quarterlyForms = ["10-Q", "10-K"];
-    let lastFiledDate: Date | null = null;
-
-    for (let i = 0; i < forms.length; i++) {
-      if (quarterlyForms.includes(forms[i])) {
-        const d = new Date(dates[i]);
-        if (!isNaN(d.getTime())) {
-          lastFiledDate = d;
-          break; // filings are newest-first
-        }
-      }
-    }
-
-    if (!lastFiledDate) return { lastFiled: null, nextEstimate: null };
-
-    // Estimate next report ~90 days after last filing (quarterly cadence)
-    const nextEstimate = new Date(lastFiledDate.getTime() + 90 * 86400000);
-
-    return { lastFiled: lastFiledDate, nextEstimate };
-  } catch {
-    return { lastFiled: null, nextEstimate: null };
-  }
-}
+import { getCIK, getRecentFilingDate } from "./secFilingDates";
 
 // Also try Nasdaq earnings calendar as a secondary source
 async function getNasdaqEarningsDate(ticker: string): Promise<Date | null> {

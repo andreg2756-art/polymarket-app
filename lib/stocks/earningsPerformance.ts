@@ -1,11 +1,16 @@
-// Real earnings-beat/revenue-beat/EPS-growth data from FMP, replacing the
-// hardcoded-false values the refresh route used to write for every stock.
-// Scoped to just the two FMP endpoints confirmed to work on the current
-// plan (/earnings, /income-statement with limit<=5) — insider trading,
-// analyst ratings, and news are separately plan-restricted and unrelated
-// to this specific fix.
+// Real earnings-beat/revenue-beat/EPS-growth data from FMP. As of a later
+// audit, FMP's /earnings (and /income-statement) endpoints turned out to
+// have the same mega-cap-only plan restriction found elsewhere (confirmed:
+// 402 for VIOT, a small cap) — earningsBeat/revenueBeat genuinely can't be
+// computed without a consensus-estimates provider, which Polygon doesn't
+// sell either, so those stay best-effort via FMP. lastEarningsDate doesn't
+// need an estimate though — it's backfilled from SEC's free 10-Q/10-K
+// filing-cadence lookup (getLastEarningsDateFromSEC) when FMP comes back
+// empty, since a filing date is a same-day-or-next-day proxy for the
+// earnings date.
 
 import { getEarnings, getIncomeStatements } from "@/lib/fmp";
+import { getLastEarningsDateFromSEC } from "./secFilingDates";
 
 export interface EarningsPerformance {
   earningsBeat: boolean;
@@ -51,12 +56,19 @@ export async function getEarningsPerformance(ticker: string): Promise<EarningsPe
       ? Math.round((((income[0].eps - income[1].eps) / Math.abs(income[1].eps)) * 100) * 10) / 10
       : 0;
 
+    let lastEarningsDate = lastReported?.date ?? null;
+    let dateFromSEC = false;
+    if (!lastEarningsDate) {
+      lastEarningsDate = await getLastEarningsDateFromSEC(ticker);
+      dateFromSEC = lastEarningsDate !== null;
+    }
+
     return {
       earningsBeat,
       revenueBeat,
       epsGrowth,
-      lastEarningsDate: lastReported?.date ?? null,
-      ok,
+      lastEarningsDate,
+      ok: ok || dateFromSEC,
     };
   } catch {
     return EMPTY;

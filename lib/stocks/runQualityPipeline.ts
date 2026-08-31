@@ -46,7 +46,25 @@ export async function runQualityPipeline(): Promise<QualityPipelineResult> {
   }));
   scored.sort((a, b) => b.firstPass - a.firstPass);
 
-  const shortlist = scored.slice(0, FUNDAMENTALS_SHORTLIST_SIZE);
+  // Prioritize tickers that don't have fundamentals yet, not just the top-N
+  // by score — the top-N by firstPass score barely changes day to day, so
+  // always slicing the sorted list re-fetched the SAME 5 tickers every run
+  // (each already-covered from a prior run, thanks to the 24h Polygon
+  // cache) while the other 45+ in the Top 50 never got picked at all. This
+  // rotates the daily budget toward genuinely new coverage; once the whole
+  // pool is covered it falls back to refreshing the highest-ranked already-
+  // covered ones so data doesn't go stale forever.
+  const existingCoverage = await prisma.stock.findMany({
+    where: { ticker: { in: scored.map((s) => s.quote.symbol) } },
+    select: { ticker: true, netIncome: true, totalDebt: true },
+  });
+  const coveredSet = new Set(
+    existingCoverage.filter((s) => s.netIncome !== null || s.totalDebt !== null).map((s) => s.ticker)
+  );
+  const notCovered = scored.filter((s) => !coveredSet.has(s.quote.symbol));
+  const shortlist = notCovered.length >= FUNDAMENTALS_SHORTLIST_SIZE
+    ? notCovered.slice(0, FUNDAMENTALS_SHORTLIST_SIZE)
+    : [...notCovered, ...scored.filter((s) => coveredSet.has(s.quote.symbol))].slice(0, FUNDAMENTALS_SHORTLIST_SIZE);
   const tFund0 = Date.now();
   const fundamentalsResults = await Promise.allSettled(
     shortlist.map((s) => getFundamentals(s.quote.symbol).then((f) => ({ ticker: s.quote.symbol, f })))
