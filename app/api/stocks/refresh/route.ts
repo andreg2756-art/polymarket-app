@@ -8,6 +8,7 @@ import { checkWatchlistAlerts } from "@/lib/watchlistAlerts";
 import { computeEnhancedScore } from "@/lib/stocks/scoring";
 import { getEarningsPerformance } from "@/lib/stocks/earningsPerformance";
 import { getFmpFloatData } from "@/lib/stocks/technicals";
+import { getRecommendationTrends, summarizeRecommendation } from "@/lib/finnhub";
 import { runQualityPipeline } from "@/lib/stocks/runQualityPipeline";
 import { runTurnaroundPipeline } from "@/lib/stocks/runTurnaroundPipeline";
 import { captureServerException } from "@/lib/posthog-server";
@@ -113,15 +114,16 @@ export async function POST() {
     // to rate a stock highest right as it's topping out.
     const shortlist = ranked.slice(0, ENHANCED_SHORTLIST_SIZE);
 
-    // Earnings/float (FMP) only depend on ticker identity, not on the
-    // enhanced-score re-ranking below — so run all three network-bound
-    // passes concurrently instead of chaining them. Scoped to the top 50 by
-    // cheap score (a close proxy for the final top 50 — re-ranking mostly
-    // reorders this same set rather than swapping in different tickers) so
-    // this can start immediately without waiting on the enhanced pass. The
-    // Quality and Turnaround pipelines run concurrently with all of this too.
+    // Earnings (Finnhub)/float (FMP)/analyst ratings (Finnhub) only depend
+    // on ticker identity, not on the enhanced-score re-ranking below — so
+    // run all passes concurrently instead of chaining them. Scoped to the
+    // top 50 by cheap score (a close proxy for the final top 50 —
+    // re-ranking mostly reorders this same set rather than swapping in
+    // different tickers) so this can start immediately without waiting on
+    // the enhanced pass. The Quality and Turnaround pipelines run
+    // concurrently with all of this too.
     const earningsFloatScope = shortlist.slice(0, 50);
-    const [enhancedResults, earningsResults, floatResults, qualityResult, turnaroundResult] = await Promise.all([
+    const [enhancedResults, earningsResults, floatResults, analystResults, qualityResult, turnaroundResult] = await Promise.all([
       Promise.allSettled(
         shortlist.map((s) =>
           computeEnhancedScore(
@@ -138,6 +140,11 @@ export async function POST() {
       ),
       Promise.allSettled(
         earningsFloatScope.map((s) => getFmpFloatData(s.ticker).then((f) => ({ ticker: s.ticker, ...f })))
+      ),
+      Promise.allSettled(
+        earningsFloatScope.map((s) =>
+          getRecommendationTrends(s.ticker).then((trends) => ({ ticker: s.ticker, trend: trends?.[0] ?? null }))
+        )
       ),
       runQualityPipeline(),
       runTurnaroundPipeline(),
@@ -174,13 +181,13 @@ export async function POST() {
         if (r.value.ok) earningsOkCount++;
       }
     }
-    // If most of the scope failed to get real earnings data (e.g. FMP rate
-    // limit), that's silent otherwise — the screener just falls back to
-    // stale/empty values with no visible error.
+    // If most of the scope failed to get real earnings data (e.g. Finnhub
+    // rate limit), that's silent otherwise — the screener just falls back
+    // to stale/empty values with no visible error.
     if (earningsFloatScope.length > 0 && earningsOkCount / earningsFloatScope.length < 0.5) {
       await sendEmail({
         subject: "Stocks refresh: earnings data mostly unavailable",
-        html: `<p>Only ${earningsOkCount} of ${earningsFloatScope.length} Top 50 stocks got real earnings/revenue-beat data from FMP this run — likely a rate limit or API issue. Check your FMP plan usage.</p>`,
+        html: `<p>Only ${earningsOkCount} of ${earningsFloatScope.length} Top 50 stocks got real earnings data from Finnhub this run — likely a rate limit or API issue. Check your Finnhub plan usage.</p>`,
       });
     }
 
@@ -191,10 +198,22 @@ export async function POST() {
       }
     }
 
+    // analystRating/analystCount were previously hardcoded to "N/A"/0 for
+    // every row — no pipeline ever populated them. Finnhub's recommendation
+    // trends (confirmed working for small/mid-caps, not just mega-caps)
+    // fills this now.
+    const analystMap = new Map<string, { rating: string; count: number }>();
+    for (const r of analystResults) {
+      if (r.status === "fulfilled" && r.value.trend) {
+        analystMap.set(r.value.ticker, summarizeRecommendation(r.value.trend));
+      }
+    }
+
     await Promise.all(
       reranked.map((s, i) => {
         const earnings = earningsMap.get(s.ticker);
         const float = floatMap.get(s.ticker);
+        const analyst = analystMap.get(s.ticker);
         return prisma.stock.update({
           where: { ticker: s.ticker },
           data: {
@@ -207,6 +226,7 @@ export async function POST() {
               lastEarningsDate: earnings.lastEarningsDate,
             } : {}),
             ...(float !== undefined ? { float } : {}),
+            ...(analyst ? { analystRating: analyst.rating, analystCount: analyst.count } : {}),
           },
         });
       })

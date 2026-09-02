@@ -1,15 +1,20 @@
-// Real earnings-beat/revenue-beat/EPS-growth data from FMP. As of a later
-// audit, FMP's /earnings (and /income-statement) endpoints turned out to
-// have the same mega-cap-only plan restriction found elsewhere (confirmed:
-// 402 for VIOT, a small cap) — earningsBeat/revenueBeat genuinely can't be
-// computed without a consensus-estimates provider, which Polygon doesn't
-// sell either, so those stay best-effort via FMP. lastEarningsDate doesn't
-// need an estimate though — it's backfilled from SEC's free 10-Q/10-K
-// filing-cadence lookup (getLastEarningsDateFromSEC) when FMP comes back
-// empty, since a filing date is a same-day-or-next-day proxy for the
-// earnings date.
+// Earnings-beat/EPS-growth data, sourced from Finnhub rather than FMP.
+// FMP's /earnings (and /income-statement) endpoints turned out to have the
+// same mega-cap-only plan restriction found elsewhere (confirmed: 402 for
+// VIOT, a small cap). Finnhub's free-tier /stock/earnings (surprise
+// history) was verified by direct testing to cover the same small/mid-caps
+// FMP rejects, including VIOT specifically, so it's now the primary source
+// for earningsBeat and lastEarningsDate.
+//
+// revenueBeat isn't available here: Finnhub's free tier's surprise
+// endpoint is EPS-only, not revenue — FMP genuinely doesn't offer a
+// working substitute (same restriction), so this stays false rather than
+// guessed. lastEarningsDate still falls back to SEC's free 10-Q/10-K
+// filing-cadence lookup on the rare case Finnhub has no data for a ticker,
+// since a filing date is a same-day-or-next-day proxy for the earnings
+// date.
 
-import { getEarnings, getIncomeStatements } from "@/lib/fmp";
+import { getEarningsSurprises } from "@/lib/finnhub";
 import { getLastEarningsDateFromSEC } from "./secFilingDates";
 
 export interface EarningsPerformance {
@@ -17,7 +22,7 @@ export interface EarningsPerformance {
   revenueBeat: boolean;
   epsGrowth: number;
   lastEarningsDate: string | null;
-  ok: boolean; // false if both FMP calls failed/were empty — distinguishes a real "no data" from a rate-limit/API failure
+  ok: boolean; // false if Finnhub had nothing and the SEC date fallback also came up empty
 }
 
 const EMPTY: EarningsPerformance = {
@@ -30,33 +35,23 @@ const EMPTY: EarningsPerformance = {
 
 export async function getEarningsPerformance(ticker: string): Promise<EarningsPerformance> {
   try {
-    const [earningsSettled, incomeSettled] = await Promise.allSettled([
-      getEarnings(ticker),
-      getIncomeStatements(ticker),
-    ]);
-    const earnings = earningsSettled.status === "fulfilled" ? earningsSettled.value : [];
-    const income = incomeSettled.status === "fulfilled" ? incomeSettled.value : [];
-    const ok = earningsSettled.status === "fulfilled" || incomeSettled.status === "fulfilled";
+    const surprises = await getEarningsSurprises(ticker);
 
-    // Most recent *reported* result — skip future/scheduled entries where
-    // actuals aren't in yet.
-    const lastReported = earnings.find((e) => e.epsActual !== null && e.epsActual !== undefined);
+    // Most recent *reported* quarter — skip entries with a null actual
+    // (scheduled-but-not-yet-reported).
+    const reported = (surprises ?? []).filter((s) => s.actual !== null);
+    const last = reported[0] ?? null;
+    const prev = reported[1] ?? null;
 
-    const earningsBeat = lastReported?.epsActual !== null && lastReported?.epsActual !== undefined
-      && lastReported.epsEstimated !== null && lastReported.epsEstimated !== undefined
-      ? lastReported.epsActual > lastReported.epsEstimated
+    const earningsBeat = last?.actual !== null && last?.estimate !== null && last !== null
+      ? (last.actual as number) > (last.estimate as number)
       : false;
 
-    const revenueBeat = lastReported?.revenueActual !== null && lastReported?.revenueActual !== undefined
-      && lastReported.revenueEstimated !== null && lastReported.revenueEstimated !== undefined
-      ? lastReported.revenueActual > lastReported.revenueEstimated
-      : false;
-
-    const epsGrowth = income.length >= 2 && income[1].eps !== 0
-      ? Math.round((((income[0].eps - income[1].eps) / Math.abs(income[1].eps)) * 100) * 10) / 10
+    const epsGrowth = last?.actual !== null && prev?.actual !== null && prev !== null && prev.actual !== 0
+      ? Math.round((((last!.actual as number) - (prev.actual as number)) / Math.abs(prev.actual as number)) * 100 * 10) / 10
       : 0;
 
-    let lastEarningsDate = lastReported?.date ?? null;
+    let lastEarningsDate: string | null = last?.period ?? null;
     let dateFromSEC = false;
     if (!lastEarningsDate) {
       lastEarningsDate = await getLastEarningsDateFromSEC(ticker);
@@ -65,10 +60,10 @@ export async function getEarningsPerformance(ticker: string): Promise<EarningsPe
 
     return {
       earningsBeat,
-      revenueBeat,
+      revenueBeat: false,
       epsGrowth,
       lastEarningsDate,
-      ok: ok || dateFromSEC,
+      ok: reported.length > 0 || dateFromSEC,
     };
   } catch {
     return EMPTY;
