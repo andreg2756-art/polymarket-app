@@ -20,6 +20,10 @@ const stockLinks = [
   { href: "/stocks/watchlist", label: "Watchlist" },
 ];
 
+// Not nested under either group above — it's the bridge between them
+// (Polymarket events mapped to stock exposure), not a fit for either.
+const catalystsLink = { href: "/catalysts", label: "🔗 Catalysts" };
+
 export default function Nav() {
   const path = usePathname();
   const [refreshing, setRefreshing] = useState(false);
@@ -78,6 +82,9 @@ export default function Nav() {
               <Link key={l.href} href={l.href} className={linkClass(l.href)}>{l.label}</Link>
             ))}
           </div>
+
+          <div className="w-px h-5 bg-gray-700 mx-3 shrink-0" />
+          <Link href={catalystsLink.href} className={linkClass(catalystsLink.href)}>{catalystsLink.label}</Link>
         </div>
 
         {onStocksSection && (
@@ -124,6 +131,12 @@ export default function Nav() {
                 </Link>
               ))}
             </div>
+          </div>
+
+          <div>
+            <Link href={catalystsLink.href} onClick={() => setMobileOpen(false)} className={linkClass(catalystsLink.href)}>
+              {catalystsLink.label}
+            </Link>
           </div>
 
           {onStocksSection && (
