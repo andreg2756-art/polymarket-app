@@ -18,6 +18,7 @@ interface LiveMarket extends TrackedMarket {
 
 interface ThemeWithLive extends Omit<MacroTheme, "markets"> {
   markets: LiveMarket[];
+  conditionProbability: number | null;
 }
 
 const DIRECTION_STYLES = {
@@ -28,12 +29,43 @@ const DIRECTION_STYLES = {
 
 const STRENGTH_LABEL = { high: "High", medium: "Medium", low: "Low" };
 
-function DirectionBadge({ direction }: { direction: "positive" | "negative" | "mixed" }) {
+function DirectionBadge({ direction, condition }: { direction: "positive" | "negative" | "mixed"; condition: string }) {
   const label = direction === "positive" ? "Potential Positive" : direction === "negative" ? "Potential Negative" : "Mixed";
   return (
-    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold border ${DIRECTION_STYLES[direction]}`}>
-      {label}
-    </span>
+    <div>
+      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold border ${DIRECTION_STYLES[direction]}`}>
+        {label}
+      </span>
+      {/* direction is conditional, not a current-state prediction — always
+          shown attached to what it's conditioned on, never bare, so it
+          can't be read as "the market currently favors this." */}
+      <p className="text-[11px] text-gray-500 mt-1 italic">{condition}</p>
+    </div>
+  );
+}
+
+function ConditionProbabilityBanner({ label, probability }: { label: string; probability: number | null }) {
+  if (probability === null) {
+    return (
+      <div className="rounded-lg border border-gray-800 bg-gray-900/50 px-4 py-2.5 text-sm text-gray-500">
+        Condition: <span className="text-gray-300">{label}</span> — current probability unavailable
+      </div>
+    );
+  }
+  const pct = probability * 100;
+  // Purely descriptive thresholds for a quick visual read — not a judgment
+  // about whether the outcome is "good," just how far from a coin flip it
+  // currently sits.
+  const tone = pct >= 60 ? "border-emerald-800 bg-emerald-950/30 text-emerald-200"
+    : pct <= 15 ? "border-red-900/60 bg-red-950/20 text-red-200"
+    : "border-gray-700 bg-gray-900/50 text-gray-300";
+  return (
+    <div className={`rounded-lg border px-4 py-2.5 text-sm ${tone}`}>
+      Condition every exposure below is keyed to: <span className="font-semibold">{label}</span>
+      {" — currently priced at "}
+      <span className="font-bold">{pct.toFixed(1)}%</span>
+      {pct <= 15 && " (the market currently thinks this is unlikely — treat the exposures below as an if-then map, not an active signal)"}
+    </div>
   );
 }
 
@@ -82,6 +114,8 @@ function ThemeCard({ theme }: { theme: ThemeWithLive }) {
         {theme.markets.map((m) => <MarketRow key={m.conditionId} market={m} />)}
       </div>
 
+      <ConditionProbabilityBanner label={theme.conditionLabel} probability={theme.conditionProbability} />
+
       <div>
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
           Potentially Affected Stocks — {theme.exposures.length}
@@ -102,7 +136,7 @@ function ThemeCard({ theme }: { theme: ThemeWithLive }) {
                     <Link href={`/stocks/${e.ticker}`} className="text-emerald-400 font-bold hover:underline">{e.ticker}</Link>
                     <p className="text-xs text-gray-600">{e.name}</p>
                   </td>
-                  <td className="px-3 py-2.5"><DirectionBadge direction={e.direction} /></td>
+                  <td className="px-3 py-2.5 min-w-[160px]"><DirectionBadge direction={e.direction} condition={e.condition} /></td>
                   <td className="px-3 py-2.5 text-gray-300 whitespace-nowrap">{STRENGTH_LABEL[e.exposureStrength]}</td>
                   <td className="px-3 py-2.5 text-gray-300 whitespace-nowrap">{STRENGTH_LABEL[e.confidence]}</td>
                   <td className="px-3 py-2.5 text-gray-400 text-xs leading-relaxed min-w-[240px]">{e.explanation}</td>
