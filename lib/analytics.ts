@@ -1,4 +1,4 @@
-import type { NormalizedPosition, GroupedMarket, SnapshotChange } from "./types";
+import type { NormalizedPosition, GroupedMarket } from "./types";
 
 export function groupPositions(positions: NormalizedPosition[]): GroupedMarket[] {
   const map = new Map<string, GroupedMarket>();
@@ -56,34 +56,26 @@ export function groupPositions(positions: NormalizedPosition[]): GroupedMarket[]
   return groups.sort((a, b) => b.holderCount - a.holderCount || b.totalCurrentValue - a.totalCurrentValue);
 }
 
-export function computeChanges(
-  prev: GroupedMarket[],
-  next: GroupedMarket[]
-): SnapshotChange[] {
-  const prevMap = new Map(prev.map((g) => [`${g.conditionId}||${g.outcome}`, g]));
-  const changes: SnapshotChange[] = [];
+// Shared by app/api/dashboard and app/api/markets, which both need to diff
+// this run's MarketPositionGroups against the previous run's — previously
+// each route built its own conditionId||outcome map and delta object
+// independently.
+type GroupKey = { conditionId: string; outcome: string };
 
-  for (const g of next) {
-    const key = `${g.conditionId}||${g.outcome}`;
-    const p = prevMap.get(key);
-    const prevHolderCount = p?.holderCount ?? 0;
-    const prevCurrentValue = p?.totalCurrentValue ?? 0;
-    changes.push({
-      conditionId: g.conditionId,
-      marketTitle: g.marketTitle,
-      outcome: g.outcome,
-      category: g.category,
-      holderCountDelta: g.holderCount - prevHolderCount,
-      currentValueDelta: g.totalCurrentValue - prevCurrentValue,
-      prevHolderCount,
-      newHolderCount: g.holderCount,
-      prevCurrentValue,
-      newCurrentValue: g.totalCurrentValue,
-      consensusScore: g.consensusScore,
-    });
-  }
+export function buildPrevGroupMap<T extends GroupKey>(prevGroups: T[]): Map<string, T> {
+  return new Map(prevGroups.map((g) => [`${g.conditionId}||${g.outcome}`, g]));
+}
 
-  return changes;
+export function withGroupDelta<T extends GroupKey & { holderCount: number; totalCurrentValue: number }>(
+  group: T,
+  prevMap: Map<string, { holderCount: number; totalCurrentValue: number }>
+): T & { holderCountDelta: number; currentValueDelta: number } {
+  const p = prevMap.get(`${group.conditionId}||${group.outcome}`);
+  return {
+    ...group,
+    holderCountDelta: group.holderCount - (p?.holderCount ?? 0),
+    currentValueDelta: group.totalCurrentValue - (p?.totalCurrentValue ?? 0),
+  };
 }
 
 export function formatUSD(n: number): string {

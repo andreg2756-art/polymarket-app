@@ -67,17 +67,3 @@ export interface GroupedMarket {
   consensusScore: number;
   holders: { proxyWallet: string; username: string; currentValue: number; size: number; cashPnl: number }[];
 }
-
-export interface SnapshotChange {
-  conditionId: string;
-  marketTitle: string;
-  outcome: string;
-  category: string;
-  holderCountDelta: number;
-  currentValueDelta: number;
-  prevHolderCount: number;
-  newHolderCount: number;
-  prevCurrentValue: number;
-  newCurrentValue: number;
-  consensusScore: number;
-}

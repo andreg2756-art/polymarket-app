@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { buildPrevGroupMap, withGroupDelta } from "@/lib/analytics";
 
 type MarketGroup = Awaited<ReturnType<typeof prisma.marketPositionGroup.findMany>>[number];
 
@@ -36,15 +37,9 @@ export async function GET() {
       prisma.marketPositionGroup.findMany({ where: { refreshRunId: prevRun.id } }),
       prisma.marketPositionGroup.findMany({ where: { refreshRunId: latestRun.id } }),
     ]);
-    const prevMap = new Map(prevGroups.map((g: MarketGroup) => [`${g.conditionId}||${g.outcome}`, g]));
-    changes = nextGroups.map((g: MarketGroup) => {
-      const p = prevMap.get(`${g.conditionId}||${g.outcome}`);
-      return {
-        ...g,
-        holderCountDelta: g.holderCount - (p?.holderCount ?? 0),
-        currentValueDelta: g.totalCurrentValue - (p?.totalCurrentValue ?? 0),
-      };
-    }).filter((c) => c.holderCountDelta !== 0 || c.currentValueDelta !== 0)
+    const prevMap = buildPrevGroupMap(prevGroups);
+    changes = nextGroups.map((g) => withGroupDelta(g, prevMap))
+      .filter((c) => c.holderCountDelta !== 0 || c.currentValueDelta !== 0)
       .sort((a, b) => Math.abs(b.currentValueDelta) - Math.abs(a.currentValueDelta))
       .slice(0, 20);
   }

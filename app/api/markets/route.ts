@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { buildPrevGroupMap, withGroupDelta } from "@/lib/analytics";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -32,21 +33,16 @@ export async function GET(req: Request) {
     },
   });
 
-  let prevMap = new Map<string, { holderCount: number; totalCurrentValue: number }>();
+  let prevMap = new Map<string, { conditionId: string; outcome: string; holderCount: number; totalCurrentValue: number }>();
   if (prevRun) {
     const prev = await prisma.marketPositionGroup.findMany({ where: { refreshRunId: prevRun.id } });
-    prevMap = new Map(prev.map((g) => [`${g.conditionId}||${g.outcome}`, g]));
+    prevMap = buildPrevGroupMap(prev);
   }
 
-  let enriched = groups.map((g) => {
-    const p = prevMap.get(`${g.conditionId}||${g.outcome}`);
-    return {
-      ...g,
-      holderCountDelta: g.holderCount - (p?.holderCount ?? 0),
-      currentValueDelta: g.totalCurrentValue - (p?.totalCurrentValue ?? 0),
-      pctOfTop100: ((g.holderCount / 100) * 100).toFixed(1),
-    };
-  });
+  let enriched = groups.map((g) => ({
+    ...withGroupDelta(g, prevMap),
+    pctOfTop100: ((g.holderCount / 100) * 100).toFixed(1),
+  }));
 
   if (gainingOnly) enriched = enriched.filter((g) => g.holderCountDelta > 0);
 
