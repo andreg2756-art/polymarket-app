@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/Skeleton";
+import ErrorState from "@/components/ErrorState";
+import { useFetch } from "@/lib/useFetch";
 
 interface BacktestResponse {
   available: boolean;
@@ -22,16 +23,7 @@ interface BacktestSummaryProps {
 }
 
 export default function BacktestSummary({ lens = "speculative", title = "Strategy Backtest" }: BacktestSummaryProps) {
-  const [result, setResult] = useState<BacktestResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    fetch(`/api/backtest?lens=${lens}`)
-      .then((r) => r.json())
-      .then(setResult)
-      .finally(() => setLoading(false));
-  }, [lens]);
+  const { data: result, loading, error, reload } = useFetch<BacktestResponse>(`/api/backtest?lens=${lens}`);
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
@@ -51,6 +43,8 @@ export default function BacktestSummary({ lens = "speculative", title = "Strateg
         <div className="space-y-2">
           {PERIODS.map((p) => <Skeleton key={p} className="h-10" />)}
         </div>
+      ) : error ? (
+        <ErrorState onRetry={reload} message="Could not load backtest data." />
       ) : !result?.available ? (
         <div className="rounded-lg border border-dashed border-gray-700 py-8 text-center space-y-2">
           <p className="text-gray-400 text-sm font-medium">Backtest data unavailable</p>

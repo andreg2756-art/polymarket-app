@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Skeleton } from "@/components/Skeleton";
+import ErrorState from "@/components/ErrorState";
+import { useFetch } from "@/lib/useFetch";
 import type { MacroTheme, TrackedMarket } from "@/lib/catalysts/themes";
 
 interface LiveMarket extends TrackedMarket {
@@ -151,15 +152,8 @@ function ThemeCard({ theme }: { theme: ThemeWithLive }) {
 }
 
 export default function CatalystsPage() {
-  const [themes, setThemes] = useState<ThemeWithLive[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/catalysts")
-      .then((r) => r.json())
-      .then((d) => setThemes(d.themes ?? []))
-      .finally(() => setLoading(false));
-  }, []);
+  const { data, loading, error, reload } = useFetch<{ themes?: ThemeWithLive[] }>("/api/catalysts");
+  const themes = data?.themes ?? [];
 
   return (
     <div className="space-y-6">
@@ -185,6 +179,8 @@ export default function CatalystsPage() {
           <Skeleton className="h-96" />
           <Skeleton className="h-96" />
         </div>
+      ) : error ? (
+        <ErrorState onRetry={reload} />
       ) : (
         <div className="space-y-6">
           {themes.map((t) => <ThemeCard key={t.slug} theme={t} />)}

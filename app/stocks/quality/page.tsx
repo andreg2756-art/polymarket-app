@@ -1,7 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { TableSkeleton } from "@/components/Skeleton";
+import ErrorState from "@/components/ErrorState";
+import { useFetch } from "@/lib/useFetch";
 import { exportCSV, formatUSD } from "@/lib/analytics";
 import BacktestSummary from "@/components/stocks/BacktestSummary";
 import DataWarningBanner from "@/components/stocks/DataWarningBanner";
@@ -38,13 +40,9 @@ function missingFundamentals(s: Stock): boolean {
 }
 
 export default function QualityScreenPage() {
-  const [stocks, setStocks] = useState<Stock[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, error, reload } = useFetch<Stock[]>("/api/stocks/quality");
+  const stocks = data ?? [];
   const [showBacktest, setShowBacktest] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/stocks/quality").then((r) => r.json()).then(setStocks).finally(() => setLoading(false));
-  }, []);
 
   return (
     <div className="space-y-6">
@@ -70,7 +68,7 @@ export default function QualityScreenPage() {
 
       {showBacktest && <BacktestSummary lens="quality" title="Quality Lens Backtest" />}
 
-      {!loading && (
+      {!loading && !error && (
         <DataWarningBanner
           incompleteCount={stocks.filter(missingFundamentals).length}
           totalCount={stocks.length}
@@ -78,7 +76,7 @@ export default function QualityScreenPage() {
         />
       )}
 
-      {loading ? <TableSkeleton rows={12} cols={9} /> : (
+      {loading ? <TableSkeleton rows={12} cols={9} /> : error ? <ErrorState onRetry={reload} /> : (
         <div className="rounded-xl border border-gray-800 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-900 text-gray-400 text-xs uppercase">

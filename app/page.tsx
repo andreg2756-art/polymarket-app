@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
 import StatCard from "@/components/StatCard";
 import RefreshButton from "@/components/RefreshButton";
+import ErrorState from "@/components/ErrorState";
 import { Skeleton } from "@/components/Skeleton";
+import { useFetch } from "@/lib/useFetch";
 import { formatUSD } from "@/lib/analytics";
 import Link from "next/link";
 
@@ -49,20 +50,7 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/dashboard");
-      setData(await res.json());
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
+  const { data, loading, error, reload } = useFetch<DashboardData>("/api/dashboard");
 
   if (loading) return (
     <div className="space-y-6">
@@ -73,10 +61,12 @@ export default function DashboardPage() {
     </div>
   );
 
+  if (error) return <ErrorState onRetry={reload} />;
+
   if (!data || data.noData) return (
     <div className="text-center py-32 space-y-4">
       <p className="text-gray-400 text-lg">No data yet. Fetch the latest whale data to get started.</p>
-      <RefreshButton onRefresh={load} />
+      <RefreshButton onRefresh={reload} />
     </div>
   );
 
@@ -93,7 +83,7 @@ export default function DashboardPage() {
             <p className="text-gray-500 text-sm mt-1">Last updated: {new Date(latestRun.completedAt).toLocaleString()}</p>
           )}
         </div>
-        <RefreshButton onRefresh={load} />
+        <RefreshButton onRefresh={reload} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

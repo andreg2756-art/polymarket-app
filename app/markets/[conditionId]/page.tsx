@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
 import { use } from "react";
 import { formatUSD } from "@/lib/analytics";
+import { useFetch } from "@/lib/useFetch";
 import { Skeleton } from "@/components/Skeleton";
+import ErrorState from "@/components/ErrorState";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 interface Position {
@@ -44,17 +45,10 @@ interface MarketData {
 
 export default function MarketDetailPage({ params }: { params: Promise<{ conditionId: string }> }) {
   const { conditionId } = use(params);
-  const [data, setData] = useState<MarketData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(`/api/markets/${conditionId}`)
-      .then((r) => r.json())
-      .then(setData)
-      .finally(() => setLoading(false));
-  }, [conditionId]);
+  const { data, loading, error, reload } = useFetch<MarketData>(`/api/markets/${conditionId}`);
 
   if (loading) return <div className="space-y-4"><Skeleton className="h-12" /><Skeleton className="h-64" /></div>;
+  if (error) return <ErrorState onRetry={reload} />;
   if (!data || !data.groups?.length) return <div className="py-32 text-center text-gray-500">Market not found or no data.</div>;
 
   const timelineByOutcome = new Map<string, { date: string; holderCount: number; consensusScore: number; totalCurrentValue: number }[]>();

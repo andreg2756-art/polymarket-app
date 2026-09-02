@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
 import { use } from "react";
 import { formatUSD } from "@/lib/analytics";
+import { useFetch } from "@/lib/useFetch";
 import { Skeleton } from "@/components/Skeleton";
+import ErrorState from "@/components/ErrorState";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
 interface Position {
@@ -33,17 +34,10 @@ const COLORS = ["#60A5FA", "#34D399", "#F59E0B", "#F87171", "#A78BFA", "#FB923C"
 
 export default function TraderDetailPage({ params }: { params: Promise<{ wallet: string }> }) {
   const { wallet } = use(params);
-  const [data, setData] = useState<TraderData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(`/api/traders/${wallet}`)
-      .then((r) => r.json())
-      .then(setData)
-      .finally(() => setLoading(false));
-  }, [wallet]);
+  const { data, loading, error, reload } = useFetch<TraderData>(`/api/traders/${wallet}`);
 
   if (loading) return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-64" /></div>;
+  if (error) return <ErrorState onRetry={reload} />;
   if (!data?.trader) return <div className="py-32 text-center text-gray-500">Trader not found.</div>;
 
   const { trader, positions, categoryBreakdown } = data;

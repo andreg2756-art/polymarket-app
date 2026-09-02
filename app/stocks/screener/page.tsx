@@ -1,7 +1,9 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { TableSkeleton } from "@/components/Skeleton";
+import ErrorState from "@/components/ErrorState";
+import { useFetch } from "@/lib/useFetch";
 import { exportCSV } from "@/lib/analytics";
 
 interface Stock {
@@ -36,25 +38,14 @@ const SORT_OPTIONS = [
 ];
 
 export default function ScreenerPage() {
-  const [stocks, setStocks] = useState<Stock[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [sector, setSector] = useState("");
   const [minScore, setMinScore] = useState(0);
   const [sortBy, setSortBy] = useState("rank");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ sortBy, search, sector, minScore: String(minScore) });
-      const res = await fetch(`/api/stocks/screener?${params}`);
-      setStocks(await res.json());
-    } finally {
-      setLoading(false);
-    }
-  }, [sortBy, search, sector, minScore]);
-
-  useEffect(() => { load(); }, [load]);
+  const params = new URLSearchParams({ sortBy, search, sector, minScore: String(minScore) });
+  const { data, loading, error, reload } = useFetch<Stock[]>(`/api/stocks/screener?${params}`);
+  const stocks = data ?? [];
 
   return (
     <div className="space-y-6">
@@ -86,7 +77,7 @@ export default function ScreenerPage() {
         </select>
       </div>
 
-      {loading ? <TableSkeleton rows={12} cols={9} /> : (
+      {loading ? <TableSkeleton rows={12} cols={9} /> : error ? <ErrorState onRetry={reload} /> : (
         <div className="rounded-xl border border-gray-800 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-900 text-gray-400 text-xs uppercase">

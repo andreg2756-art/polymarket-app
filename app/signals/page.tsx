@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatUSD } from "@/lib/analytics";
+import { useFetch } from "@/lib/useFetch";
 import { TableSkeleton } from "@/components/Skeleton";
+import ErrorState from "@/components/ErrorState";
 
 interface WhaleMove {
   proxyWallet: string;
@@ -37,15 +38,7 @@ interface SignalsResponse {
 }
 
 export default function SignalsPage() {
-  const [data, setData] = useState<SignalsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/signals")
-      .then((r) => r.json())
-      .then(setData)
-      .finally(() => setLoading(false));
-  }, []);
+  const { data, loading, error, reload } = useFetch<SignalsResponse>("/api/signals");
 
   return (
     <div className="space-y-8">
@@ -53,6 +46,8 @@ export default function SignalsPage() {
 
       {loading ? (
         <TableSkeleton rows={8} cols={5} />
+      ) : error ? (
+        <ErrorState onRetry={reload} />
       ) : data?.noData ? (
         <div className="rounded-xl border border-gray-800 py-16 text-center text-gray-500">
           {data.message ?? "Not enough data yet."}
