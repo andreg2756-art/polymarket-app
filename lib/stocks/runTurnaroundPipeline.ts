@@ -4,8 +4,11 @@ import { turnaroundFirstPass, turnaroundFinalScore } from "@/lib/stocks/turnarou
 import { getFundamentals } from "@/lib/stocks/fundamentals";
 import { sendEmail } from "@/lib/notify";
 
-// Kept in sync with Quality's shortlist size — see that file's comment.
-const FUNDAMENTALS_SHORTLIST_SIZE = 5;
+// Kept in sync with Quality's shortlist size — see that file's comment
+// (Business Quant's real limit is 40 req/day total, shared across both
+// lenses, confirmed via its 429 error body — not the "no limit observed"
+// assumption an earlier version of this constant was sized on).
+const FUNDAMENTALS_SHORTLIST_SIZE = 6;
 
 export interface TurnaroundPipelineResult {
   tickers: string[];
@@ -38,7 +41,7 @@ export async function runTurnaroundPipeline(): Promise<TurnaroundPipelineResult>
   const fundamentalsResults = await Promise.allSettled(
     shortlist.map((s) => getFundamentals(s.quote.symbol).then((f) => ({ ticker: s.quote.symbol, f })))
   );
-  console.log(`[turnaround-pipeline] Polygon fundamentals pass: ${Date.now() - tFund0}ms for ${shortlist.length} tickers`);
+  console.log(`[turnaround-pipeline] fundamentals pass: ${Date.now() - tFund0}ms for ${shortlist.length} tickers`);
   const fundamentalsMap = new Map<string, Awaited<ReturnType<typeof getFundamentals>>>();
   let fundamentalsOkCount = 0;
   for (const r of fundamentalsResults) {
@@ -50,7 +53,7 @@ export async function runTurnaroundPipeline(): Promise<TurnaroundPipelineResult>
   if (shortlist.length > 0 && fundamentalsOkCount / shortlist.length < 0.5) {
     await sendEmail({
       subject: "Stocks refresh: Turnaround lens fundamentals mostly unavailable",
-      html: `<p>Only ${fundamentalsOkCount} of ${shortlist.length} Turnaround-lens candidates got real balance-sheet/cash-flow data from Polygon this run — likely a rate limit or API issue.</p>`,
+      html: `<p>Only ${fundamentalsOkCount} of ${shortlist.length} Turnaround-lens candidates got real balance-sheet/cash-flow data this run — likely a rate limit or API issue.</p>`,
     });
   }
   console.log(`[turnaround-pipeline] total: ${Date.now() - t0}ms`);

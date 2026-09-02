@@ -5,13 +5,18 @@ import { qualityFirstPass, qualityFinalScore } from "@/lib/stocks/qualityScore";
 import { getFundamentals } from "@/lib/stocks/fundamentals";
 import { sendEmail } from "@/lib/notify";
 
-// Polygon's plan caps at 5 requests/min, shared across every Polygon call
-// that opts into waiting for quota (see massive.ts — only fetchPolygonFinancials
-// does; news/candles/short-interest stay fail-fast so they can't queue behind
-// this). This and Turnaround's shortlist combined (10) clear in ~2 batches
-// of the 5/min window, ~65s worst case — safe inside the refresh route's
-// 180s maxDuration alongside the ~26s measured screener+EDGAR overhead above.
-const FUNDAMENTALS_SHORTLIST_SIZE = 5;
+// Business Quant (the primary source in lib/stocks/fundamentals.ts) shows
+// no rate-limit headers, but IS rate-limited — confirmed by testing: a
+// concurrent burst gets 429s, and an isolated request eventually revealed
+// the real limit in its error body ("Rate limit exceeded. Limit: 40
+// req/day"). That's a hard daily cap, not a per-minute window like
+// Polygon's — waiting longer within one run doesn't help, unlike Polygon.
+// Each ticker needs 3 calls (BS/IS/CF), and this budget is shared with
+// Turnaround's identical shortlist below, so keep both small enough that
+// 2x this x3 stays comfortably under 40 — 6 here + 6 there x3 = 36,
+// leaving headroom for a manual "Scan Market" re-run the same day. Do not
+// raise this without re-deriving the math above.
+const FUNDAMENTALS_SHORTLIST_SIZE = 6;
 
 export interface QualityPipelineResult {
   tickers: string[]; // every ticker touched this run, for the shared cleanup step
@@ -47,13 +52,10 @@ export async function runQualityPipeline(): Promise<QualityPipelineResult> {
   scored.sort((a, b) => b.firstPass - a.firstPass);
 
   // Prioritize tickers that don't have fundamentals yet, not just the top-N
-  // by score — the top-N by firstPass score barely changes day to day, so
-  // always slicing the sorted list re-fetched the SAME 5 tickers every run
-  // (each already-covered from a prior run, thanks to the 24h Polygon
-  // cache) while the other 45+ in the Top 50 never got picked at all. This
-  // rotates the daily budget toward genuinely new coverage; once the whole
-  // pool is covered it falls back to refreshing the highest-ranked already-
-  // covered ones so data doesn't go stale forever.
+  // by score — still worth doing even with a much larger shortlist than the
+  // original 5, since the candidate pool itself can exceed this size. Once
+  // the whole pool is covered it falls back to refreshing the highest-ranked
+  // already-covered ones so data doesn't go stale forever.
   const existingCoverage = await prisma.stock.findMany({
     where: { ticker: { in: scored.map((s) => s.quote.symbol) } },
     select: { ticker: true, netIncome: true, totalDebt: true },
@@ -69,7 +71,7 @@ export async function runQualityPipeline(): Promise<QualityPipelineResult> {
   const fundamentalsResults = await Promise.allSettled(
     shortlist.map((s) => getFundamentals(s.quote.symbol).then((f) => ({ ticker: s.quote.symbol, f })))
   );
-  console.log(`[quality-pipeline] Polygon fundamentals pass: ${Date.now() - tFund0}ms for ${shortlist.length} tickers`);
+  console.log(`[quality-pipeline] fundamentals pass: ${Date.now() - tFund0}ms for ${shortlist.length} tickers`);
   const fundamentalsMap = new Map<string, Awaited<ReturnType<typeof getFundamentals>>>();
   let fundamentalsOkCount = 0;
   for (const r of fundamentalsResults) {
@@ -81,7 +83,7 @@ export async function runQualityPipeline(): Promise<QualityPipelineResult> {
   if (shortlist.length > 0 && fundamentalsOkCount / shortlist.length < 0.5) {
     await sendEmail({
       subject: "Stocks refresh: Quality lens fundamentals mostly unavailable",
-      html: `<p>Only ${fundamentalsOkCount} of ${shortlist.length} Quality-lens candidates got real balance-sheet/income data from Polygon this run — likely a rate limit or API issue.</p>`,
+      html: `<p>Only ${fundamentalsOkCount} of ${shortlist.length} Quality-lens candidates got real balance-sheet/income data this run — likely a rate limit or API issue.</p>`,
     });
   }
   console.log(`[quality-pipeline] total: ${Date.now() - t0}ms`);

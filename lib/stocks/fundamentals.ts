@@ -1,11 +1,14 @@
-// Bounded fundamentals fetch (balance sheet + income, annual + prior year) —
-// used only on a capped shortlist per lens, never the full expanded universe.
-// Sourced from Polygon rather than FMP: FMP's current plan rejects (402)
-// financial-statement requests for anything outside a small mega-cap
-// allowlist, which made this silently empty for virtually every small/mid
-// cap the screener actually targets. Polygon has no such allowlist (see
-// massive.ts for the coverage test and the cash/FCF gap this trades in).
+// Fundamentals fetch backing both the Quality and Turnaround lenses.
+// Sourced from Business Quant primarily — confirmed by direct testing to
+// cover small/mid-caps FMP's plan rejects outright (402), with no observed
+// rate limit (unlike Polygon's 5/min, which is why this used to be capped
+// to a tiny daily-rotating shortlist — see runQualityPipeline.ts/
+// runTurnaroundPipeline.ts for that history). Polygon is kept as a fallback
+// for the rare case Business Quant's BS/IS/CF calls all fail outright
+// (network error, ticker not found) rather than removed outright, since it
+// was already integrated and does add small-cap coverage FMP never had.
 
+import { getBusinessQuantFundamentals } from "@/lib/businessQuant";
 import { fetchPolygonFinancials } from "@/lib/stocks/massive";
 
 export interface Fundamentals {
@@ -30,6 +33,22 @@ const EMPTY: Fundamentals = {
 
 export async function getFundamentals(ticker: string): Promise<Fundamentals> {
   try {
+    const bq = await getBusinessQuantFundamentals(ticker);
+    if (bq.ok) {
+      return {
+        netIncome: bq.netIncome,
+        revenue: bq.revenue,
+        grossProfit: bq.grossProfit,
+        operatingIncome: bq.operatingIncome,
+        totalDebt: bq.totalDebt,
+        cashAndEquivalents: bq.cashAndEquivalents,
+        freeCashFlow: bq.freeCashFlow,
+        prevRevenue: bq.prevRevenue,
+        prevOperatingIncome: bq.prevOperatingIncome,
+        prevFreeCashFlow: bq.prevFreeCashFlow,
+      };
+    }
+
     const { current, previous } = await fetchPolygonFinancials(ticker);
     if (!current) return EMPTY;
 
