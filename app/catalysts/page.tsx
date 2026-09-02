@@ -69,6 +69,15 @@ function ConditionProbabilityBanner({ label, probability }: { label: string; pro
   );
 }
 
+function AlternativeScenarioNote({ note }: { note: string }) {
+  return (
+    <div className="rounded-lg border border-blue-900/60 bg-blue-950/20 px-4 py-2.5 text-sm text-blue-200">
+      <p className="font-medium text-blue-300">What&apos;s actually more likely right now</p>
+      <p className="text-xs opacity-90 mt-1 leading-relaxed">{note}</p>
+    </div>
+  );
+}
+
 function MarketRow({ market }: { market: LiveMarket }) {
   if (!market.live || market.live.prices.length === 0) {
     return (
@@ -115,6 +124,7 @@ function ThemeCard({ theme }: { theme: ThemeWithLive }) {
       </div>
 
       <ConditionProbabilityBanner label={theme.conditionLabel} probability={theme.conditionProbability} />
+      <AlternativeScenarioNote note={theme.alternativeScenarioNote} />
 
       <div>
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">

@@ -58,6 +58,17 @@ export interface MacroTheme {
   conditionLabel: string; // plain language name for the condition exposures are keyed to
   primaryMarketConditionId: string; // must be one of markets[].conditionId
   primaryMarketOutcomeIndex: number; // which outcome price represents conditionLabel being true
+  // What the market currently prices as MORE likely than conditionLabel,
+  // and what that means for the exposures below — required, not optional,
+  // because every theme here has had a condition priced under 15% (a
+  // genuinely unlikely scenario), and showing only the "if this happens"
+  // side without saying what's actually favored right now reads as if the
+  // unlikely scenario were the headline case. The right framing differs
+  // per theme: a Fed cut vs. hike genuinely reverses most exposures below,
+  // while OpenAI not IPO'ing by a given date is a non-event for its
+  // investors/partners, not a negative one — write this per-theme, don't
+  // assume "the opposite" is always a mirror-image reversal.
+  alternativeScenarioNote: string;
   markets: TrackedMarket[];
   exposures: StockExposure[];
 }
@@ -69,6 +80,8 @@ export const MACRO_THEMES: MacroTheme[] = [
     description:
       "Whether the Fed cuts, holds, or hikes affects borrowing costs and the discount rate applied to future earnings — with real, sector-dependent effects rather than a single across-the-board direction.",
     conditionLabel: "Fed cuts the federal funds rate at the September 2026 FOMC meeting (any cut, 25bps+)",
+    alternativeScenarioNote:
+      "As of this writing the market prices a hike (71.5%) as far more likely than a cut (0.65%) at this meeting — a cut is the minority scenario, included here because it has clear, fairly consistent sector winners, not because it's expected. A hike would generally reverse most of the exposures below: negative for the rate-sensitive lenders/homebuilders/REITs, and more supportive of bank net interest margins than a cut would be (the opposite of the \"mixed\" call on JPM/ALLY below).",
     primaryMarketConditionId: "0xb4022c0b2718eca7ad27195f2d48f06527fa000269d188e1d3001ff8bbc16956",
     primaryMarketOutcomeIndex: 0, // "Fed rate cut by September 2026 meeting?" — Yes = cut happens
     markets: [
@@ -115,6 +128,8 @@ export const MACRO_THEMES: MacroTheme[] = [
     description:
       "Employment data most directly affects companies structurally tied to hiring volume (staffing, payroll processing) — a weaker print also feeds into Fed rate-cut odds (see the Fed Rate Policy theme), but that's a second-order, regime-dependent relationship and is deliberately not re-listed here. \"Weak\" and \"strong\" below are defined by the exact brackets Polymarket's own market uses, not a subjective call.",
     conditionLabel: "August nonfarm payrolls print weak — net job losses, or fewer than 50,000 jobs added",
+    alternativeScenarioNote:
+      "Per current pricing, a weak print (~12%) is the minority scenario — the market leans toward 50k+ jobs added (the \"add between 50k and 100k\" bucket alone is priced at 30%). The exposures below describe the weak case; a moderate-or-stronger report would generally reverse them — neutral-to-positive rather than negative for the staffing/payroll names, since more hiring activity means more placements and larger payrolls to process.",
     primaryMarketConditionId: "0xb72571fb88a793a38be9a5104e3adb19a5ff886e339e1e5cb14e98fc2ae44e59",
     // "Will the US lose more than 50k jobs in August?" — Yes = weak print.
     // Note this is a narrower slice of "weak" than the exposures' own
@@ -165,6 +180,8 @@ export const MACRO_THEMES: MacroTheme[] = [
     description:
       "OpenAI itself isn't public, so exposure here runs through disclosed investors/partners, direct compute suppliers, and competitors who could see sentiment or comparison effects if the IPO is confirmed.",
     conditionLabel: "OpenAI completes an IPO by December 31, 2026",
+    alternativeScenarioNote:
+      "The market prices this IPO timeline as unlikely (~9.5%) — but unlike the other two themes here, the more likely outcome (no IPO by this date) isn't a reversal of the exposures below, just an absence of the catalyst. Microsoft's stake and Nvidia/Oracle/CoreWeave's compute contracts don't become worse if the IPO is delayed — the underlying commercial relationships continue regardless; delay just means no re-rating/liquidity event to react to yet.",
     primaryMarketConditionId: "0x66f5b8203ee1c36b993af623fd7f9ef7271dd87b3aebf6df508048ad4b563432",
     primaryMarketOutcomeIndex: 0, // "Will OpenAI IPO by December 31 2026?" — Yes = IPO happens
     markets: [
