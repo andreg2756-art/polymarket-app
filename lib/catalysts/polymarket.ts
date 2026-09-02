@@ -16,6 +16,7 @@ export interface LiveMarketPrice {
   outcomes: string[];
   prices: number[]; // parallel to outcomes, each 0-1
   volume24hr: number;
+  liquidity: number | null; // liquidityNum field — confirmed present on the market object, not just the event wrapper
   updatedAt: string | null;
   closed: boolean;
 }
@@ -48,6 +49,7 @@ export async function fetchMarketPrices(conditionIds: string[]): Promise<Map<str
       outcomes,
       prices,
       volume24hr: typeof m.volume24hr === "number" ? m.volume24hr : 0,
+      liquidity: typeof m.liquidityNum === "number" ? m.liquidityNum : null,
       updatedAt: m.updatedAt ?? null,
       closed: m.closed === true,
     });
