@@ -5,6 +5,7 @@ import { TableSkeleton } from "@/components/Skeleton";
 import { exportCSV, formatUSD } from "@/lib/analytics";
 import BacktestSummary from "@/components/stocks/BacktestSummary";
 import DataWarningBanner from "@/components/stocks/DataWarningBanner";
+import RankChangeBadge from "@/components/stocks/RankChangeBadge";
 
 interface Stock {
   id: string;
@@ -20,6 +21,7 @@ interface Stock {
   freeCashFlow: number | null;
   qualityScore: number | null;
   qualityRank: number | null;
+  rankChange: number | null;
 }
 
 function Change({ v }: { v: number }) {
@@ -89,7 +91,7 @@ export default function QualityScreenPage() {
             <tbody className="divide-y divide-gray-800">
               {stocks.map((s) => (
                 <tr key={s.id} className="hover:bg-gray-900/40 transition-colors">
-                  <td className="px-3 py-3 text-gray-500 text-xs">#{s.qualityRank}</td>
+                  <td className="px-3 py-3 text-gray-500 text-xs whitespace-nowrap">#{s.qualityRank}<RankChangeBadge delta={s.rankChange} /></td>
                   <td className="px-3 py-3">
                     <div className="flex flex-col gap-0.5">
                       <Link href={`/stocks/${s.ticker}`} className="text-emerald-400 font-bold hover:underline">{s.ticker}</Link>

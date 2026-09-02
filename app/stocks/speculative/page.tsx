@@ -12,6 +12,7 @@ import ScoreBreakdown from "@/components/stocks/ScoreBreakdown";
 import ResearchChecklist from "@/components/stocks/ResearchChecklist";
 import EnhancedScorePanel from "@/components/stocks/EnhancedScorePanel";
 import TechnicalsPanel from "@/components/stocks/TechnicalsPanel";
+import RankChangeBadge from "@/components/stocks/RankChangeBadge";
 
 interface Stock {
   id: string;
@@ -23,6 +24,7 @@ interface Stock {
   change3M: number;
   bullishScore: number;
   rank: number;
+  rankChange: number | null;
   sector: string | null;
   relativeVolume: number;
   revenueGrowth: number;
@@ -418,7 +420,7 @@ export default function StocksPage() {
             <tbody className="divide-y divide-gray-800">
               {stocks.map((s) => (
                 <tr key={s.id} className="hover:bg-gray-900/40 transition-colors align-top">
-                  <td className="px-3 py-3 text-gray-500 text-xs pt-4">#{s.rank}</td>
+                  <td className="px-3 py-3 text-gray-500 text-xs pt-4 whitespace-nowrap">#{s.rank}<RankChangeBadge delta={s.rankChange} /></td>
 
                   {/* Ticker */}
                   <td className="px-3 py-3 pt-4">
