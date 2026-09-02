@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/Skeleton";
+import ErrorState from "@/components/ErrorState";
+import { useFetch } from "@/lib/useFetch";
 
 interface Run {
   id: string;
@@ -14,22 +15,15 @@ interface Run {
 }
 
 export default function HistoryPage() {
-  const [runs, setRuns] = useState<Run[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/runs")
-      .then((r) => r.json())
-      .then(setRuns)
-      .finally(() => setLoading(false));
-  }, []);
+  const { data, loading, error, reload } = useFetch<Run[]>("/api/runs");
+  const runs = data ?? [];
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Snapshot History</h1>
       <p className="text-gray-500 text-sm">Each row is a full data refresh. Run "Refresh Data" from the dashboard to create new snapshots.</p>
 
-      {loading ? <Skeleton className="h-64" /> : (
+      {loading ? <Skeleton className="h-64" /> : error ? <ErrorState onRetry={reload} /> : (
         <div className="rounded-xl border border-gray-800 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-900 text-gray-400 text-xs uppercase">

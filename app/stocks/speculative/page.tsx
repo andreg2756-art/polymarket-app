@@ -4,6 +4,7 @@ import Link from "next/link";
 import { SHARES_OUTSTANDING } from "@/lib/small-cap-universe";
 import { generateRiskFlags, type RiskFlag, type RiskFlagResult } from "@/lib/stockHelpers";
 import { TableSkeleton } from "@/components/Skeleton";
+import ErrorState from "@/components/ErrorState";
 import { exportCSV } from "@/lib/analytics";
 import Disclaimer from "@/components/stocks/Disclaimer";
 import BacktestSummary from "@/components/stocks/BacktestSummary";
@@ -139,14 +140,18 @@ function MediaOutlook({ ticker }: { ticker: string }) {
   const [news, setNews] = useState<NewsItem[] | null>(null);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   async function loadNews() {
     if (news !== null) { setOpen(!open); return; }
     setOpen(true);
     setLoading(true);
+    setFailed(false);
     try {
       const res = await fetch(`/api/stocks/news/${ticker}`);
       setNews(await res.json());
+    } catch {
+      setFailed(true);
     } finally {
       setLoading(false);
     }
@@ -162,6 +167,11 @@ function MediaOutlook({ ticker }: { ticker: string }) {
       {open && (
         <div className="mt-2 space-y-3 max-w-sm">
           {loading && <p className="text-xs text-gray-500">Loading...</p>}
+          {failed && (
+            <button onClick={loadNews} className="text-xs text-red-400 hover:text-red-300 underline underline-offset-2">
+              Could not load coverage — retry
+            </button>
+          )}
           {classified && (
             <>
               {classified.positives.length > 0 && (
@@ -278,6 +288,7 @@ type RevGrowthMap = Record<string, string>;
 export default function StocksPage() {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [showBacktest, setShowBacktest] = useState(false);
   const [revGrowthMap, setRevGrowthMap] = useState<RevGrowthMap>({});
@@ -286,6 +297,7 @@ export default function StocksPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(false);
     try {
       // Sort by the actual score, not the stored `rank` column: rank is a
       // fresh sequential index assigned over only each day's screener
@@ -295,6 +307,7 @@ export default function StocksPage() {
       // pipeline never scored at all (rank stays at its 0 default), then
       // rank is recomputed here so it's always a clean, unique 1..50.
       const res = await fetch(`/api/stocks/screener?sortBy=bullishScore`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const filtered: Stock[] = data
         .filter((s: Stock) => s.rank >= 1)
@@ -359,6 +372,8 @@ export default function StocksPage() {
       if (Object.keys(revMap).length > 0) setRevGrowthMap(revMap);
       if (Object.keys(volMap).length > 0) setAvgVolMap(volMap);
       if (Object.keys(sm).length > 0)     setSuppMap(sm);
+    } catch {
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -407,7 +422,7 @@ export default function StocksPage() {
       )}
 
       {/* Table */}
-      {loading ? <TableSkeleton rows={10} cols={9} /> : (
+      {loading ? <TableSkeleton rows={10} cols={9} /> : error ? <ErrorState onRetry={load} /> : (
         <div className="rounded-xl border border-gray-800 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-900 text-gray-400 text-xs uppercase">

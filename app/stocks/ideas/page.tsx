@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Skeleton } from "@/components/Skeleton";
+import ErrorState from "@/components/ErrorState";
+import { useFetch } from "@/lib/useFetch";
 
 interface Stock {
   id: string; ticker: string; name: string; sector: string | null;
@@ -254,19 +256,14 @@ function StockCard({ s, index }: { s: Stock; index: number }) {
 }
 
 export default function IdeasPage() {
-  const [stocks, setStocks] = useState<Stock[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/stocks/screener?sortBy=bullishScore&minScore=40")
-      .then((r) => r.json())
-      .then((data) => setStocks(data.slice(0, 20)))
-      .finally(() => setLoading(false));
-  }, []);
+  const { data, loading, error, reload } = useFetch<Stock[]>("/api/stocks/screener?sortBy=bullishScore&minScore=40");
+  const stocks = (data ?? []).slice(0, 20);
 
   if (loading) return (
     <div className="space-y-4">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-32" />)}</div>
   );
+
+  if (error) return <ErrorState onRetry={reload} />;
 
   return (
     <div className="space-y-6">

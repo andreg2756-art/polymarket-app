@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
 import { use } from "react";
 import { Skeleton } from "@/components/Skeleton";
+import ErrorState from "@/components/ErrorState";
+import { useFetch } from "@/lib/useFetch";
 import TechnicalsPanel from "@/components/stocks/TechnicalsPanel";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip,
@@ -42,14 +43,10 @@ function fmtNum(n: number) { return isFinite(n) ? n.toLocaleString("en-US", { ma
 
 export default function StockDetailPage({ params }: { params: Promise<{ ticker: string }> }) {
   const { ticker } = use(params);
-  const [data, setData] = useState<StockDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(`/api/stocks/${ticker}`).then((r) => r.json()).then(setData).finally(() => setLoading(false));
-  }, [ticker]);
+  const { data, loading, error, reload } = useFetch<StockDetail>(`/api/stocks/${ticker}`);
 
   if (loading) return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-64" /><Skeleton className="h-64" /></div>;
+  if (error) return <ErrorState onRetry={reload} />;
   if (!data?.stock) return <div className="py-32 text-center text-gray-500">Stock not found.</div>;
 
   const { stock, news, snapshots, profile, income, insiders, analyst, earnings, priceHistory } = data;

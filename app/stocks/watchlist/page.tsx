@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Skeleton } from "@/components/Skeleton";
+import ErrorState from "@/components/ErrorState";
 import { exportCSV } from "@/lib/analytics";
 
 interface WatchlistItem {
@@ -19,47 +20,63 @@ interface WatchlistItem {
 export default function WatchlistPage() {
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, { targetPrice: string; targetScore: string }>>({});
   const [saving, setSaving] = useState<string | null>(null);
 
-  const load = () => {
-    fetch("/api/stocks/watchlist")
-      .then((r) => r.json())
-      .then((data: WatchlistItem[]) => {
-        setItems(data);
-        setDrafts(
-          Object.fromEntries(
-            data.map((i) => [
-              i.ticker,
-              { targetPrice: i.targetPrice?.toString() ?? "", targetScore: i.targetScore?.toString() ?? "" },
-            ])
-          )
-        );
-      })
-      .finally(() => setLoading(false));
-  };
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const res = await fetch("/api/stocks/watchlist");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: WatchlistItem[] = await res.json();
+      setItems(data);
+      setDrafts(
+        Object.fromEntries(
+          data.map((i) => [
+            i.ticker,
+            { targetPrice: i.targetPrice?.toString() ?? "", targetScore: i.targetScore?.toString() ?? "" },
+          ])
+        )
+      );
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   async function remove(ticker: string) {
-    await fetch("/api/stocks/watchlist", { method: "DELETE", body: JSON.stringify({ ticker }), headers: { "Content-Type": "application/json" } });
+    try {
+      await fetch("/api/stocks/watchlist", { method: "DELETE", body: JSON.stringify({ ticker }), headers: { "Content-Type": "application/json" } });
+    } catch {
+      return;
+    }
     load();
   }
 
   async function saveTargets(ticker: string) {
     setSaving(ticker);
     const draft = drafts[ticker];
-    await fetch("/api/stocks/watchlist", {
-      method: "PATCH",
-      body: JSON.stringify({
-        ticker,
-        targetPrice: draft.targetPrice === "" ? null : Number(draft.targetPrice),
-        targetScore: draft.targetScore === "" ? null : Number(draft.targetScore),
-      }),
-      headers: { "Content-Type": "application/json" },
-    });
-    load();
-    setSaving(null);
+    try {
+      await fetch("/api/stocks/watchlist", {
+        method: "PATCH",
+        body: JSON.stringify({
+          ticker,
+          targetPrice: draft.targetPrice === "" ? null : Number(draft.targetPrice),
+          targetScore: draft.targetScore === "" ? null : Number(draft.targetScore),
+        }),
+        headers: { "Content-Type": "application/json" },
+      });
+      load();
+    } catch {
+      // leave the row unchanged; the user can retry the save
+    } finally {
+      setSaving(null);
+    }
   }
 
   return (
@@ -71,7 +88,7 @@ export default function WatchlistPage() {
         </button>
       </div>
 
-      {loading ? <Skeleton className="h-48" /> : items.length === 0 ? (
+      {loading ? <Skeleton className="h-48" /> : error ? <ErrorState onRetry={load} /> : items.length === 0 ? (
         <div className="py-24 text-center space-y-2">
           <p className="text-gray-400">Your watchlist is empty.</p>
           <p className="text-gray-600 text-sm">Visit any stock page and click <strong>Add to Watchlist</strong>.</p>

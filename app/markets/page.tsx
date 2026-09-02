@@ -1,7 +1,9 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import MarketTable from "@/components/MarketTable";
+import ErrorState from "@/components/ErrorState";
 import { TableSkeleton } from "@/components/Skeleton";
+import { useFetch } from "@/lib/useFetch";
 
 type MarketRow = {
   id: string;
@@ -30,8 +32,6 @@ const SORT_OPTIONS = [
 ];
 
 export default function MarketsPage() {
-  const [rows, setRows] = useState<MarketRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [minHolders, setMinHolders] = useState(0);
@@ -39,24 +39,15 @@ export default function MarketsPage() {
   const [gainingOnly, setGainingOnly] = useState(false);
   const [sortBy, setSortBy] = useState("holderCount");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        search, category,
-        minHolders: String(minHolders),
-        minValue: String(minValue),
-        gainingOnly: String(gainingOnly),
-        sortBy,
-      });
-      const res = await fetch(`/api/markets?${params}`);
-      setRows(await res.json());
-    } finally {
-      setLoading(false);
-    }
-  }, [search, category, minHolders, minValue, gainingOnly, sortBy]);
-
-  useEffect(() => { load(); }, [load]);
+  const params = new URLSearchParams({
+    search, category,
+    minHolders: String(minHolders),
+    minValue: String(minValue),
+    gainingOnly: String(gainingOnly),
+    sortBy,
+  });
+  const { data, loading, error, reload } = useFetch<MarketRow[]>(`/api/markets?${params}`);
+  const rows = data ?? [];
 
   return (
     <div className="space-y-6">
@@ -104,7 +95,7 @@ export default function MarketsPage() {
 
       <p className="text-gray-500 text-sm">{rows.length} markets</p>
 
-      {loading ? <TableSkeleton rows={8} cols={12} /> : <MarketTable rows={rows} />}
+      {loading ? <TableSkeleton rows={8} cols={12} /> : error ? <ErrorState onRetry={reload} /> : <MarketTable rows={rows} />}
     </div>
   );
 }

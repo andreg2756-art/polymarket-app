@@ -1,7 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { formatUSD, exportCSV } from "@/lib/analytics";
+import { useFetch } from "@/lib/useFetch";
 import { TableSkeleton } from "@/components/Skeleton";
+import ErrorState from "@/components/ErrorState";
 import Link from "next/link";
 
 interface TraderRow {
@@ -23,16 +25,9 @@ interface TraderRow {
 type SortKey = "rank" | "roiPct" | "winRate";
 
 export default function TradersPage() {
-  const [traders, setTraders] = useState<TraderRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, error, reload } = useFetch<TraderRow[]>("/api/traders");
+  const traders = data ?? [];
   const [sortBy, setSortBy] = useState<SortKey>("rank");
-
-  useEffect(() => {
-    fetch("/api/traders")
-      .then((r) => r.json())
-      .then(setTraders)
-      .finally(() => setLoading(false));
-  }, []);
 
   const sorted = [...traders].sort((a, b) =>
     sortBy === "rank" ? a.rank - b.rank : b[sortBy] - a[sortBy]
@@ -76,7 +71,7 @@ export default function TradersPage() {
         </div>
       </div>
 
-      {loading ? <TableSkeleton rows={10} cols={11} /> : (
+      {loading ? <TableSkeleton rows={10} cols={11} /> : error ? <ErrorState onRetry={reload} /> : (
         <div className="rounded-xl border border-gray-800 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-900 text-gray-400 text-xs uppercase">

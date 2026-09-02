@@ -1,7 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { TableSkeleton } from "@/components/Skeleton";
+import ErrorState from "@/components/ErrorState";
+import { useFetch } from "@/lib/useFetch";
 import { exportCSV } from "@/lib/analytics";
 import BacktestSummary from "@/components/stocks/BacktestSummary";
 import DataWarningBanner from "@/components/stocks/DataWarningBanner";
@@ -24,13 +26,9 @@ interface Stock {
 }
 
 export default function ValueTurnaroundPage() {
-  const [stocks, setStocks] = useState<Stock[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, error, reload } = useFetch<Stock[]>("/api/stocks/turnaround");
+  const stocks = data ?? [];
   const [showBacktest, setShowBacktest] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/stocks/turnaround").then((r) => r.json()).then(setStocks).finally(() => setLoading(false));
-  }, []);
 
   // Mirrors fundamentals.ts's EMPTY fallback — all three null means the FMP
   // fetch for this ticker failed (or was plan-restricted), so the score
@@ -71,7 +69,7 @@ export default function ValueTurnaroundPage() {
 
       {showBacktest && <BacktestSummary lens="turnaround" title="Value/Turnaround Lens Backtest" />}
 
-      {!loading && (
+      {!loading && !error && (
         <DataWarningBanner
           incompleteCount={stocks.filter(missingFundamentals).length}
           totalCount={stocks.length}
@@ -79,7 +77,7 @@ export default function ValueTurnaroundPage() {
         />
       )}
 
-      {loading ? <TableSkeleton rows={12} cols={8} /> : (
+      {loading ? <TableSkeleton rows={12} cols={8} /> : error ? <ErrorState onRetry={reload} /> : (
         <div className="rounded-xl border border-gray-800 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-900 text-gray-400 text-xs uppercase">
