@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { CATALYST_THEMES } from "@/lib/catalysts/themes";
 import { fetchMarketPrices } from "@/lib/catalysts/polymarket";
-import { computeEventOutcomes } from "@/lib/catalysts/compute";
+import { computeEventOutcomes, computeTheme } from "@/lib/catalysts/compute";
 import { recordSnapshotIfDue } from "@/lib/catalysts/probability-history";
+import { recordObservationIfDue } from "@/lib/catalysts/observations";
+import { fetchYahooDailyCandles } from "@/lib/stocks/technicals";
 import { captureServerException } from "@/lib/posthog-server";
 
 // Vercel cron target — see vercel.json for the daily schedule (Hobby plan
@@ -58,7 +60,58 @@ export async function POST() {
   }
 
   const recordedCount = results.filter((r) => r.recorded).length;
-  return NextResponse.json({ success: true, recordedCount, totalOutcomes: results.length, results });
+
+  // Phase 12: historical-validation persistence (spec Part 23) — separate
+  // from the probability-snapshot loop above since it needs the full
+  // computed signal (currentOutlookScore, confidence, etc.), not just a
+  // raw outcome probability. Failures here are logged but never fail the
+  // whole cron run — probability snapshots (the load-bearing piece for
+  // Catalyst Change scores) must not be blocked by an observation-recording
+  // or stock-quote problem.
+  const observationResults: { ticker: string; eventSlug: string; recorded: boolean; reason?: string; error?: string }[] = [];
+  try {
+    const now = new Date();
+    const themeComputations = await Promise.all(CATALYST_THEMES.map((theme) => computeTheme(theme, prices, now)));
+    const allSignals = themeComputations.flatMap((t) => t.signals);
+
+    const uniqueTickers = Array.from(new Set(allSignals.map((s) => s.ticker)));
+    const pricesByTicker = new Map<string, number | null>(
+      await Promise.all(
+        uniqueTickers.map(async (ticker) => {
+          try {
+            const candles = await fetchYahooDailyCandles(ticker);
+            const last = candles.at(-1);
+            return [ticker, last ? last.close : null] as const;
+          } catch {
+            return [ticker, null] as const;
+          }
+        })
+      )
+    );
+
+    for (const signal of allSignals) {
+      try {
+        const result = await recordObservationIfDue(signal, pricesByTicker.get(signal.ticker) ?? null, now);
+        observationResults.push({ ticker: signal.ticker, eventSlug: signal.eventSlug, ...result });
+      } catch (err) {
+        await captureServerException(err, { route: "/api/catalysts/snapshot", stage: "recordObservation", ticker: signal.ticker, eventSlug: signal.eventSlug });
+        observationResults.push({ ticker: signal.ticker, eventSlug: signal.eventSlug, recorded: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+  } catch (err) {
+    await captureServerException(err, { route: "/api/catalysts/snapshot", stage: "recordObservations" });
+  }
+  const observationsRecorded = observationResults.filter((r) => r.recorded).length;
+
+  return NextResponse.json({
+    success: true,
+    recordedCount,
+    totalOutcomes: results.length,
+    results,
+    observationsRecorded,
+    totalSignals: observationResults.length,
+    observationResults,
+  });
 }
 
 export const GET = POST;

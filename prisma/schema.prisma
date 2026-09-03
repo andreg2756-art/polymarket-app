@@ -195,3 +195,33 @@ model PredictionMarketSnapshot {
 
   @@index([eventSlug, outcomeId, capturedAt])
 }
+
+// One row per (ticker, event) per day — spec Part 23's "start recording
+// observations needed to evaluate the model later." This phase is
+// recording ONLY: computing 1D/5D/20D/60D returns and excess return vs.
+// a benchmark is deliberately NOT done here (spec: "do not attempt to
+// optimize the model yet, just make historical testing possible") — that
+// requires joining an old observation against a LATER price, which this
+// table makes possible but doesn't itself compute.
+//
+// stockPrice is nullable — never fabricated when a quote isn't available.
+// sectorBenchmark is left null for now rather than guessing an ETF for
+// tickers without one clean mapping (e.g. staffing firms); marketBenchmark
+// is the uncontroversial constant "SPY". Field names (ticker/eventSlug)
+// match PredictionMarketSnapshot's naming rather than the spec's own
+// symbol/eventId, for consistency within this codebase.
+model CatalystObservation {
+  id                  String   @id @default(cuid())
+  ticker              String
+  eventSlug           String
+  formulaVersion      String
+  currentOutlookScore Float
+  catalystChangeScore Float?
+  confidence          Float
+  stockPrice          Float?
+  sectorBenchmark     String?
+  marketBenchmark     String?
+  observedAt          DateTime @default(now())
+
+  @@index([ticker, eventSlug, observedAt])
+}
