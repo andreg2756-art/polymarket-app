@@ -43,13 +43,30 @@ export interface PredictionEvent {
   contextMarkets?: { conditionId: string; label: string }[];
 }
 
-/** A stock's exposure to one economic factor — defined once, reused across every event that touches that factor. */
+/**
+ * A stock's exposure to one economic factor — defined once, reused across
+ * every event that touches that factor.
+ *
+ * Spec Part 12: exposure and directional confidence are NOT the same
+ * axis. A company can be strongly exposed to a factor (large magnitude)
+ * while still being genuinely unsure which way it nets out (e.g. COIN's
+ * "risk appetite" link is real but loose — direction is more of a guess
+ * than DHI's mortgage-rate link is). exposureStrength/direction capture
+ * "how much and which way we currently believe this goes"; confidence
+ * captures "how sure are we this factor matters to this company at all";
+ * directionalConfidence captures "how sure are we the SIGN we picked is
+ * right, independent of whether the factor matters." A row can have high
+ * exposureStrength and high confidence but only moderate
+ * directionalConfidence.
+ */
 export interface StockFactorExposure {
   ticker: string;
   name: string;
   factor: EconomicFactor;
-  exposure: number; // -1.0 to +1.0
+  exposureStrength: number; // 0.0 to 1.0 — magnitude only
+  direction: -1 | 1; // sign only
   confidence: number; // 0-1, RelationshipConfidence — "how sure are we this factor actually matters to this company"
+  directionalConfidence: number; // 0-1 — "how sure are we the direction is right, given that it matters"
   rationale: string;
 }
 
@@ -91,6 +108,16 @@ export interface StockCatalystSignal {
   marketQuality: number;
   relationshipConfidence: number;
   timeWeight: number;
+
+  // Spec Part 12 — null for direct (non-factor-mediated) exposures like the
+  // OpenAI theme's DirectCompanyExposure rows, which don't have this axis.
+  // "Primary" = the first factor row for this ticker (matches primaryFactor
+  // in the reasons text) — a ticker with multiple offsetting rows (JPM,
+  // ALLY) still nets out through the weighted-mean formula either way; this
+  // is just which single row's exposure gets surfaced in the "why" UI.
+  primaryExposureStrength: number | null; // 0-1
+  primaryDirection: -1 | 1 | null;
+  primaryDirectionalConfidence: number | null; // 0-1
 
   currentOutlookRaw: number;
   catalystChangeRaw: number | null;

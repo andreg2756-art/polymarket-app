@@ -88,35 +88,42 @@ export const CATALYST_THEMES: CatalystTheme[] = [
     },
     // Sign convention for INTEREST_RATES/HOUSING/CREDIT_CONDITIONS here:
     // positive impact = monetary conditions EASING (a cut). A company with
-    // positive exposure benefits from easier/lower-rate conditions;
-    // negative exposure benefits from tighter conditions instead. JPM/ALLY
-    // get TWO rows each (opposing factors) so their genuinely mixed
-    // loan-growth-vs-margin story emerges from the weighted mean instead
-    // of needing a special-cased "mixed" category.
+    // direction +1 benefits from easier/lower-rate conditions; direction
+    // -1 benefits from tighter conditions instead. JPM/ALLY get TWO rows
+    // each (opposing factors) so their genuinely mixed loan-growth-vs-
+    // margin story emerges from the weighted mean instead of needing a
+    // special-cased "mixed" category.
+    //
+    // directionalConfidence (spec Part 12) is independent of exposureStrength
+    // and confidence — it's specifically "given this factor matters, how
+    // sure are we the sign is right." Mechanical/contractual links (RKT's
+    // mortgage volume, ADP's per-employee revenue) get the highest values;
+    // rows whose own rationale already hedges ("general sector pattern,"
+    // "looser and less direct") get correspondingly lower ones.
     factorExposures: [
-      { ticker: "SOFI", name: "SoFi Technologies", factor: "INTEREST_RATES", exposure: 0.80, confidence: 0.55,
+      { ticker: "SOFI", name: "SoFi Technologies", factor: "INTEREST_RATES", exposureStrength: 0.80, direction: 1, confidence: 0.55, directionalConfidence: 0.65,
         rationale: "Fintech lender — lower rates typically reduce funding costs and can boost loan demand, though this is a general sector pattern, not a guarantee for this specific company." },
-      { ticker: "UPST", name: "Upstart Holdings", factor: "INTEREST_RATES", exposure: 0.80, confidence: 0.55,
+      { ticker: "UPST", name: "Upstart Holdings", factor: "INTEREST_RATES", exposureStrength: 0.80, direction: 1, confidence: 0.55, directionalConfidence: 0.70,
         rationale: "AI lending marketplace whose loan origination volume has historically been sensitive to rate levels." },
-      { ticker: "DHI", name: "D.R. Horton", factor: "HOUSING", exposure: 0.80, confidence: 0.55,
+      { ticker: "DHI", name: "D.R. Horton", factor: "HOUSING", exposureStrength: 0.80, direction: 1, confidence: 0.55, directionalConfidence: 0.75,
         rationale: "Homebuilder — lower rates generally reduce mortgage rates, historically associated with stronger new-home demand." },
-      { ticker: "LEN", name: "Lennar", factor: "HOUSING", exposure: 0.80, confidence: 0.55,
+      { ticker: "LEN", name: "Lennar", factor: "HOUSING", exposureStrength: 0.80, direction: 1, confidence: 0.55, directionalConfidence: 0.75,
         rationale: "Homebuilder with the same mortgage-rate sensitivity as D.R. Horton." },
-      { ticker: "PHM", name: "PulteGroup", factor: "HOUSING", exposure: 0.55, confidence: 0.55,
+      { ticker: "PHM", name: "PulteGroup", factor: "HOUSING", exposureStrength: 0.55, direction: 1, confidence: 0.55, directionalConfidence: 0.75,
         rationale: "Homebuilder, same rate-sensitivity logic, somewhat smaller scale exposure than DHI/LEN." },
-      { ticker: "RKT", name: "Rocket Companies", factor: "HOUSING", exposure: 0.80, confidence: 0.55,
+      { ticker: "RKT", name: "Rocket Companies", factor: "HOUSING", exposureStrength: 0.80, direction: 1, confidence: 0.55, directionalConfidence: 0.80,
         rationale: "Mortgage originator/servicer — refinancing and origination volume are directly tied to mortgage rate levels." },
-      { ticker: "O", name: "Realty Income", factor: "INTEREST_RATES", exposure: 0.55, confidence: 0.55,
+      { ticker: "O", name: "Realty Income", factor: "INTEREST_RATES", exposureStrength: 0.55, direction: 1, confidence: 0.55, directionalConfidence: 0.70,
         rationale: "REIT — lower rates reduce financing costs and can make REIT dividend yields relatively more attractive to income investors." },
-      { ticker: "COIN", name: "Coinbase", factor: "INTEREST_RATES", exposure: 0.55, confidence: 0.30,
+      { ticker: "COIN", name: "Coinbase", factor: "INTEREST_RATES", exposureStrength: 0.55, direction: 1, confidence: 0.30, directionalConfidence: 0.40,
         rationale: "Risk-asset-adjacent business; lower rates have historically coincided with more risk appetite, but this link is looser and less direct than the others here." },
-      { ticker: "JPM", name: "JPMorgan Chase", factor: "INTEREST_RATES", exposure: -0.30, confidence: 0.55,
+      { ticker: "JPM", name: "JPMorgan Chase", factor: "INTEREST_RATES", exposureStrength: 0.30, direction: -1, confidence: 0.55, directionalConfidence: 0.65,
         rationale: "Large bank — cuts compress net interest margin. Offset by a separate CREDIT_CONDITIONS exposure below (loan growth channel); the two nets out to a genuinely mixed view rather than one-directional." },
-      { ticker: "JPM", name: "JPMorgan Chase", factor: "CREDIT_CONDITIONS", exposure: 0.35, confidence: 0.50,
+      { ticker: "JPM", name: "JPMorgan Chase", factor: "CREDIT_CONDITIONS", exposureStrength: 0.35, direction: 1, confidence: 0.50, directionalConfidence: 0.55,
         rationale: "Cuts can support loan demand and credit growth, partially offsetting the margin-compression effect above." },
-      { ticker: "ALLY", name: "Ally Financial", factor: "INTEREST_RATES", exposure: -0.25, confidence: 0.55,
+      { ticker: "ALLY", name: "Ally Financial", factor: "INTEREST_RATES", exposureStrength: 0.25, direction: -1, confidence: 0.55, directionalConfidence: 0.65,
         rationale: "Auto lender/digital bank — same margin-compression dynamic as JPM, at smaller scale." },
-      { ticker: "ALLY", name: "Ally Financial", factor: "CREDIT_CONDITIONS", exposure: 0.30, confidence: 0.50,
+      { ticker: "ALLY", name: "Ally Financial", factor: "CREDIT_CONDITIONS", exposureStrength: 0.30, direction: 1, confidence: 0.50, directionalConfidence: 0.55,
         rationale: "Same offsetting loan-growth channel as JPM, at smaller scale." },
     ],
   },
@@ -158,19 +165,19 @@ export const CATALYST_THEMES: CatalystTheme[] = [
       ],
     },
     factorExposures: [
-      { ticker: "RHI", name: "Robert Half", factor: "LABOR_MARKET_STRENGTH", exposure: 0.85, confidence: 0.80,
+      { ticker: "RHI", name: "Robert Half", factor: "LABOR_MARKET_STRENGTH", exposureStrength: 0.85, direction: 1, confidence: 0.80, directionalConfidence: 0.85,
         rationale: "Staffing firm — placement volume and pricing are structurally tied to how much companies are hiring, one of the most direct employment-data plays available." },
-      { ticker: "MAN", name: "ManpowerGroup", factor: "LABOR_MARKET_STRENGTH", exposure: 0.85, confidence: 0.80,
+      { ticker: "MAN", name: "ManpowerGroup", factor: "LABOR_MARKET_STRENGTH", exposureStrength: 0.85, direction: 1, confidence: 0.80, directionalConfidence: 0.85,
         rationale: "Staffing firm with the same direct structural exposure to hiring volume as Robert Half." },
-      { ticker: "ASGN", name: "ASGN Incorporated", factor: "LABOR_MARKET_STRENGTH", exposure: 0.85, confidence: 0.55,
+      { ticker: "ASGN", name: "ASGN Incorporated", factor: "LABOR_MARKET_STRENGTH", exposureStrength: 0.85, direction: 1, confidence: 0.55, directionalConfidence: 0.70,
         rationale: "IT/professional staffing — direct exposure to hiring volume, weighted toward tech/professional roles specifically." },
-      { ticker: "ADP", name: "Automatic Data Processing", factor: "LABOR_MARKET_STRENGTH", exposure: 0.55, confidence: 0.80,
+      { ticker: "ADP", name: "Automatic Data Processing", factor: "LABOR_MARKET_STRENGTH", exposureStrength: 0.55, direction: 1, confidence: 0.80, directionalConfidence: 0.80,
         rationale: "Payroll processor — revenue scales with the number of employees on clients' payrolls, a structural (not sentiment-based) link to employment levels." },
-      { ticker: "PAYX", name: "Paychex", factor: "LABOR_MARKET_STRENGTH", exposure: 0.55, confidence: 0.80,
+      { ticker: "PAYX", name: "Paychex", factor: "LABOR_MARKET_STRENGTH", exposureStrength: 0.55, direction: 1, confidence: 0.80, directionalConfidence: 0.80,
         rationale: "Payroll/HR processor, same structural payroll-count exposure as ADP at smaller scale." },
-      { ticker: "KFY", name: "Korn Ferry", factor: "LABOR_MARKET_STRENGTH", exposure: 0.55, confidence: 0.55,
+      { ticker: "KFY", name: "Korn Ferry", factor: "LABOR_MARKET_STRENGTH", exposureStrength: 0.55, direction: 1, confidence: 0.55, directionalConfidence: 0.65,
         rationale: "Executive search and HR consulting — tied to hiring activity, though skewed toward senior/executive roles rather than broad payrolls." },
-      { ticker: "UPWK", name: "Upwork", factor: "LABOR_MARKET_STRENGTH", exposure: 0.20, confidence: 0.30,
+      { ticker: "UPWK", name: "Upwork", factor: "LABOR_MARKET_STRENGTH", exposureStrength: 0.20, direction: 1, confidence: 0.30, directionalConfidence: 0.35,
         rationale: "Freelance marketplace — a weak jobs report could push some workers toward freelance work (positive) or reflect broader spending pullback that reduces freelance budgets (negative). Small, low-confidence exposure reflects genuine ambiguity rather than a guess." },
     ],
   },

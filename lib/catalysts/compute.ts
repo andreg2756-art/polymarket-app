@@ -174,7 +174,9 @@ export async function computeTheme(theme: CatalystTheme, prices: Map<string, Liv
       const outcomeMappingConfidence = mappingConfidenceCount > 0 ? mappingConfidenceSum / mappingConfidenceCount : 0;
       const rationale = exposures.map((e) => e.rationale).join(" ");
       const primaryFactor = exposures[0]?.factor ?? null;
-      const primaryExposure = exposures[0]?.exposure ?? 0;
+      const primaryExposureStrength = exposures[0]?.exposureStrength ?? null;
+      const primaryDirection = exposures[0]?.direction ?? null;
+      const primaryDirectionalConfidence = exposures[0]?.directionalConfidence ?? null;
 
       signals.push(
         buildSignal({
@@ -188,8 +190,12 @@ export async function computeTheme(theme: CatalystTheme, prices: Map<string, Liv
           outcomeMappingConfidence,
           timeWeight,
           dataCompleteness: computeDataCompleteness({ marketQuality, outcomes, matchedFactors: totalMatchedFactors }),
-          reasonInputs: { ticker, factor: primaryFactor, exposure: primaryExposure, relationshipConfidence, rationale },
-          riskInputs: { relationshipConfidence, marketQuality, hasHistory: hasAnyHistory, matchedFactorCount: totalMatchedFactors },
+          exposureInfo: { exposureStrength: primaryExposureStrength, direction: primaryDirection, directionalConfidence: primaryDirectionalConfidence },
+          reasonInputs: {
+            ticker, factor: primaryFactor, relationshipConfidence, rationale,
+            exposureStrength: primaryExposureStrength, direction: primaryDirection, directionalConfidence: primaryDirectionalConfidence,
+          },
+          riskInputs: { relationshipConfidence, marketQuality, hasHistory: hasAnyHistory, matchedFactorCount: totalMatchedFactors, directionalConfidence: primaryDirectionalConfidence },
         })
       );
     }
@@ -218,8 +224,12 @@ export async function computeTheme(theme: CatalystTheme, prices: Map<string, Liv
           outcomeMappingConfidence: 1.0, // direct impact — no factor-mapping ambiguity layer to score separately
           timeWeight,
           dataCompleteness: computeDataCompleteness({ marketQuality, outcomes, matchedFactors: 1 }),
-          reasonInputs: { ticker: exp.ticker, factor: null, exposure: 0, relationshipConfidence: exp.confidence, rationale: exp.rationale },
-          riskInputs: { relationshipConfidence: exp.confidence, marketQuality, hasHistory: hasAnyHistory, matchedFactorCount: 1 },
+          exposureInfo: { exposureStrength: null, direction: null, directionalConfidence: null },
+          reasonInputs: {
+            ticker: exp.ticker, factor: null, relationshipConfidence: exp.confidence, rationale: exp.rationale,
+            exposureStrength: null, direction: null, directionalConfidence: null,
+          },
+          riskInputs: { relationshipConfidence: exp.confidence, marketQuality, hasHistory: hasAnyHistory, matchedFactorCount: 1, directionalConfidence: null },
         })
       );
     }
@@ -270,8 +280,12 @@ export async function computeTheme(theme: CatalystTheme, prices: Map<string, Liv
     outcomeMappingConfidence: number;
     timeWeight: number;
     dataCompleteness: number;
-    reasonInputs: { ticker: string; factor: import("./factor-taxonomy").EconomicFactor | null; exposure: number; relationshipConfidence: number; rationale: string };
-    riskInputs: { relationshipConfidence: number; marketQuality: number; hasHistory: boolean; matchedFactorCount: number };
+    exposureInfo: { exposureStrength: number | null; direction: -1 | 1 | null; directionalConfidence: number | null };
+    reasonInputs: {
+      ticker: string; factor: import("./factor-taxonomy").EconomicFactor | null; relationshipConfidence: number; rationale: string;
+      exposureStrength: number | null; direction: -1 | 1 | null; directionalConfidence: number | null;
+    };
+    riskInputs: { relationshipConfidence: number; marketQuality: number; hasHistory: boolean; matchedFactorCount: number; directionalConfidence: number | null };
   }): StockCatalystSignal {
     const currentExpectedImpact = calculateExpectedImpact(args.outcomeImpacts);
 
@@ -332,6 +346,9 @@ export async function computeTheme(theme: CatalystTheme, prices: Map<string, Liv
       marketQuality: args.marketQuality,
       relationshipConfidence: args.relationshipConfidence,
       timeWeight: args.timeWeight,
+      primaryExposureStrength: args.exposureInfo.exposureStrength,
+      primaryDirection: args.exposureInfo.direction,
+      primaryDirectionalConfidence: args.exposureInfo.directionalConfidence,
       currentOutlookRaw,
       catalystChangeRaw,
       currentOutlookScore,
@@ -341,7 +358,9 @@ export async function computeTheme(theme: CatalystTheme, prices: Map<string, Liv
       reasons: buildReasons({
         ticker: args.reasonInputs.ticker,
         factor: args.reasonInputs.factor,
-        exposure: args.reasonInputs.exposure,
+        exposureStrength: args.reasonInputs.exposureStrength,
+        direction: args.reasonInputs.direction,
+        directionalConfidence: args.reasonInputs.directionalConfidence,
         relationshipConfidence: args.reasonInputs.relationshipConfidence,
         currentExpectedImpact,
         deltaExpectedImpact,

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Skeleton } from "@/components/Skeleton";
 import type { Classification } from "@/lib/catalysts/event-types";
 import { classifyScore } from "@/lib/catalysts/scoring";
+import { tierLabel, EXPOSURE_TIERS, CONFIDENCE_TIERS } from "@/lib/catalysts/explanations";
 
 interface ComputedOutcome {
   id: string;
@@ -42,6 +43,9 @@ interface StockCatalystSignal {
   catalystChangeScore: number | null;
   confidence: number;
   classification: Classification;
+  primaryExposureStrength: number | null;
+  primaryDirection: -1 | 1 | null;
+  primaryDirectionalConfidence: number | null;
   reasons: string[];
   risks: string[];
 }
@@ -121,10 +125,24 @@ function BreakdownLine({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Spec Part 12's minimum UI requirement — Exposure/Direction/Directional Confidence as distinct labeled concepts, not buried in a reasons sentence. Absent (null) for direct, non-factor-mediated exposures like the OpenAI theme. */
+function ExposureBadges({ s }: { s: StockCatalystSignal }) {
+  if (s.primaryExposureStrength === null || s.primaryDirection === null || s.primaryDirectionalConfidence === null) return null;
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] mb-2">
+      <span className="text-gray-500">Exposure <span className="text-gray-200 font-semibold">{tierLabel(s.primaryExposureStrength, EXPOSURE_TIERS)}</span></span>
+      <span className="text-gray-500">Expected Direction <span className="text-gray-200 font-semibold">{s.primaryDirection > 0 ? "POSITIVE" : "NEGATIVE"}</span></span>
+      <span className="text-gray-500">Directional Confidence <span className="text-gray-200 font-semibold">{tierLabel(s.primaryDirectionalConfidence, CONFIDENCE_TIERS)}</span></span>
+    </div>
+  );
+}
+
 /** Full formula chain for both scores, per spec Part 10 — nothing here is hidden behind an unexplained number. Every value shown is already stored on the signal, never recomputed client-side. */
 function ScoreBreakdown({ s }: { s: StockCatalystSignal }) {
   return (
-    <div className="grid sm:grid-cols-2 gap-4 mt-2 pt-2 border-t border-gray-800 text-xs">
+    <div className="mt-2 pt-2 border-t border-gray-800 text-xs">
+      <ExposureBadges s={s} />
+      <div className="grid sm:grid-cols-2 gap-4">
       <div>
         <p className="text-gray-400 font-semibold mb-1">Current Outlook: {fmt(s.currentOutlookScore, 0)}</p>
         <BreakdownLine label="Expected Impact" value={fmt(s.currentExpectedImpact)} />
@@ -148,6 +166,7 @@ function ScoreBreakdown({ s }: { s: StockCatalystSignal }) {
         <BreakdownLine label="Relationship Confidence" value={s.relationshipConfidence.toFixed(2)} />
         <BreakdownLine label="Time Weight" value={s.timeWeight.toFixed(2)} />
         <BreakdownLine label="Normalized Change Score" value={s.catalystChangeScore === null ? "—" : fmt(s.catalystChangeScore, 0)} />
+      </div>
       </div>
     </div>
   );

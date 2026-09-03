@@ -11,7 +11,9 @@ import type { EconomicFactor } from "./factor-taxonomy";
 export interface ReasonInputs {
   ticker: string;
   factor: EconomicFactor | null; // null for a direct (non-factor-mediated) company exposure
-  exposure: number; // -1..1, or the direct outcome impact scale if factor is null
+  exposureStrength: number | null; // 0-1 magnitude, null when factor is null
+  direction: -1 | 1 | null; // sign, null when factor is null
+  directionalConfidence: number | null; // 0-1, null when factor is null
   relationshipConfidence: number; // 0-1
   currentExpectedImpact: number;
   deltaExpectedImpact: number | null;
@@ -22,15 +24,26 @@ function factorLabel(factor: EconomicFactor): string {
   return factor.toLowerCase().replace(/_/g, " ");
 }
 
+/** Spec Part 12's minimum UI requirement — qualitative tiers so "0.80" doesn't have to be mentally translated to "high" by the reader. Exported so the page component can render the same HIGH/MODERATE/LOW badges the reason text uses, rather than re-deriving its own thresholds that could drift out of sync. */
+export function tierLabel(value: number, tiers: [number, string][]): string {
+  for (const [threshold, label] of tiers) {
+    if (value >= threshold) return label;
+  }
+  return tiers[tiers.length - 1][1];
+}
+export const EXPOSURE_TIERS: [number, string][] = [[0.7, "HIGH"], [0.4, "MODERATE"], [0, "LOW"]];
+export const CONFIDENCE_TIERS: [number, string][] = [[0.7, "HIGH"], [0.5, "MODERATE"], [0, "LOW"]];
+
 export function buildReasons(inputs: ReasonInputs): string[] {
   const reasons: string[] = [];
 
   reasons.push(inputs.rationale);
 
-  if (inputs.factor) {
-    const direction = inputs.exposure > 0 ? "positive" : inputs.exposure < 0 ? "negative" : "negligible";
+  if (inputs.factor && inputs.exposureStrength !== null && inputs.direction !== null && inputs.directionalConfidence !== null) {
+    const directionLabel = inputs.direction > 0 ? "positive" : "negative";
     reasons.push(
-      `${inputs.ticker} has an estimated ${direction} exposure (${inputs.exposure.toFixed(2)}) to ${factorLabel(inputs.factor)}.`
+      `${inputs.ticker} has ${tierLabel(inputs.exposureStrength, EXPOSURE_TIERS).toLowerCase()} exposure (${inputs.exposureStrength.toFixed(2)}) to ${factorLabel(inputs.factor)}, ` +
+      `expected direction ${directionLabel}, with ${tierLabel(inputs.directionalConfidence, CONFIDENCE_TIERS).toLowerCase()} confidence in that direction.`
     );
   }
 
@@ -53,6 +66,7 @@ export interface RiskInputs {
   marketQuality: number; // 0-1
   hasHistory: boolean;
   matchedFactorCount: number;
+  directionalConfidence: number | null; // 0-1, null for direct (non-factor-mediated) exposures
 }
 
 export function buildRisks(inputs: RiskInputs): string[] {
@@ -60,6 +74,9 @@ export function buildRisks(inputs: RiskInputs): string[] {
 
   if (inputs.relationshipConfidence < 0.60) {
     risks.push("The relationship between this event and this company is plausible but indirect — treat the magnitude with extra skepticism.");
+  }
+  if (inputs.directionalConfidence !== null && inputs.directionalConfidence < 0.50) {
+    risks.push("Exposure is real, but which way it nets out is genuinely uncertain — the sign of this impact could be wrong even if the magnitude is roughly right.");
   }
   if (inputs.marketQuality < 0.5) {
     risks.push("This market has relatively thin liquidity/volume — its price may not fully reflect informed positioning.");

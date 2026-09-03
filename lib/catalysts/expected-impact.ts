@@ -13,9 +13,14 @@ const IMPACT_CLAMP = 5;
  * factors (e.g. INTEREST_RATES and CREDIT_CONDITIONS moving together)
  * double the effective impact just because the event happens to tag both;
  * see spec Part 7's explicit warning against that. Weight is
- * (outcome-mapping confidence x exposure confidence), so a shakier
- * factor-mapping or a shakier company-exposure both pull that factor's
- * contribution down rather than being ignored outright.
+ * (outcome-mapping confidence x exposure confidence x directional
+ * confidence), so a shakier factor-mapping, a shakier company-exposure, OR
+ * genuine uncertainty about which way the exposure nets out all pull that
+ * factor's contribution down rather than being ignored outright. Exposure
+ * itself is exposureStrength (magnitude) x direction (sign) — spec Part
+ * 12's split, kept separate from directionalConfidence deliberately: a
+ * company can be strongly exposed (large exposureStrength) while we're
+ * still unsure the sign we picked is right (low directionalConfidence).
  */
 export function calculateCompanyOutcomeImpact(
   outcome: EventOutcome,
@@ -26,9 +31,9 @@ export function calculateCompanyOutcomeImpact(
   for (const factorImpact of outcome.factorImpacts) {
     const exposure = exposures.find((e) => e.factor === factorImpact.factor);
     if (!exposure) continue;
-    const weight = factorImpact.confidence * exposure.confidence;
+    const weight = factorImpact.confidence * exposure.confidence * exposure.directionalConfidence;
     if (weight <= 0) continue;
-    contributions.push({ value: factorImpact.impact * exposure.exposure, weight });
+    contributions.push({ value: factorImpact.impact * exposure.exposureStrength * exposure.direction, weight });
   }
 
   if (contributions.length === 0) return { impact: 0, matchedFactors: 0 };
