@@ -11,7 +11,7 @@ import type { LiveMarketPrice } from "./polymarket";
 import type { StockCatalystSignal, PredictionEvent } from "./event-types";
 import { FORMULA_VERSION } from "./event-types";
 import { FACTOR_TO_GROUP } from "./factor-taxonomy";
-import { normalizeOutcomeProbabilities } from "./probability";
+import { normalizeOutcomeProbabilities, calculateProbabilityDeltas } from "./probability";
 import { calculateCompanyOutcomeImpact, calculateExpectedImpact, calculateExpectedImpactDeltas, calculateExpectedImpactMomentum, type OutcomeProbabilityImpact } from "./expected-impact";
 import { calculateMarketQuality, MIN_MARKET_QUALITY_FOR_SIGNAL } from "./market-quality";
 import { calculateTimeWeight, daysBetween } from "./time-weight";
@@ -29,13 +29,22 @@ export interface ComputedOutcome {
   probabilityNormalized: number;
 }
 
+/** ComputedOutcome plus probability-point deltas — only available once history has been fetched, so it's a distinct type rather than optional fields on ComputedOutcome. */
+export interface ComputedOutcomeWithDeltas extends ComputedOutcome {
+  // Percentage-point deltas vs. the closest snapshot in each tolerance
+  // window — null (never a fabricated 0) until that snapshot exists.
+  probabilityDelta1d: number | null;
+  probabilityDelta7d: number | null;
+  probabilityDelta30d: number | null;
+}
+
 export interface ComputedEvent {
   slug: string;
   title: string;
   resolutionDate: string;
   materiality: number;
   marketQuality: number;
-  outcomes: ComputedOutcome[];
+  outcomes: ComputedOutcomeWithDeltas[];
   contextMarkets: { conditionId: string; label: string; live: LiveMarketPrice | null }[];
   // Age in minutes of the oldest snapshot found within tolerance across
   // this event's outcomes, or null if no history exists at all yet (a
@@ -107,6 +116,22 @@ export async function computeTheme(theme: CatalystTheme, prices: Map<string, Liv
   const historicalProbs1d = historicalProbabilitiesFor(theme.event, historyByOutcome, "oneDayAgo");
   const historicalProbs7d = historicalProbabilitiesFor(theme.event, historyByOutcome, "sevenDayAgo");
   const hasAnyHistory = historicalProbs1d !== null || historicalProbs7d !== null;
+
+  // Per-outcome probability-point deltas for the event header display
+  // (spec: "Current Probability 72%, 1D +4pp, 7D +14pp") — independent of
+  // the expected-impact deltas above, which require EVERY outcome to have
+  // history; a single outcome's own probability delta only needs its own
+  // history to exist.
+  const outcomesWithDeltas: ComputedOutcomeWithDeltas[] = outcomes.map((o) => {
+    const h = historyByOutcome.get(o.id);
+    const deltas = calculateProbabilityDeltas({
+      current: o.probabilityNormalized,
+      oneDayAgo: h?.oneDayAgo.probability ?? null,
+      sevenDayAgo: h?.sevenDayAgo.probability ?? null,
+      thirtyDayAgo: h?.thirtyDayAgo.probability ?? null,
+    });
+    return { ...o, probabilityDelta1d: deltas.delta1d, probabilityDelta7d: deltas.delta7d, probabilityDelta30d: deltas.delta30d };
+  });
   // Reported once per event rather than per-outcome — meaningful for the
   // UI's "history since" display. null (not a sentinel number) when no
   // snapshot exists for any outcome yet.
@@ -208,7 +233,7 @@ export async function computeTheme(theme: CatalystTheme, prices: Map<string, Liv
       resolutionDate: theme.event.resolutionDate,
       materiality: theme.event.materiality,
       marketQuality,
-      outcomes,
+      outcomes: outcomesWithDeltas,
       contextMarkets: (theme.event.contextMarkets ?? []).map((m) => ({ ...m, live: prices.get(m.conditionId) ?? null })),
       oldestSnapshotAgeMinutes,
     },

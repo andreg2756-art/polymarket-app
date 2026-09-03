@@ -3,11 +3,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Skeleton } from "@/components/Skeleton";
 import type { Classification } from "@/lib/catalysts/event-types";
+import { classifyScore } from "@/lib/catalysts/scoring";
 
 interface ComputedOutcome {
   id: string;
   label: string;
   probabilityNormalized: number;
+  probabilityDelta1d: number | null;
+  probabilityDelta7d: number | null;
 }
 
 interface ComputedEvent {
@@ -18,6 +21,7 @@ interface ComputedEvent {
   marketQuality: number;
   outcomes: ComputedOutcome[];
   contextMarkets: { conditionId: string; label: string; live: { prices: number[]; outcomes: string[] } | null }[];
+  oldestSnapshotAgeMinutes: number | null;
 }
 
 interface StockCatalystSignal {
@@ -72,15 +76,41 @@ function ScoreCell({ score }: { score: number | null }) {
   return <span className={`font-bold ${color}`}>{score >= 0 ? "+" : ""}{score.toFixed(0)}</span>;
 }
 
+/** Change-score classification, phrased as a shift rather than an outlook ("Bullish Change" vs. "Bullish") so it can't be mistaken for the Current Outlook badge next to it. */
+function ChangeLabel({ score }: { score: number | null }) {
+  if (score === null) return null;
+  const c = classifyScore(score);
+  const label = c === "NEUTRAL" ? "Neutral" : `${CLASSIFICATION_LABEL[c]} Change`;
+  return <span className="text-[10px] text-gray-500">{label}</span>;
+}
+
+/** Percentage-point probability delta — "pp" is deliberate, never "%", since this is a change in a probability, not a percentage change of it. */
+function DeltaPP({ label, delta }: { label: string; delta: number | null }) {
+  if (delta === null) return <span className="text-gray-700">{label} —</span>;
+  const pp = delta * 100;
+  const color = pp > 0.5 ? "text-emerald-400" : pp < -0.5 ? "text-red-400" : "text-gray-500";
+  return (
+    <span className={color}>
+      {label} {pp >= 0 ? "+" : ""}{pp.toFixed(1)}pp
+    </span>
+  );
+}
+
 function EventHeader({ event }: { event: ComputedEvent }) {
   return (
     <div>
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Event Outcomes (normalized probability)</p>
       <div className="flex flex-wrap gap-3 mb-2">
         {event.outcomes.map((o) => (
-          <span key={o.id} className="text-xs bg-gray-800 px-2.5 py-1.5 rounded">
-            <span className="text-gray-500">{o.label}: </span>
-            <span className="text-white font-semibold">{(o.probabilityNormalized * 100).toFixed(1)}%</span>
+          <span key={o.id} className="text-xs bg-gray-800 px-2.5 py-1.5 rounded flex flex-col gap-0.5">
+            <span>
+              <span className="text-gray-500">{o.label}: </span>
+              <span className="text-white font-semibold">{(o.probabilityNormalized * 100).toFixed(1)}%</span>
+            </span>
+            <span className="flex gap-2 text-[10px]">
+              <DeltaPP label="1D" delta={o.probabilityDelta1d} />
+              <DeltaPP label="7D" delta={o.probabilityDelta7d} />
+            </span>
           </span>
         ))}
       </div>
@@ -170,7 +200,12 @@ function ThemeCard({ theme }: { theme: ThemeData }) {
                         <ClassificationBadge classification={s.classification} />
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap"><ScoreCell score={s.catalystChangeScore} /></td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <div className="flex flex-col gap-1">
+                        <ScoreCell score={s.catalystChangeScore} />
+                        <ChangeLabel score={s.catalystChangeScore} />
+                      </div>
+                    </td>
                     <td className="px-3 py-2.5 text-gray-300 whitespace-nowrap">{s.confidence.toFixed(0)}/100</td>
                     <td className="px-3 py-2.5 text-gray-400 text-xs leading-relaxed min-w-[280px]">
                       <ul className="space-y-1">
@@ -231,12 +266,14 @@ export default function CatalystsPage() {
         </p>
       </div>
 
-      <div className="rounded-lg border border-yellow-800 bg-yellow-950/30 px-4 py-3 text-sm text-yellow-200">
-        <p className="font-medium">Phase 1 of the engine</p>
-        <p className="text-xs opacity-80 mt-0.5">
-          Outlook scores are fully computed and live. Change scores show &quot;No history yet&quot; — probability
-          snapshots aren&apos;t persisted yet (that&apos;s the next phase), so day-over-day deltas would otherwise
-          have to be fabricated as zero, which the model explicitly refuses to do.
+      <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3 text-sm text-gray-300 flex items-start gap-2">
+        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-900 text-emerald-300 mt-0.5 shrink-0">LIVE</span>
+        <p className="text-xs opacity-90 leading-relaxed">
+          {themes.some((t) => t.event.oldestSnapshotAgeMinutes !== null) ? (
+            <>Outlook and Change scores are both computing from real, persisted probability history. A daily snapshot job keeps that history growing — Change scores strengthen as more days accumulate.</>
+          ) : (
+            <>Outlook scores are fully live. Change scores currently show &quot;No history yet&quot; — a daily snapshot job just started recording probability history; once at least one prior day&apos;s snapshot exists, Change scores populate automatically. That&apos;s expected latency, not a bug.</>
+          )}
         </p>
       </div>
 
