@@ -26,10 +26,26 @@ export function calculateRawSignal(inputs: RawSignalInputs): number {
   );
 }
 
-// K calibration constant, spec Part 16 — starting value, meant to be
-// recalibrated once historical validation (Part 33) exists. Documented
-// here rather than inlined so recalibration is a one-line change.
-export const NORMALIZATION_K = 1.5;
+// K calibration constant, spec Part 16 — the spec's own suggested starting
+// value (1.5) assumes raw signals commonly land near that scale, so tanh
+// has room to discriminate between them. Live computation against all
+// three real themes showed otherwise: RawSignal is ExpectedImpact (often
+// well under 1 on the -5..+5 scale once probability-weighted) multiplied
+// by FOUR separate 0-1 dampening terms (materiality, market quality,
+// confidence, time weight) — that compounds fast, and the real observed
+// range was 0.05-0.3, not ~1.5. At K=1.5, tanh(0.09/1.5) is deep in the
+// near-linear region and barely moves off zero regardless of whether the
+// underlying signal is meaningful — every theme was being compressed
+// toward NEUTRAL independent of its actual merit, not just the genuinely
+// weak ones. Recalibrated to 0.8 so a high-confidence, real signal (e.g.
+// the Fed theme's near-certain no-cut pricing) lands in the BEARISH/
+// BULLISH tier it deserves rather than barely clearing SLIGHTLY_*. This is
+// the spec's own "calibrate using historical observations" step (Part 16)
+// applied to the only observations that exist right now — there's no
+// backtest yet (Part 33 is still deferred), so treat 0.8 as a reasoned
+// first calibration, not a validated one, and revisit once real
+// historical performance data exists.
+export const NORMALIZATION_K = 0.8;
 
 export function normalizeScore(raw: number, k: number = NORMALIZATION_K): number {
   return 100 * Math.tanh(raw / k);

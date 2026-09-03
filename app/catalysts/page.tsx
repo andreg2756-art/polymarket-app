@@ -107,9 +107,28 @@ function EventHeader({ event }: { event: ComputedEvent }) {
   );
 }
 
+function BelowThresholdRow({ s }: { s: StockCatalystSignal }) {
+  return (
+    <div className="flex items-start justify-between gap-3 py-2 border-b border-gray-800/60 last:border-0">
+      <div>
+        <Link href={`/stocks/${s.ticker}`} className="text-gray-400 font-semibold hover:underline hover:text-emerald-400">{s.ticker}</Link>
+        <p className="text-xs text-gray-600 mt-0.5">{s.reasons[0]}</p>
+      </div>
+      <div className="text-right shrink-0">
+        <p className="text-xs text-gray-500">
+          Expected impact <span className="text-gray-400">{s.currentExpectedImpact >= 0 ? "+" : ""}{s.currentExpectedImpact.toFixed(2)}</span>
+          {" → outlook "}
+          <span className="text-gray-400">{s.currentOutlookScore >= 0 ? "+" : ""}{s.currentOutlookScore.toFixed(1)}</span>
+        </p>
+        <p className="text-[10px] text-gray-600">below the ±10 actionable threshold</p>
+      </div>
+    </div>
+  );
+}
+
 function ThemeCard({ theme }: { theme: ThemeData }) {
   const visibleSignals = theme.signals.filter((s) => s.classification !== "NO_SIGNAL");
-  const suppressedCount = theme.signals.length - visibleSignals.length;
+  const belowThreshold = theme.signals.filter((s) => s.classification === "NO_SIGNAL");
 
   return (
     <div className="rounded-xl border border-gray-800 bg-gray-950 p-5 space-y-4">
@@ -128,47 +147,63 @@ function ThemeCard({ theme }: { theme: ThemeData }) {
       <div>
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
           Stock Catalyst Signals — {visibleSignals.length}
-          {suppressedCount > 0 && <span className="normal-case text-gray-600"> ({suppressedCount} suppressed as no meaningful signal)</span>}
         </p>
-        <div className="rounded-lg border border-gray-800 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-900 text-gray-500 text-xs uppercase">
-              <tr>
-                {["Ticker", "Outlook", "Change", "Confidence", "Why"].map((h) => (
-                  <th key={h} className="px-3 py-2 text-left whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800">
-              {visibleSignals.map((s) => (
-                <tr key={s.ticker} className="hover:bg-gray-900/40 transition-colors align-top">
-                  <td className="px-3 py-2.5 whitespace-nowrap">
-                    <Link href={`/stocks/${s.ticker}`} className="text-emerald-400 font-bold hover:underline">{s.ticker}</Link>
-                  </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
-                    <div className="flex flex-col gap-1">
-                      <ScoreCell score={s.currentOutlookScore} />
-                      <ClassificationBadge classification={s.classification} />
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap"><ScoreCell score={s.catalystChangeScore} /></td>
-                  <td className="px-3 py-2.5 text-gray-300 whitespace-nowrap">{s.confidence.toFixed(0)}/100</td>
-                  <td className="px-3 py-2.5 text-gray-400 text-xs leading-relaxed min-w-[280px]">
-                    <ul className="space-y-1">
-                      {s.reasons.map((r, i) => <li key={i}>{r}</li>)}
-                    </ul>
-                    {s.risks.length > 0 && (
-                      <ul className="mt-1.5 space-y-1 text-yellow-600/80">
-                        {s.risks.map((r, i) => <li key={i}>⚠ {r}</li>)}
-                      </ul>
-                    )}
-                  </td>
+        {visibleSignals.length > 0 ? (
+          <div className="rounded-lg border border-gray-800 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-900 text-gray-500 text-xs uppercase">
+                <tr>
+                  {["Ticker", "Outlook", "Change", "Confidence", "Why"].map((h) => (
+                    <th key={h} className="px-3 py-2 text-left whitespace-nowrap">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-800">
+                {visibleSignals.map((s) => (
+                  <tr key={s.ticker} className="hover:bg-gray-900/40 transition-colors align-top">
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <Link href={`/stocks/${s.ticker}`} className="text-emerald-400 font-bold hover:underline">{s.ticker}</Link>
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <div className="flex flex-col gap-1">
+                        <ScoreCell score={s.currentOutlookScore} />
+                        <ClassificationBadge classification={s.classification} />
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap"><ScoreCell score={s.catalystChangeScore} /></td>
+                    <td className="px-3 py-2.5 text-gray-300 whitespace-nowrap">{s.confidence.toFixed(0)}/100</td>
+                    <td className="px-3 py-2.5 text-gray-400 text-xs leading-relaxed min-w-[280px]">
+                      <ul className="space-y-1">
+                        {s.reasons.map((r, i) => <li key={i}>{r}</li>)}
+                      </ul>
+                      {s.risks.length > 0 && (
+                        <ul className="mt-1.5 space-y-1 text-yellow-600/80">
+                          {s.risks.map((r, i) => <li key={i}>⚠ {r}</li>)}
+                        </ul>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-600 italic px-1">
+            No stock in this theme currently clears the actionable-signal threshold — see below for what was computed anyway.
+          </p>
+        )}
       </div>
+
+      {belowThreshold.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
+            Below Threshold — {belowThreshold.length} (computed, not currently actionable)
+          </p>
+          <div className="rounded-lg border border-gray-800/60 bg-gray-900/20 px-4 py-1">
+            {belowThreshold.map((s) => <BelowThresholdRow key={s.ticker} s={s} />)}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
