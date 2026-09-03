@@ -174,3 +174,24 @@ model WatchlistItem {
 
   @@unique([ticker, listName])
 }
+
+// ── Catalysts (prediction-market -> stock signal engine) ──────────────
+
+// One probability reading for one outcome of one catalyst event, at one
+// point in time. Keyed by (eventSlug, outcomeId) — the theme's own stable
+// identifiers (lib/catalysts/themes.ts), not the raw Polymarket
+// conditionId/outcomeIndex — so a theme can be repointed at a new market
+// instance later (e.g. rolling from the August to the September jobs
+// report) without orphaning its history under a dead conditionId.
+model PredictionMarketSnapshot {
+  id          String   @id @default(cuid())
+  eventSlug   String
+  outcomeId   String
+  conditionId String // recorded for debugging/audit, not used as the lookup key
+  probability Float
+  volume      Float?
+  liquidity   Float?
+  capturedAt  DateTime @default(now())
+
+  @@index([eventSlug, outcomeId, capturedAt])
+}

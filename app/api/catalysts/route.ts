@@ -14,17 +14,19 @@ export async function GET() {
   );
   const prices = await fetchMarketPrices(allConditionIds);
 
-  const themes = CATALYST_THEMES.map((theme) => {
-    const computed = computeTheme(theme, prices);
-    return {
-      slug: theme.slug,
-      title: theme.title,
-      description: theme.description,
-      alternativeScenarioNote: theme.alternativeScenarioNote,
-      event: computed.event,
-      signals: computed.signals,
-    };
-  });
+  const themes = await Promise.all(
+    CATALYST_THEMES.map(async (theme) => {
+      const computed = await computeTheme(theme, prices);
+      return {
+        slug: theme.slug,
+        title: theme.title,
+        description: theme.description,
+        alternativeScenarioNote: theme.alternativeScenarioNote,
+        event: computed.event,
+        signals: computed.signals,
+      };
+    })
+  );
 
   return NextResponse.json({ themes, formulaVersion: "CATALYST_V1" });
 }

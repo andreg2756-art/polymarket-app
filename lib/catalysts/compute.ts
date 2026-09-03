@@ -12,12 +12,13 @@ import type { StockCatalystSignal, PredictionEvent } from "./event-types";
 import { FORMULA_VERSION } from "./event-types";
 import { FACTOR_TO_GROUP } from "./factor-taxonomy";
 import { normalizeOutcomeProbabilities } from "./probability";
-import { calculateCompanyOutcomeImpact, calculateExpectedImpact, type OutcomeProbabilityImpact } from "./expected-impact";
+import { calculateCompanyOutcomeImpact, calculateExpectedImpact, calculateExpectedImpactDeltas, calculateExpectedImpactMomentum, type OutcomeProbabilityImpact } from "./expected-impact";
 import { calculateMarketQuality, MIN_MARKET_QUALITY_FOR_SIGNAL } from "./market-quality";
 import { calculateTimeWeight, daysBetween } from "./time-weight";
 import { calculateCatalystConfidence, classifyConfidence } from "./confidence";
 import { calculateRawSignal, normalizeScore, classifyScore, checkNoSignalSuppression } from "./scoring";
 import { buildReasons, buildRisks } from "./explanations";
+import { getProbabilityHistory, type ProbabilityHistoryLookup } from "./probability-history";
 import type { GroupableSignal } from "./aggregation";
 
 export interface ComputedOutcome {
@@ -36,6 +37,10 @@ export interface ComputedEvent {
   marketQuality: number;
   outcomes: ComputedOutcome[];
   contextMarkets: { conditionId: string; label: string; live: LiveMarketPrice | null }[];
+  // Age in minutes of the oldest snapshot found within tolerance across
+  // this event's outcomes, or null if no history exists at all yet (a
+  // fresh deploy, before the snapshot cron has run even once).
+  oldestSnapshotAgeMinutes: number | null;
 }
 
 export interface ThemeComputation {
@@ -44,8 +49,8 @@ export interface ThemeComputation {
   signals: StockCatalystSignal[];
 }
 
-/** Resolves each outcome's live probability and normalizes across the event's outcome set (spec Part 1). */
-function computeEventOutcomes(event: PredictionEvent, prices: Map<string, LiveMarketPrice>): ComputedOutcome[] {
+/** Resolves each outcome's live probability and normalizes across the event's outcome set (spec Part 1). Exported so the snapshot cron job (app/api/catalysts/snapshot/route.ts) computes probabilities identically to the live page — one implementation, not two that could drift apart. */
+export function computeEventOutcomes(event: PredictionEvent, prices: Map<string, LiveMarketPrice>): ComputedOutcome[] {
   const raw = event.outcomes.map((o) => {
     const live = prices.get(o.conditionId);
     const p = live?.prices?.[o.outcomeIndex];
@@ -66,10 +71,49 @@ function computeEventMarketQuality(event: PredictionEvent, prices: Map<string, L
   return qualities.reduce((a, b) => a + b, 0) / qualities.length;
 }
 
-export function computeTheme(theme: CatalystTheme, prices: Map<string, LiveMarketPrice>, now: Date = new Date()): ThemeComputation {
+/**
+ * For one historical period (1d or 7d ago), returns each outcome's
+ * historical probability — or null for the WHOLE period if even one
+ * outcome is missing history, rather than silently mixing some historical
+ * and some current probabilities into one "expected impact" number. Since
+ * every outcome of an event is snapshotted together by the same cron run,
+ * partial availability should be rare in practice, but this stays
+ * conservative if it happens (a deploy gap, a partial failure, etc.).
+ */
+function historicalProbabilitiesFor(
+  event: PredictionEvent,
+  historyByOutcome: Map<string, ProbabilityHistoryLookup>,
+  period: "oneDayAgo" | "sevenDayAgo"
+): Map<string, number> | null {
+  const result = new Map<string, number>();
+  for (const outcome of event.outcomes) {
+    const p = historyByOutcome.get(outcome.id)?.[period]?.probability;
+    if (p === null || p === undefined) return null;
+    result.set(outcome.id, p);
+  }
+  return result;
+}
+
+export async function computeTheme(theme: CatalystTheme, prices: Map<string, LiveMarketPrice>, now: Date = new Date()): Promise<ThemeComputation> {
   const outcomes = computeEventOutcomes(theme.event, prices);
   const marketQuality = computeEventMarketQuality(theme.event, prices);
   const timeWeight = calculateTimeWeight(daysBetween(now.toISOString(), theme.event.resolutionDate));
+
+  const historyByOutcome = new Map<string, ProbabilityHistoryLookup>(
+    await Promise.all(
+      theme.event.outcomes.map(async (o) => [o.id, await getProbabilityHistory(theme.event.slug, o.id, now)] as const)
+    )
+  );
+  const historicalProbs1d = historicalProbabilitiesFor(theme.event, historyByOutcome, "oneDayAgo");
+  const historicalProbs7d = historicalProbabilitiesFor(theme.event, historyByOutcome, "sevenDayAgo");
+  const hasAnyHistory = historicalProbs1d !== null || historicalProbs7d !== null;
+  // Reported once per event rather than per-outcome — meaningful for the
+  // UI's "history since" display. null (not a sentinel number) when no
+  // snapshot exists for any outcome yet.
+  const snapshotAges = Array.from(historyByOutcome.values())
+    .map((h) => h.sevenDayAgo.ageMinutes ?? h.oneDayAgo.ageMinutes)
+    .filter((age): age is number => age !== null);
+  const oldestSnapshotAgeMinutes = snapshotAges.length > 0 ? Math.max(...snapshotAges) : null;
 
   const signals: StockCatalystSignal[] = [];
 
@@ -85,11 +129,13 @@ export function computeTheme(theme: CatalystTheme, prices: Map<string, LiveMarke
       let totalMatchedFactors = 0;
       let mappingConfidenceSum = 0;
       let mappingConfidenceCount = 0;
+      const companyImpactByOutcome = new Map<string, number>();
 
       for (let i = 0; i < theme.event.outcomes.length; i++) {
         const outcome = theme.event.outcomes[i];
         const { impact, matchedFactors } = calculateCompanyOutcomeImpact(outcome, exposures);
         totalMatchedFactors += matchedFactors;
+        companyImpactByOutcome.set(outcome.id, impact);
         for (const fi of outcome.factorImpacts) {
           if (exposures.some((e) => e.factor === fi.factor)) {
             mappingConfidenceSum += fi.confidence;
@@ -110,6 +156,7 @@ export function computeTheme(theme: CatalystTheme, prices: Map<string, LiveMarke
           ticker,
           eventSlug: theme.event.slug,
           outcomeImpacts,
+          companyImpactByOutcome,
           eventMateriality: theme.event.materiality,
           marketQuality,
           relationshipConfidence,
@@ -117,7 +164,7 @@ export function computeTheme(theme: CatalystTheme, prices: Map<string, LiveMarke
           timeWeight,
           dataCompleteness: computeDataCompleteness({ marketQuality, outcomes, matchedFactors: totalMatchedFactors }),
           reasonInputs: { ticker, factor: primaryFactor, exposure: primaryExposure, relationshipConfidence, rationale },
-          riskInputs: { relationshipConfidence, marketQuality, hasHistory: false, matchedFactorCount: totalMatchedFactors },
+          riskInputs: { relationshipConfidence, marketQuality, hasHistory: hasAnyHistory, matchedFactorCount: totalMatchedFactors },
         })
       );
     }
@@ -130,12 +177,16 @@ export function computeTheme(theme: CatalystTheme, prices: Map<string, LiveMarke
         probability: outcomes[i].probabilityNormalized,
         companyImpact: exp.outcomeImpacts[outcome.id] ?? 0,
       }));
+      const companyImpactByOutcome = new Map<string, number>(
+        theme.event.outcomes.map((outcome) => [outcome.id, exp.outcomeImpacts[outcome.id] ?? 0])
+      );
 
       signals.push(
         buildSignal({
           ticker: exp.ticker,
           eventSlug: theme.event.slug,
           outcomeImpacts,
+          companyImpactByOutcome,
           eventMateriality: theme.event.materiality,
           marketQuality,
           relationshipConfidence: exp.confidence,
@@ -143,7 +194,7 @@ export function computeTheme(theme: CatalystTheme, prices: Map<string, LiveMarke
           timeWeight,
           dataCompleteness: computeDataCompleteness({ marketQuality, outcomes, matchedFactors: 1 }),
           reasonInputs: { ticker: exp.ticker, factor: null, exposure: 0, relationshipConfidence: exp.confidence, rationale: exp.rationale },
-          riskInputs: { relationshipConfidence: exp.confidence, marketQuality, hasHistory: false, matchedFactorCount: 1 },
+          riskInputs: { relationshipConfidence: exp.confidence, marketQuality, hasHistory: hasAnyHistory, matchedFactorCount: 1 },
         })
       );
     }
@@ -159,6 +210,7 @@ export function computeTheme(theme: CatalystTheme, prices: Map<string, LiveMarke
       marketQuality,
       outcomes,
       contextMarkets: (theme.event.contextMarkets ?? []).map((m) => ({ ...m, live: prices.get(m.conditionId) ?? null })),
+      oldestSnapshotAgeMinutes,
     },
     signals,
   };
@@ -172,10 +224,21 @@ export function computeTheme(theme: CatalystTheme, prices: Map<string, LiveMarke
     return checks.filter(Boolean).length / checks.length;
   }
 
+  function expectedImpactAt(companyImpactByOutcome: Map<string, number>, historicalProbs: Map<string, number> | null): number | null {
+    if (historicalProbs === null) return null;
+    const impacts: OutcomeProbabilityImpact[] = theme.event.outcomes.map((o) => ({
+      outcomeId: o.id,
+      probability: historicalProbs.get(o.id) ?? 0,
+      companyImpact: companyImpactByOutcome.get(o.id) ?? 0,
+    }));
+    return calculateExpectedImpact(impacts);
+  }
+
   function buildSignal(args: {
     ticker: string;
     eventSlug: string;
     outcomeImpacts: OutcomeProbabilityImpact[];
+    companyImpactByOutcome: Map<string, number>;
     eventMateriality: number;
     marketQuality: number;
     relationshipConfidence: number;
@@ -186,11 +249,15 @@ export function computeTheme(theme: CatalystTheme, prices: Map<string, LiveMarke
     riskInputs: { relationshipConfidence: number; marketQuality: number; hasHistory: boolean; matchedFactorCount: number };
   }): StockCatalystSignal {
     const currentExpectedImpact = calculateExpectedImpact(args.outcomeImpacts);
-    // No probability-snapshot history exists yet (see this feature's
-    // implementation notes) — previous/delta are null, never fabricated
-    // zeros, per spec Parts 2/13's explicit invariant.
-    const previousExpectedImpact = null;
-    const deltaExpectedImpact = null;
+
+    // Real history if the snapshot cron has accumulated enough of it;
+    // null (never a fabricated 0) otherwise — see
+    // historicalProbabilitiesFor()'s all-or-nothing-per-period contract.
+    const previousExpectedImpact = expectedImpactAt(args.companyImpactByOutcome, historicalProbs1d);
+    const expectedImpact7d = expectedImpactAt(args.companyImpactByOutcome, historicalProbs7d);
+    const deltas = calculateExpectedImpactDeltas({ current: currentExpectedImpact, oneDayAgo: previousExpectedImpact, sevenDayAgo: expectedImpact7d });
+    const momentum = calculateExpectedImpactMomentum(deltas);
+    const deltaExpectedImpact = deltas.delta1d; // stored field is the headline 1D delta; momentum blends 1D+7D for the change score below
 
     const currentOutlookRaw = calculateRawSignal({
       expectedImpactOrMomentum: currentExpectedImpact,
@@ -200,8 +267,15 @@ export function computeTheme(theme: CatalystTheme, prices: Map<string, LiveMarke
       timeWeight: args.timeWeight,
     });
     const currentOutlookScore = normalizeScore(currentOutlookRaw);
-    const catalystChangeRaw = null;
-    const catalystChangeScore = null;
+
+    const catalystChangeRaw = momentum === null ? null : calculateRawSignal({
+      expectedImpactOrMomentum: momentum,
+      eventMateriality: args.eventMateriality,
+      marketQuality: args.marketQuality,
+      relationshipConfidence: args.relationshipConfidence,
+      timeWeight: args.timeWeight,
+    });
+    const catalystChangeScore = catalystChangeRaw === null ? null : normalizeScore(catalystChangeRaw);
 
     const confidence = calculateCatalystConfidence({
       dataCompleteness: args.dataCompleteness,
