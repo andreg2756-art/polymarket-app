@@ -80,9 +80,12 @@ export interface StockCatalystSignal {
   formulaVersion: string;
 
   currentExpectedImpact: number;
-  previousExpectedImpact: number | null; // null, never 0, when no history exists yet
+  previousExpectedImpact: number | null; // null, never 0, when no history exists yet (1D-ago expected impact)
+  expectedImpact7d: number | null; // 7D-ago expected impact, null if no history exists yet
 
-  deltaExpectedImpact: number | null;
+  deltaExpectedImpact: number | null; // 1D delta
+  deltaExpectedImpact7d: number | null; // 7D delta
+  expectedImpactMomentum: number | null; // 0.60/0.40-weighted blend of the two deltas, feeds catalystChangeRaw
 
   eventMateriality: number;
   marketQuality: number;

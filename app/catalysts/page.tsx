@@ -27,6 +27,17 @@ interface ComputedEvent {
 interface StockCatalystSignal {
   ticker: string;
   currentExpectedImpact: number;
+  previousExpectedImpact: number | null;
+  expectedImpact7d: number | null;
+  deltaExpectedImpact: number | null;
+  deltaExpectedImpact7d: number | null;
+  expectedImpactMomentum: number | null;
+  eventMateriality: number;
+  marketQuality: number;
+  relationshipConfidence: number;
+  timeWeight: number;
+  currentOutlookRaw: number;
+  catalystChangeRaw: number | null;
   currentOutlookScore: number;
   catalystChangeScore: number | null;
   confidence: number;
@@ -96,6 +107,52 @@ function DeltaPP({ label, delta }: { label: string; delta: number | null }) {
   );
 }
 
+function fmt(n: number | null, decimals = 2): string {
+  if (n === null) return "—";
+  return `${n >= 0 ? "+" : ""}${n.toFixed(decimals)}`;
+}
+
+function BreakdownLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-4 py-0.5">
+      <span className="text-gray-500">{label}</span>
+      <span className="text-gray-200 font-mono">{value}</span>
+    </div>
+  );
+}
+
+/** Full formula chain for both scores, per spec Part 10 — nothing here is hidden behind an unexplained number. Every value shown is already stored on the signal, never recomputed client-side. */
+function ScoreBreakdown({ s }: { s: StockCatalystSignal }) {
+  return (
+    <div className="grid sm:grid-cols-2 gap-4 mt-2 pt-2 border-t border-gray-800 text-xs">
+      <div>
+        <p className="text-gray-400 font-semibold mb-1">Current Outlook: {fmt(s.currentOutlookScore, 0)}</p>
+        <BreakdownLine label="Expected Impact" value={fmt(s.currentExpectedImpact)} />
+        <BreakdownLine label="Event Materiality" value={s.eventMateriality.toFixed(2)} />
+        <BreakdownLine label="Market Quality" value={s.marketQuality.toFixed(2)} />
+        <BreakdownLine label="Relationship Confidence" value={s.relationshipConfidence.toFixed(2)} />
+        <BreakdownLine label="Time Weight" value={s.timeWeight.toFixed(2)} />
+        <BreakdownLine label="Raw Score" value={fmt(s.currentOutlookRaw, 3)} />
+        <BreakdownLine label="Normalized Score" value={fmt(s.currentOutlookScore, 0)} />
+      </div>
+      <div>
+        <p className="text-gray-400 font-semibold mb-1">Recent Shift: {s.catalystChangeScore === null ? "No history yet" : fmt(s.catalystChangeScore, 0)}</p>
+        <BreakdownLine label="Expected Impact Now" value={fmt(s.currentExpectedImpact)} />
+        <BreakdownLine label="Expected Impact 1D" value={fmt(s.previousExpectedImpact)} />
+        <BreakdownLine label="Expected Impact 7D" value={fmt(s.expectedImpact7d)} />
+        <BreakdownLine label="1D Change" value={fmt(s.deltaExpectedImpact)} />
+        <BreakdownLine label="7D Change" value={fmt(s.deltaExpectedImpact7d)} />
+        <BreakdownLine label="Momentum" value={fmt(s.expectedImpactMomentum)} />
+        <BreakdownLine label="Materiality" value={s.eventMateriality.toFixed(2)} />
+        <BreakdownLine label="Market Quality" value={s.marketQuality.toFixed(2)} />
+        <BreakdownLine label="Relationship Confidence" value={s.relationshipConfidence.toFixed(2)} />
+        <BreakdownLine label="Time Weight" value={s.timeWeight.toFixed(2)} />
+        <BreakdownLine label="Normalized Change Score" value={s.catalystChangeScore === null ? "—" : fmt(s.catalystChangeScore, 0)} />
+      </div>
+    </div>
+  );
+}
+
 function EventHeader({ event }: { event: ComputedEvent }) {
   return (
     <div>
@@ -156,6 +213,55 @@ function BelowThresholdRow({ s }: { s: StockCatalystSignal }) {
   );
 }
 
+function SignalRow({ s }: { s: StockCatalystSignal }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <>
+      <tr className="hover:bg-gray-900/40 transition-colors align-top">
+        <td className="px-3 py-2.5 whitespace-nowrap">
+          <Link href={`/stocks/${s.ticker}`} className="text-emerald-400 font-bold hover:underline">{s.ticker}</Link>
+          <button
+            onClick={() => setExpanded((e) => !e)}
+            className="block mt-1 text-[10px] text-gray-600 hover:text-gray-400"
+          >
+            {expanded ? "▾ Hide breakdown" : "▸ Score breakdown"}
+          </button>
+        </td>
+        <td className="px-3 py-2.5 whitespace-nowrap">
+          <div className="flex flex-col gap-1">
+            <ScoreCell score={s.currentOutlookScore} />
+            <ClassificationBadge classification={s.classification} />
+          </div>
+        </td>
+        <td className="px-3 py-2.5 whitespace-nowrap">
+          <div className="flex flex-col gap-1">
+            <ScoreCell score={s.catalystChangeScore} />
+            <ChangeLabel score={s.catalystChangeScore} />
+          </div>
+        </td>
+        <td className="px-3 py-2.5 text-gray-300 whitespace-nowrap">{s.confidence.toFixed(0)}/100</td>
+        <td className="px-3 py-2.5 text-gray-400 text-xs leading-relaxed min-w-[280px]">
+          <ul className="space-y-1">
+            {s.reasons.map((r, i) => <li key={i}>{r}</li>)}
+          </ul>
+          {s.risks.length > 0 && (
+            <ul className="mt-1.5 space-y-1 text-yellow-600/80">
+              {s.risks.map((r, i) => <li key={i}>⚠ {r}</li>)}
+            </ul>
+          )}
+        </td>
+      </tr>
+      {expanded && (
+        <tr>
+          <td colSpan={5} className="px-3 pb-3 bg-gray-900/20">
+            <ScoreBreakdown s={s} />
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
 function ThemeCard({ theme }: { theme: ThemeData }) {
   const visibleSignals = theme.signals.filter((s) => s.classification !== "NO_SIGNAL");
   const belowThreshold = theme.signals.filter((s) => s.classification === "NO_SIGNAL");
@@ -189,36 +295,7 @@ function ThemeCard({ theme }: { theme: ThemeData }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
-                {visibleSignals.map((s) => (
-                  <tr key={s.ticker} className="hover:bg-gray-900/40 transition-colors align-top">
-                    <td className="px-3 py-2.5 whitespace-nowrap">
-                      <Link href={`/stocks/${s.ticker}`} className="text-emerald-400 font-bold hover:underline">{s.ticker}</Link>
-                    </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">
-                      <div className="flex flex-col gap-1">
-                        <ScoreCell score={s.currentOutlookScore} />
-                        <ClassificationBadge classification={s.classification} />
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">
-                      <div className="flex flex-col gap-1">
-                        <ScoreCell score={s.catalystChangeScore} />
-                        <ChangeLabel score={s.catalystChangeScore} />
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 text-gray-300 whitespace-nowrap">{s.confidence.toFixed(0)}/100</td>
-                    <td className="px-3 py-2.5 text-gray-400 text-xs leading-relaxed min-w-[280px]">
-                      <ul className="space-y-1">
-                        {s.reasons.map((r, i) => <li key={i}>{r}</li>)}
-                      </ul>
-                      {s.risks.length > 0 && (
-                        <ul className="mt-1.5 space-y-1 text-yellow-600/80">
-                          {s.risks.map((r, i) => <li key={i}>⚠ {r}</li>)}
-                        </ul>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {visibleSignals.map((s) => <SignalRow key={s.ticker} s={s} />)}
               </tbody>
             </table>
           </div>
