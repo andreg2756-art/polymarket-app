@@ -190,6 +190,7 @@ export async function computeTheme(theme: CatalystTheme, prices: Map<string, Liv
           outcomeMappingConfidence,
           timeWeight,
           dataCompleteness: computeDataCompleteness({ marketQuality, outcomes, matchedFactors: totalMatchedFactors }),
+          primaryFactor,
           exposureInfo: { exposureStrength: primaryExposureStrength, direction: primaryDirection, directionalConfidence: primaryDirectionalConfidence },
           reasonInputs: {
             ticker, factor: primaryFactor, relationshipConfidence, rationale,
@@ -224,6 +225,7 @@ export async function computeTheme(theme: CatalystTheme, prices: Map<string, Liv
           outcomeMappingConfidence: 1.0, // direct impact — no factor-mapping ambiguity layer to score separately
           timeWeight,
           dataCompleteness: computeDataCompleteness({ marketQuality, outcomes, matchedFactors: 1 }),
+          primaryFactor: null,
           exposureInfo: { exposureStrength: null, direction: null, directionalConfidence: null },
           reasonInputs: {
             ticker: exp.ticker, factor: null, relationshipConfidence: exp.confidence, rationale: exp.rationale,
@@ -280,6 +282,7 @@ export async function computeTheme(theme: CatalystTheme, prices: Map<string, Liv
     outcomeMappingConfidence: number;
     timeWeight: number;
     dataCompleteness: number;
+    primaryFactor: import("./factor-taxonomy").EconomicFactor | null;
     exposureInfo: { exposureStrength: number | null; direction: -1 | 1 | null; directionalConfidence: number | null };
     reasonInputs: {
       ticker: string; factor: import("./factor-taxonomy").EconomicFactor | null; relationshipConfidence: number; rationale: string;
@@ -349,6 +352,7 @@ export async function computeTheme(theme: CatalystTheme, prices: Map<string, Liv
       primaryExposureStrength: args.exposureInfo.exposureStrength,
       primaryDirection: args.exposureInfo.direction,
       primaryDirectionalConfidence: args.exposureInfo.directionalConfidence,
+      primaryFactor: args.primaryFactor,
       currentOutlookRaw,
       catalystChangeRaw,
       currentOutlookScore,
@@ -371,10 +375,11 @@ export async function computeTheme(theme: CatalystTheme, prices: Map<string, Liv
   }
 }
 
-export function toGroupableSignal(signal: StockCatalystSignal, factor: import("./factor-taxonomy").EconomicFactor | "COMPANY_SPECIFIC"): GroupableSignal {
+/** Converts a computed signal into aggregation.ts's input shape for cross-theme, cross-event deduplication (spec Part 15/19) — signal.primaryFactor is null only for direct/idiosyncratic exposures (e.g. a single company's IPO), which get their own catch-all group rather than colliding with an unrelated macro factor. */
+export function toGroupableSignal(signal: StockCatalystSignal): GroupableSignal {
   return {
     eventSlug: signal.eventSlug,
-    factorGroup: factor === "COMPANY_SPECIFIC" ? "COMPANY_SPECIFIC" : FACTOR_TO_GROUP[factor],
+    factorGroup: signal.primaryFactor === null ? "COMPANY_SPECIFIC" : FACTOR_TO_GROUP[signal.primaryFactor],
     score: signal.currentOutlookScore,
     confidence: signal.confidence,
   };

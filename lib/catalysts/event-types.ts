@@ -118,6 +118,10 @@ export interface StockCatalystSignal {
   primaryExposureStrength: number | null; // 0-1
   primaryDirection: -1 | 1 | null;
   primaryDirectionalConfidence: number | null; // 0-1
+  // null for a direct (non-factor-mediated) exposure — toGroupableSignal
+  // (aggregation.ts) treats null as "COMPANY_SPECIFIC" for cross-theme
+  // factor-group deduplication (spec Part 15/19).
+  primaryFactor: EconomicFactor | null;
 
   currentOutlookRaw: number;
   catalystChangeRaw: number | null;
