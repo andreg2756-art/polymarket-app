@@ -87,10 +87,10 @@ export interface SnapshotInput {
   liquidity?: number | null;
 }
 
-// Cron runs hourly; refuse to write a second row for the same outcome
-// within this window so a manual re-trigger (or a retried cron
-// invocation) doesn't create near-duplicate rows that would distort the
-// "closest snapshot" lookup above.
+// Cron runs daily (Vercel Hobby plan caps crons at once/day); refuse to
+// write a second row for the same outcome within this window so a manual
+// re-trigger (or a retried cron invocation) doesn't create near-duplicate
+// rows that would distort the "closest snapshot" lookup above.
 const MIN_INTERVAL_MINUTES = 50;
 
 export async function recordSnapshotIfDue(

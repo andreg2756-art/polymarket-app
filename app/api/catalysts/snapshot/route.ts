@@ -5,10 +5,11 @@ import { computeEventOutcomes } from "@/lib/catalysts/compute";
 import { recordSnapshotIfDue } from "@/lib/catalysts/probability-history";
 import { captureServerException } from "@/lib/posthog-server";
 
-// Vercel cron target — see vercel.json for the hourly schedule. This is
-// the load-bearing job for the whole "what changed?" side of the catalyst
-// engine (delta1d/7d/30d, momentum, Catalyst Change score): none of that
-// can exist without snapshots accumulating independently of page views.
+// Vercel cron target — see vercel.json for the daily schedule (Hobby plan
+// caps crons at once/day). This is the load-bearing job for the whole
+// "what changed?" side of the catalyst engine (delta1d/7d/30d, momentum,
+// Catalyst Change score): none of that can exist without snapshots
+// accumulating independently of page views.
 export async function POST() {
   const allConditionIds = Array.from(
     new Set(CATALYST_THEMES.flatMap((t) => t.event.outcomes.map((o) => o.conditionId)))
