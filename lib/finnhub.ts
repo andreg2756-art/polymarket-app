@@ -56,7 +56,7 @@ async function finnhubGet<T>(path: string): Promise<T | null> {
   await waitForQuota();
   try {
     const sep = path.includes("?") ? "&" : "?";
-    const res = await fetch(`${BASE}${path}${sep}token=${key}`, { next: { revalidate: 0 } });
+    const res = await fetch(`${BASE}${path}${sep}token=${key}`, { next: { revalidate: 0 }, signal: AbortSignal.timeout(12000) });
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
@@ -108,4 +108,11 @@ export function summarizeRecommendation(trend: RecommendationTrend): { rating: s
   else rating = "Hold";
 
   return { rating, count };
+}
+
+export interface CompanyProfile {
+ ticker: string; finnhubIndustry?: string; shareOutstanding?: number;
+}
+export async function getCompanyProfile(ticker:string):Promise<CompanyProfile|null> {
+ return finnhubGet<CompanyProfile>(`/stock/profile2?symbol=${encodeURIComponent(ticker)}`);
 }

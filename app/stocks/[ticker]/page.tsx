@@ -19,6 +19,7 @@ interface StockDetail {
     qualityScore: number | null; qualityRank: number | null;
     turnaroundScore: number | null; turnaroundRank: number | null;
     netIncome: number | null; totalDebt: number | null;
+    financialPeriodType?: string | null;
     cashAndEquivalents: number | null; freeCashFlow: number | null;
     trailingPE: number | null; priceToBook: number | null;
   };
@@ -95,8 +96,8 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
     hasSpeculativeData && stock.change1M < -10 && `Weak price action (${stock.change1M.toFixed(1)}% last month)`,
     totalAnalysts > 0 && totalSell > totalBuy && `More sell ratings than buy ratings`,
     stock.netIncome !== null && stock.netIncome < 0 && `Unprofitable (net loss $${fmtNum(Math.abs(stock.netIncome) / 1e6)}M)`,
-    stock.freeCashFlow !== null && stock.freeCashFlow < 0 && stock.cashAndEquivalents !== null &&
-      `Burning cash — ${(stock.cashAndEquivalents / Math.abs(stock.freeCashFlow)).toFixed(1)}y runway at current rate`,
+    stock.financialPeriodType && stock.freeCashFlow !== null && stock.freeCashFlow < 0 && stock.cashAndEquivalents !== null &&
+      `Burning cash — ${(stock.cashAndEquivalents / (Math.abs(stock.freeCashFlow) * (stock.financialPeriodType === "QUARTER" ? 4 : 1))).toFixed(1)}y runway at current rate`,
     stock.totalDebt !== null && stock.cashAndEquivalents !== null && stock.totalDebt > stock.cashAndEquivalents * 4 &&
       "High debt relative to cash reserves",
     stock.priceToBook !== null && stock.priceToBook < 0 && "Negative book value (liabilities exceed assets)",

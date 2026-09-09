@@ -1,3 +1,4 @@
+import { nonMissing, momentumUpdate } from "@/lib/stocks/financial-data/model";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getYahooChart } from "@/lib/yahoo-finance";
@@ -71,7 +72,7 @@ export async function POST() {
       const bullishScore = computeScore(y.change1M, y.change3M, y.relativeVolume);
       allScored.push({
         ticker, name: y.name, exchange: "", sector: "", industry: "",
-        description: "", marketCap: y.marketCap, price: y.price, change1M: y.change1M, change3M: y.change3M,
+        description: "", marketCap: y.marketCap > 0 ? y.marketCap : (speculativeQuotes.find(q => q.symbol === ticker)?.marketCap ?? 0), price: y.price, change1M: y.change1M, change3M: y.change3M,
         revenueGrowth: 0, epsGrowth: 0, analystRating: "N/A", analystCount: 0,
         bullishScore, lastEarningsDate: null, float: null, shortInterest: null,
         institutionalOwn: null, insiderBuying: 0, relativeVolume: y.relativeVolume,
@@ -104,7 +105,7 @@ export async function POST() {
       ranked.map((s) => {
         const revenueGrowth = revenueGrowthMap.get(s.ticker) ?? s.revenueGrowth;
         const row = { ...s, revenueGrowth };
-        return prisma.stock.upsert({ where: { ticker: s.ticker }, create: row, update: row });
+        return prisma.stock.upsert({ where: { ticker: s.ticker }, create: row, update: momentumUpdate(row, revenueGrowthMap.get(s.ticker)) });
       })
     );
 
@@ -219,11 +220,11 @@ export async function POST() {
           data: {
             bullishScore: finalScoreMap.get(s.ticker) ?? s.bullishScore,
             rank: i + 1,
-            ...(earnings ? {
+            ...(earnings?.ok ? {
               earningsBeat: earnings.earningsBeat,
               revenueBeat: earnings.revenueBeat,
               epsGrowth: earnings.epsGrowth,
-              lastEarningsDate: earnings.lastEarningsDate,
+              ...nonMissing({ earningsPeriodEnd: earnings.earningsPeriodEnd, lastFilingDate: earnings.lastFilingDate }),
             } : {}),
             ...(float !== undefined ? { float } : {}),
             ...(analyst ? { analystRating: analyst.rating, analystCount: analyst.count } : {}),

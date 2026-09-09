@@ -1,19 +1,5 @@
-// Earnings-beat/EPS-growth data, sourced from Finnhub rather than FMP.
-// FMP's /earnings (and /income-statement) endpoints turned out to have the
-// same mega-cap-only plan restriction found elsewhere (confirmed: 402 for
-// VIOT, a small cap). Finnhub's free-tier /stock/earnings (surprise
-// history) was verified by direct testing to cover the same small/mid-caps
-// FMP rejects, including VIOT specifically, so it's now the primary source
-// for earningsBeat and lastEarningsDate.
-//
-// revenueBeat isn't available here: Finnhub's free tier's surprise
-// endpoint is EPS-only, not revenue — FMP genuinely doesn't offer a
-// working substitute (same restriction), so this stays false rather than
-// guessed. lastEarningsDate still falls back to SEC's free 10-Q/10-K
-// filing-cadence lookup on the rare case Finnhub has no data for a ticker,
-// since a filing date is a same-day-or-next-day proxy for the earnings
-// date.
-
+// Earnings surprise periods and filing dates are stored separately. Neither
+// is an earnings announcement date; unavailable announcements remain null.
 import { getEarningsSurprises } from "@/lib/finnhub";
 import { getLastEarningsDateFromSEC } from "./secFilingDates";
 
@@ -22,6 +8,8 @@ export interface EarningsPerformance {
   revenueBeat: boolean;
   epsGrowth: number;
   lastEarningsDate: string | null;
+  earningsPeriodEnd: string | null;
+  lastFilingDate: string | null;
   ok: boolean; // false if Finnhub had nothing and the SEC date fallback also came up empty
 }
 
@@ -30,6 +18,8 @@ const EMPTY: EarningsPerformance = {
   revenueBeat: false,
   epsGrowth: 0,
   lastEarningsDate: null,
+  earningsPeriodEnd: null,
+  lastFilingDate: null,
   ok: false,
 };
 
@@ -39,7 +29,7 @@ export async function getEarningsPerformance(ticker: string): Promise<EarningsPe
 
     // Most recent *reported* quarter — skip entries with a null actual
     // (scheduled-but-not-yet-reported).
-    const reported = (surprises ?? []).filter((s) => s.actual !== null);
+    const reported = (surprises ?? []).filter((s) => typeof s.actual === "number" && Number.isFinite(s.actual)).sort((a,b)=>b.period.localeCompare(a.period));
     const last = reported[0] ?? null;
     const prev = reported[1] ?? null;
 
@@ -62,7 +52,9 @@ export async function getEarningsPerformance(ticker: string): Promise<EarningsPe
       earningsBeat,
       revenueBeat: false,
       epsGrowth,
-      lastEarningsDate,
+      lastEarningsDate: null, // Neither period-end nor filing date is an announcement date.
+      earningsPeriodEnd: last?.period ?? null,
+      lastFilingDate: dateFromSEC ? lastEarningsDate : null,
       ok: reported.length > 0 || dateFromSEC,
     };
   } catch {

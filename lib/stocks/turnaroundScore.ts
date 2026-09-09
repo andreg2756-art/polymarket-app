@@ -1,3 +1,4 @@
+import { runwayYears as calculateRunwayYears } from "./financial-data/model";
 // Value/Turnaround score — computable subset of the user's Template 2
 // ("how bad are the expectations embedded in the price, and what happens
 // if the business improves?"). Same two-pass structure as qualityScore.ts.
@@ -30,8 +31,8 @@ export function turnaroundFinalScore(firstPass: number, f: Fundamentals): number
   if (f.freeCashFlow !== null && f.freeCashFlow >= 0) {
     survival = 25; // self-sustaining, no runway concern
   } else if (f.freeCashFlow !== null && f.cashAndEquivalents !== null && f.freeCashFlow < 0) {
-    const runwayYears = f.cashAndEquivalents / Math.abs(f.freeCashFlow);
-    survival = runwayYears > 3 ? 20 : runwayYears > 1.5 ? 12 : runwayYears > 0.5 ? 5 : 0;
+    const runwayYears = calculateRunwayYears(f.cashAndEquivalents, f.freeCashFlow, f.periodType);
+    survival = runwayYears === null ? 0 : runwayYears > 3 ? 20 : runwayYears > 1.5 ? 12 : runwayYears > 0.5 ? 5 : 0;
   }
 
   const evidence =

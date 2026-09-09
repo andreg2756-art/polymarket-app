@@ -1,0 +1,6158 @@
+{
+  "capturedAt": "2026-09-09T15:07:59.428Z",
+  "definition": "Presence only, not accuracy or freshness. Zero is valid for financial statement values. Null, empty and N/A metadata are missing. Lens membership overlaps.",
+  "coverage": {
+    "all": {
+      "count": 327,
+      "fields": {
+        "netIncome": 103,
+        "totalDebt": 82,
+        "cashAndEquivalents": 56,
+        "freeCashFlow": 52,
+        "sector": 2,
+        "industry": 2,
+        "analystRating": 24,
+        "lastEarningsDate": 43,
+        "float": 0,
+        "marketCap": 204,
+        "price": 327,
+        "trailingPE": 204,
+        "priceToBook": 210
+      },
+      "allFour": 42,
+      "noneFour": 217
+    },
+    "speculative": {
+      "count": 136,
+      "fields": {
+        "netIncome": 11,
+        "totalDebt": 6,
+        "cashAndEquivalents": 5,
+        "freeCashFlow": 3,
+        "sector": 2,
+        "industry": 2,
+        "analystRating": 24,
+        "lastEarningsDate": 43,
+        "float": 0,
+        "marketCap": 13,
+        "price": 136,
+        "trailingPE": 17,
+        "priceToBook": 21
+      },
+      "allFour": 3,
+      "noneFour": 125
+    },
+    "quality": {
+      "count": 212,
+      "fields": {
+        "netIncome": 103,
+        "totalDebt": 82,
+        "cashAndEquivalents": 56,
+        "freeCashFlow": 52,
+        "sector": 2,
+        "industry": 2,
+        "analystRating": 3,
+        "lastEarningsDate": 7,
+        "float": 0,
+        "marketCap": 204,
+        "price": 212,
+        "trailingPE": 204,
+        "priceToBook": 210
+      },
+      "allFour": 42,
+      "noneFour": 102
+    },
+    "value": {
+      "count": 161,
+      "fields": {
+        "netIncome": 98,
+        "totalDebt": 79,
+        "cashAndEquivalents": 54,
+        "freeCashFlow": 50,
+        "sector": 1,
+        "industry": 1,
+        "analystRating": 3,
+        "lastEarningsDate": 4,
+        "float": 0,
+        "marketCap": 157,
+        "price": 161,
+        "trailingPE": 161,
+        "priceToBook": 159
+      },
+      "allFour": 40,
+      "noneFour": 56
+    }
+  },
+  "sample": [
+    {
+      "ticker": "SST",
+      "marketCap": 0,
+      "sector": null,
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": [],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "YQ",
+      "marketCap": 0,
+      "sector": null,
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": [],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "BTGO",
+      "marketCap": 0,
+      "sector": null,
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": [],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "ANGX",
+      "marketCap": 0,
+      "sector": null,
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": [],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "GPRO",
+      "marketCap": 0,
+      "sector": null,
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": [],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "HAS",
+      "marketCap": 12737725440,
+      "sector": null,
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "THC",
+      "marketCap": 20859252736,
+      "sector": null,
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "UTHR",
+      "marketCap": 21358278656,
+      "sector": null,
+      "missing": [
+        "totalDebt",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "RCL",
+      "marketCap": 70741073920,
+      "sector": null,
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "WES",
+      "marketCap": 20423219200,
+      "sector": null,
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "ACCO",
+      "marketCap": 0,
+      "sector": null,
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": [],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "ACDC",
+      "marketCap": 0,
+      "sector": null,
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": [],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "ADAM",
+      "marketCap": 0,
+      "sector": null,
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": [],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "PMT",
+      "marketCap": 0,
+      "sector": null,
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap"
+      ],
+      "corePresent": [
+        "netIncome"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "CMC",
+      "marketCap": 0,
+      "sector": null,
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "DSP",
+      "marketCap": 898406080,
+      "sector": null,
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "GPRK",
+      "marketCap": 775504256,
+      "sector": null,
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float"
+      ],
+      "corePresent": [],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "IMOS",
+      "marketCap": 1984027776,
+      "sector": null,
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "IVR",
+      "marketCap": 735132224,
+      "sector": null,
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "ORC",
+      "marketCap": 1300199808,
+      "sector": null,
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "TBLA",
+      "marketCap": 1031993600,
+      "sector": null,
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "DOLE",
+      "marketCap": 1312032896,
+      "sector": null,
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "CRI",
+      "marketCap": 1185036928,
+      "sector": null,
+      "missing": [
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "OGI",
+      "marketCap": 161451008,
+      "sector": null,
+      "missing": [
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "ACAD",
+      "marketCap": 4752186368,
+      "sector": null,
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "AGCO",
+      "marketCap": 8915738624,
+      "sector": null,
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "ARIS",
+      "marketCap": 4124485120,
+      "sector": null,
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "AVT",
+      "marketCap": 7585184256,
+      "sector": null,
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "CSTM",
+      "marketCap": 3724301824,
+      "sector": null,
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "GTX",
+      "marketCap": 5219950592,
+      "sector": null,
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "AEO",
+      "marketCap": 2885612544,
+      "sector": null,
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "AVAH",
+      "marketCap": 2981850880,
+      "sector": null,
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "PLNT",
+      "marketCap": 3783359488,
+      "sector": null,
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "BVN",
+      "marketCap": 8676191232,
+      "sector": null,
+      "missing": [
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "AROC",
+      "marketCap": 5849282048,
+      "sector": null,
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "GAP",
+      "marketCap": 7861425664,
+      "sector": null,
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "IHS",
+      "marketCap": 2872512768,
+      "sector": null,
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "ADI",
+      "marketCap": 175994191872,
+      "sector": null,
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "AEM",
+      "marketCap": 102204686336,
+      "sector": null,
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [],
+      "freshness": "Unknown: no statement period/source stored"
+    },
+    {
+      "ticker": "ALAB",
+      "marketCap": 50111172608,
+      "sector": null,
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [],
+      "freshness": "Unknown: no statement period/source stored"
+    }
+  ],
+  "tickerCoverage": [
+    {
+      "ticker": "AA",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "ACAD",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ACCO",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ACDC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ACGL",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "ADAM",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ADI",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ADTN",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "AEG",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "AEM",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "AEO",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "AFRM",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "AGCO",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "AGI",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "AGNC",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "AIG",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "ALAB",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ALL",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ALLY",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "AMD",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "AMKR",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "AMP",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "AMPX",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "AMSC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ANGX",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "APA",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "APH",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "AR",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "ARCC",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "ARCO",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ARIS",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "AROC",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "ARW",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "ASND",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ASTS",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "trailingPE"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ASX",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "AU",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "AVAH",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "AVGO",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "AVT",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "BBD",
+      "missing": [
+        "netIncome",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "totalDebt",
+        "cashAndEquivalents"
+      ]
+    },
+    {
+      "ticker": "BBY",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "BCE",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "BCH",
+      "missing": [
+        "cashAndEquivalents",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "BF-B",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "BKSY",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "BLSH",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "trailingPE"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "BMY",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "BSBR",
+      "missing": [
+        "netIncome",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "totalDebt",
+        "cashAndEquivalents"
+      ]
+    },
+    {
+      "ticker": "BTGO",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "BVN",
+      "missing": [
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents"
+      ]
+    },
+    {
+      "ticker": "BW",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "CAPR",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "CCL",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "CDE",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "CENX",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "CF",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "CFFN",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "CFR",
+      "missing": [
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents"
+      ]
+    },
+    {
+      "ticker": "CGAU",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "CHTR",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "CIEN",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "CLBK",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "CLS",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "CMBT",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "CMC",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "CMPS",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "CNQ",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "COLL",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "CORZ",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "trailingPE"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "CORZW",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "CORZZ",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "COUR",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "CQP",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "CRBG",
+      "missing": [
+        "netIncome",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "CRDO",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "CRI",
+      "missing": [
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents"
+      ]
+    },
+    {
+      "ticker": "CSIQ",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "CSTM",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "CVE",
+      "missing": [
+        "totalDebt",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "CWH",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "DAKT",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "DB",
+      "missing": [
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents"
+      ]
+    },
+    {
+      "ticker": "DCI",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "DDOG",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "DDS",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "DELL",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "DG",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "DINO",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "DLNG",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "DLO",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "DOCN",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "DOLE",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "DRH",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "DSP",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "DSX",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "DVA",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "E",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "EC",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "ECVT",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "EDU",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "EFC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "EG",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "EGO",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "ENIC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ENOV",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "EROC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ET",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "EVH",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "EVMN",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "EVR",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "EXPE",
+      "missing": [
+        "netIncome",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "FAF",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "FCNCA",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "FICO",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "FIP",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "FIS",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "FLNC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "FLYW",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "FN",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "FNF",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "FORM",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "FOX",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "FRO",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "FSLR",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "FSM",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "FUN",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "FWRG",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "GAP",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "GCL",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "GDDY",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "GENI",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "GETY",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "GL",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "GLAS",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "GNK",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "GOLD",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "GPRK",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "GPRO",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "GRPN",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "GS",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "GSIT",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "GTX",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "GWH",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "HAIN",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "HAS",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "HBM",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "HCSG",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "HIG",
+      "missing": [
+        "cashAndEquivalents",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "HMY",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "HOPE",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "HPE",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "HST",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "IAG",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "IHS",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "IMOS",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "IMSR",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "IMSRW",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "INDV",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "INN",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "INTR",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "INVA",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "IONQ",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "trailingPE"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "IQ",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ITUB",
+      "missing": [
+        "netIncome",
+        "cashAndEquivalents",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "totalDebt",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "IVR",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "IX",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "JAZZ",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "JBGS",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "JBLU",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "JELD",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "JKS",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "KB",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "KEP",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "KEYS",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "KGC",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "KLIC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "KODK",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "KOS",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "KSPI",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "KSS",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "KURA",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "L",
+      "missing": [
+        "cashAndEquivalents",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "LAC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "LAR",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "LAUR",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "LIF",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "LINC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "LNC",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "LRCX",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "LTM",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "LYG",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "MERC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "MET",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "METC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "MFG",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "MKL",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "MKSI",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "MLCO",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "MPC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "MRX",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "MS",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "MTCH",
+      "missing": [
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "MU",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "MUC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "NAT",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "NEM",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "NET",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "trailingPE"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "NFE",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "NKTX",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "NLY",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "NMCO",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "NMR",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "NPWR",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "NRGV",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "NTAP",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "NTNX",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "NTR",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "NVDA",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "NXTC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "OGI",
+      "missing": [
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents"
+      ]
+    },
+    {
+      "ticker": "OI",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "OMCL",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ONON",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "OPTU",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ORC",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "ORCL-PD",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "OVV",
+      "missing": [
+        "cashAndEquivalents",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "OXSQ",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "OXY",
+      "missing": [
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents"
+      ]
+    },
+    {
+      "ticker": "P",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "PAL",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "PAY",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "PAYP",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "PBR",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "PBR-A",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "PEB",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "PKX",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "PLAB",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "PLNT",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "PLTR",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "PMT",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "PNFP",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "PR",
+      "missing": [
+        "netIncome",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "PSX",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "QDEL",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "QNST",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "RAMP",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "RC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "RCL",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "RELY",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "RVI",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "RVLV",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SABR",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SAN",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SB",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SBLK",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SECZ",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SES",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SFL",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SGHC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SHEN",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SHG",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SIG",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SILC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SIMO",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SKHY",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SMCI",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "SMCIP",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SMTC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SNA",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SNX",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SOLV",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "SPWH",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SSL",
+      "missing": [
+        "netIncome",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "totalDebt",
+        "cashAndEquivalents"
+      ]
+    },
+    {
+      "ticker": "SSRM",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "SST",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "STX",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SUN",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SWBI",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "SYF",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "T",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "TAL",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "TBLA",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "TE",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "TECK",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "TER",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "TEST",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "THC",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "TLK",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "TMC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "TMCWW",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "TRMD",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "TROX",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "TRV",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "TS",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "TSAT",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "TSM",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "TTMI",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "TWI",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "TYRA",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "UAL",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "UAMY",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "UHS",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "UIS",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ULCC",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "UMBF",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "UNIT",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "UTHR",
+      "missing": [
+        "totalDebt",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "VAL",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "VET",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "VG",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "VICR",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "VIRT",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "VISN",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "VIST",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "VLO",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "VNET",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "WBX",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "WDC",
+      "missing": [
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float",
+        "priceToBook"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt"
+      ]
+    },
+    {
+      "ticker": "WES",
+      "missing": [
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome"
+      ]
+    },
+    {
+      "ticker": "WF",
+      "missing": [
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow"
+      ]
+    },
+    {
+      "ticker": "WWW",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "YQ",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ZD",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ZH",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "lastEarningsDate",
+        "float",
+        "marketCap",
+        "trailingPE",
+        "priceToBook"
+      ],
+      "corePresent": []
+    },
+    {
+      "ticker": "ZION",
+      "missing": [
+        "netIncome",
+        "totalDebt",
+        "cashAndEquivalents",
+        "freeCashFlow",
+        "sector",
+        "industry",
+        "analystRating",
+        "lastEarningsDate",
+        "float"
+      ],
+      "corePresent": []
+    }
+  ]
+}

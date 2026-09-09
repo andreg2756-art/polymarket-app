@@ -103,6 +103,16 @@ model Stock {
   guidanceUp          Boolean        @default(false)
   rank                Int            @default(0)
 
+  financialPeriodType String?
+  financialPeriodEnd String?
+  financialCurrency String?
+  financialSource String?
+  financialFetchedAt DateTime?
+  qualityDataStatus String @default("UNVERIFIED")
+  valueDataStatus String @default("UNVERIFIED")
+  earningsPeriodEnd String?
+  lastFilingDate String?
+
   // Quality/Growth lens
   qualityScore        Float?
   qualityRank         Int?
@@ -224,4 +234,49 @@ model CatalystObservation {
   observedAt          DateTime @default(now())
 
   @@index([ticker, eventSlug, observedAt])
+}
+
+// Period-aware records are separate from legacy Stock values of unknown provenance.
+model FinancialRecord {
+  id String @id @default(cuid())
+  ticker String
+  source String
+  periodEnd String
+  periodType String
+  currency String
+  payload Json
+  fetchedAt DateTime @default(now())
+  @@unique([ticker, source, periodEnd])
+  @@index([ticker, periodEnd])
+}
+
+model FinancialJob {
+  ticker String @id
+  status String @default("PENDING")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  lastAttemptAt DateTime?
+  lastSuccessAt DateTime?
+  reason String?
+}
+
+model FinancialWorkerLease {
+  id String @id
+  owner String
+  expiresAt DateTime
+}
+
+model FinancialSourceResponse {
+  id String @id @default(cuid())
+  ticker String
+  source String
+  statement String
+  payload Json
+  fetchedAt DateTime @default(now())
+  @@unique([ticker, source, statement])
+}
+
+model FinancialRequestBudget {
+  id String @id
+  used Int @default(0)
 }

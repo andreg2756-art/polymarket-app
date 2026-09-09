@@ -8,6 +8,8 @@ import DataWarningBanner from "@/components/stocks/DataWarningBanner";
 import RankChangeBadge from "@/components/stocks/RankChangeBadge";
 
 interface Stock {
+  valueDataStatus?: string;
+  financialPeriodType?: string | null;
   id: string;
   ticker: string;
   name: string;
@@ -32,18 +34,15 @@ export default function ValueTurnaroundPage() {
     fetch("/api/stocks/turnaround").then((r) => r.json()).then(setStocks).finally(() => setLoading(false));
   }, []);
 
-  // Mirrors fundamentals.ts's EMPTY fallback — all three null means the FMP
-  // fetch for this ticker failed (or was plan-restricted), so the score
-  // below is first-pass only, missing survival/trend evidence.
   function missingFundamentals(s: Stock): boolean {
-    return s.totalDebt === null && s.cashAndEquivalents === null && s.freeCashFlow === null;
+    return s.valueDataStatus !== "COMPLETE";
   }
 
   function runway(s: Stock): string {
-    if (s.freeCashFlow === null) return "—";
+    if (!s.financialPeriodType || s.freeCashFlow === null) return "—";
     if (s.freeCashFlow >= 0) return "Self-sustaining";
     if (s.cashAndEquivalents === null) return "—";
-    const years = s.cashAndEquivalents / Math.abs(s.freeCashFlow);
+    const years = s.cashAndEquivalents / (Math.abs(s.freeCashFlow) * (s.financialPeriodType === "QUARTER" ? 4 : 1));
     return `${years.toFixed(1)}y`;
   }
 
@@ -113,7 +112,7 @@ export default function ValueTurnaroundPage() {
                       {s.turnaroundScore ?? "—"}
                     </span>
                     {missingFundamentals(s) && (
-                      <span title="Fundamentals unavailable (likely FMP plan restriction) — score reflects valuation/off-high only, not survival/trend evidence"
+                      <span title="Some score inputs are missing, stale, or have no verified reporting period. This is an incomplete score."
                         className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-yellow-900/50 text-yellow-400 border border-yellow-800 cursor-help">
                         Partial
                       </span>

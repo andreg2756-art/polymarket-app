@@ -1,0 +1,2 @@
+// Diagnostic cohort from the 2026-09-09 coverage audit; bounded initial rollout.
+export const FINANCIAL_COHORT = ["PLNT", "GPRO", "SST", "YQ", "BTGO", "ANGX", "HAS", "THC", "UTHR", "RCL", "WES", "ACCO", "ACDC", "ADAM", "PMT", "CMC", "DSP", "GPRK", "IMOS", "IVR", "ORC", "TBLA", "DOLE", "CRI", "OGI", "ACAD", "AGCO", "ARIS", "AVT", "CSTM", "GTX", "AEO", "AVAH", "BVN", "AROC", "GAP", "IHS", "ADI", "AEM", "ALAB"] as const;

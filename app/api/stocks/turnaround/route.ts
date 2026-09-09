@@ -1,3 +1,4 @@
+import { hydrateFinancialData } from "@/lib/stocks/financial-data/store";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getPreviousRanks, rankDelta } from "@/lib/stocks/rankChange";
@@ -14,7 +15,8 @@ export async function GET() {
     }),
     getPreviousRanks("turnaround"),
   ]);
-  const ranked = stocks.map((s, i) => ({
+  const hydrated = await hydrateFinancialData(stocks);
+  const ranked = hydrated.map((s, i) => ({
     ...s,
     turnaroundRank: i + 1,
     rankChange: rankDelta(previousRanks, s.ticker, i + 1),

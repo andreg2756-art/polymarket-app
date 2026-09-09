@@ -4,66 +4,7 @@
 
 import type { ScoredMetric } from "./types";
 
-const REVENUE_KEYS = [
-  "RevenueFromContractWithCustomerExcludingAssessedTax",
-  "Revenues",
-  "SalesRevenueNet",
-  "RevenueFromContractWithCustomerIncludingAssessedTax",
-  "SalesRevenueGoodsNet",
-];
-
-interface TickerEntry { cik_str: number; ticker: string; title: string }
-
-async function getCIK(ticker: string): Promise<string | null> {
-  try {
-    const res = await fetch("https://www.sec.gov/files/company_tickers.json", {
-      headers: { "User-Agent": "polymarket-app/1.0 admin@example.com" },
-      next: { revalidate: 86400 },
-    });
-    if (!res.ok) return null;
-    const data: Record<string, TickerEntry> = await res.json();
-    const match = Object.values(data).find(
-      (v) => v.ticker.toUpperCase() === ticker.toUpperCase()
-    );
-    if (!match) return null;
-    return String(match.cik_str).padStart(10, "0");
-  } catch {
-    return null;
-  }
-}
-
-interface SECFact {
-  start?: string;
-  end: string;
-  val: number;
-  form: string;
-  fp?: string;
-}
-
-async function getAnnualRevenues(cik: string): Promise<{ year: number; revenue: number }[]> {
-  try {
-    const res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`, {
-      headers: { "User-Agent": "polymarket-app/1.0 admin@example.com" },
-      next: { revalidate: 86400 },
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const usGaap = data?.facts?.["us-gaap"] ?? {};
-
-    for (const key of REVENUE_KEYS) {
-      if (!usGaap[key]) continue;
-      const entries: SECFact[] = usGaap[key]?.units?.USD ?? [];
-      const annual = entries
-        .filter((e) => e.form === "10-K" && e.fp === "FY" && e.end && e.val > 0)
-        .map((e) => ({ year: parseInt(e.end.slice(0, 4)), revenue: e.val }))
-        .sort((a, b) => a.year - b.year);
-      if (annual.length >= 2) return annual;
-    }
-    return [];
-  } catch {
-    return [];
-  }
-}
+import { loadStoredFundamentals } from './financial-data/store';
 
 function growthModifier(growth: number): number {
   if (growth > 40)  return 8;
@@ -153,25 +94,11 @@ export async function getRevenueGrowthScore(
   existingRevenueGrowth: number | null
 ): Promise<ScoredMetric & { modifier: number }> {
   try {
-    // 1. Try SEC EDGAR
-    const cik = await getCIK(ticker);
-    if (cik) {
-      const annual = await getAnnualRevenues(cik);
-      if (annual.length >= 2) {
-        const latest = annual[annual.length - 1];
-        const prior  = annual[annual.length - 2];
-        if (prior.revenue > 0) {
-          const growth = ((latest.revenue - prior.revenue) / prior.revenue) * 100;
-          const modifier = growthModifier(growth);
-          return {
-            value: `${growth > 0 ? "+" : ""}${growth.toFixed(1)}%`,
-            score: Math.max(0, Math.min(100, Math.round(50 + growth))),
-            source: "sec",
-            reason: growthLabel(growth) + (modifier !== 0 ? ` | Score modifier: ${modifier > 0 ? "+" : ""}${modifier} pts` : " | No score modifier"),
-            modifier,
-          };
-        }
-      }
+    const f = (await loadStoredFundamentals([ticker])).get(ticker);
+    if (f?.revenueGrowthYoY != null) {
+      const growth = f.revenueGrowthYoY;
+      const modifier = growthModifier(growth);
+      return { value: `${growth > 0 ? '+' : ''}${growth.toFixed(1)}%`, score: Math.max(0, Math.min(100, Math.round(50 + growth))), source: 'calculated', reason: `${f.source} year-over-year revenue change; period ending ${f.periodEnd}`, modifier };
     }
 
     // 2. Fall back to existing DB value

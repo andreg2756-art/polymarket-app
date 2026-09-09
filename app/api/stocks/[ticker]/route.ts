@@ -1,3 +1,4 @@
+import { hydrateFinancialData } from "@/lib/stocks/financial-data/store";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getProfile, getIncomeStatements, getInsiderTrades, getAnalystRatings, getEarnings, getPriceHistory } from "@/lib/fmp";
@@ -26,7 +27,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ ticker:
   ]);
 
   return NextResponse.json({
-    stock,
+    stock: (await hydrateFinancialData([stock]))[0],
     news,
     snapshots,
     profile: profile.status === "fulfilled" ? profile.value : null,

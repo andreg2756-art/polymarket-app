@@ -8,6 +8,10 @@ import DataWarningBanner from "@/components/stocks/DataWarningBanner";
 import RankChangeBadge from "@/components/stocks/RankChangeBadge";
 
 interface Stock {
+  qualityDataStatus?: string;
+  financialPeriodType?: string | null;
+  financialPeriodEnd?: string | null;
+  financialCurrency?: string | null;
   id: string;
   ticker: string;
   name: string;
@@ -30,11 +34,8 @@ function Change({ v }: { v: number }) {
   return <span className={color}>{v > 0 ? "+" : ""}{v.toFixed(1)}%</span>;
 }
 
-// Mirrors fundamentals.ts's EMPTY fallback — all four null means the FMP
-// fetch for this ticker failed (or was plan-restricted), so the score below
-// is first-pass only, missing margin/debt/FCF.
 function missingFundamentals(s: Stock): boolean {
-  return s.netIncome === null && s.totalDebt === null && s.cashAndEquivalents === null && s.freeCashFlow === null;
+  return s.qualityDataStatus !== "COMPLETE";
 }
 
 export default function QualityScreenPage() {
@@ -107,9 +108,9 @@ export default function QualityScreenPage() {
                       ? `${(s.totalDebt / Math.max(s.cashAndEquivalents, 1)).toFixed(1)}x`
                       : "—"}
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-3" title={s.financialPeriodEnd ? `${s.financialPeriodType} ending ${s.financialPeriodEnd}` : "Reporting period unverified"}>
                     {s.freeCashFlow !== null
-                      ? <span className={s.freeCashFlow >= 0 ? "text-emerald-400" : "text-red-400"}>{formatUSD(s.freeCashFlow)}</span>
+                      ? <span className={s.freeCashFlow >= 0 ? "text-emerald-400" : "text-red-400"}>{s.financialCurrency && s.financialCurrency !== "USD" ? new Intl.NumberFormat("en-US", {style:"currency", currency:s.financialCurrency, notation:"compact"}).format(s.freeCashFlow) : formatUSD(s.freeCashFlow)}</span>
                       : "—"}
                   </td>
                   <td className="px-3 py-3">
@@ -119,7 +120,7 @@ export default function QualityScreenPage() {
                       {s.qualityScore ?? "—"}
                     </span>
                     {missingFundamentals(s) && (
-                      <span title="Fundamentals unavailable (likely FMP plan restriction) — score reflects valuation/growth only, not margin/debt/FCF"
+                      <span title="Some score inputs are missing, stale, or have no verified reporting period. This is an incomplete score."
                         className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-yellow-900/50 text-yellow-400 border border-yellow-800 cursor-help">
                         Partial
                       </span>
