@@ -2,8 +2,13 @@ import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
 import { parseBQStatements, type BQResponse } from './bq-parser';
 import { SourceError } from './sec-client';
-// Reserve below the previously observed 40/day account cap; durable across workers.
-const DAILY_LIMIT=24;
+import { FINANCIAL_CONFIG, businessQuantBudgetId, nextBudgetWindow } from './config';
+const DAILY_LIMIT=FINANCIAL_CONFIG.businessQuantDailyLimit;
+export async function getBQBudget(now=new Date()) {
+ const row=await prisma.financialRequestBudget.findUnique({where:{id:businessQuantBudgetId(now)}});
+ const used=row?.used??0;
+ return {limit:DAILY_LIMIT,used,remaining:Math.max(0,DAILY_LIMIT-used),resetsAt:nextBudgetWindow(now).toISOString(),resetBasis:'Local UTC request allowance; upstream provider limits may differ'};
+}
 export async function fetchBQFinancials(ticker:string) {
  if(!process.env.BUSINESSQUANT_API_KEY)throw new SourceError('BUSINESS_QUANT_NOT_CONFIGURED');
  const retrievedAt:Record<string,number>={};
@@ -13,8 +18,8 @@ export async function fetchBQFinancials(ticker:string) {
  for(const row of cachedRows){responses[row.statement]=row.payload as unknown as BQResponse;retrievedAt[row.statement]=row.fetchedAt.getTime();}
  for(const statement of ['IS','BS','CF']) {
   const cached=cache.get(statement);
-  if(cached && Date.now()-cached.fetchedAt.getTime()<7*86400000){responses[statement]=cached.payload as unknown as BQResponse;retrievedAt[statement]=cached.fetchedAt.getTime();continue;}
-  const id=`BUSINESS_QUANT:${new Date().toISOString().slice(0,10)}`;
+  if(cached && Date.now()-cached.fetchedAt.getTime()<FINANCIAL_CONFIG.statementCacheDays*86400000){responses[statement]=cached.payload as unknown as BQResponse;retrievedAt[statement]=cached.fetchedAt.getTime();continue;}
+  const id=businessQuantBudgetId();
   const reserved=await prisma.$queryRaw<{used:number}[]>`INSERT INTO "FinancialRequestBudget" ("id","used") VALUES (${id},1) ON CONFLICT ("id") DO UPDATE SET "used"="FinancialRequestBudget"."used"+1 WHERE "FinancialRequestBudget"."used" < ${DAILY_LIMIT} RETURNING "used"`;
   if(!reserved.length){failures.push('BUSINESS_QUANT_DAILY_BUDGET');break;}
   const url=new URL('https://data.businessquant.com/statements');

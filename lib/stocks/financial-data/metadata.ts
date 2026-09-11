@@ -12,8 +12,10 @@ const SECTORS:Record<string,string>={
  'Metals & Mining':'Basic Materials','Chemicals':'Basic Materials',
  'Aerospace & Defense':'Industrials','Machinery':'Industrials','Electrical Equipment':'Industrials',
  'Media':'Communication Services','Diversified Consumer Services':'Consumer Cyclical',
+ 'Commercial Services & Supplies':'Industrials','Textiles, Apparel & Luxury Goods':'Consumer Cyclical',
  'Real Estate':'Real Estate','Utilities':'Utilities','Telecommunication Services':'Communication Services',
 };
+export function sectorForIndustry(industry:string):string|null {return SECTORS[industry.trim()]??null;}
 export async function enrichMetadata(ticker:string):Promise<string[]> {
  const failures:string[]=[];
  const [profile,trends]=await Promise.all([getCompanyProfile(ticker),getRecommendationTrends(ticker)]);
