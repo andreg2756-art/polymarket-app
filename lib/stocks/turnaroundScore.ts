@@ -27,6 +27,9 @@ function trendPoints(prev: number | null, current: number | null): number {
 }
 
 export function turnaroundFinalScore(firstPass: number, f: Fundamentals): number {
+  // No operating-company margin, debt/cash or runway bonuses for financial institutions.
+  // Retain the provisional first pass; do not manufacture a sector replacement score.
+  if (f.statementProfile === "FINANCIAL_INSTITUTION") return firstPass;
   let survival = 0;
   if (f.freeCashFlow !== null && f.freeCashFlow >= 0) {
     survival = 25; // self-sustaining, no runway concern

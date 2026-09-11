@@ -1,3 +1,4 @@
+import { coverageAssessment, needsStatementFallback } from "./applicability";
 import { enrichMetadata } from "./metadata";
 import { randomUUID } from 'node:crypto';
 import type { Prisma } from '@prisma/client';
@@ -28,7 +29,7 @@ export async function runFinancialBackfill(limit=8) {
     // responses. A missing statement doesn't count as a complete company fetch.
     try { const bq=await fetchBQFinancials(job.ticker);bundle=bq.bundle;failures.push(...bq.failures); }
     catch(error) {failures.push(error instanceof SourceError ? error.code : "BUSINESS_QUANT_FETCH_FAILED");}
-    if(!bundle || FINANCIAL_FIELDS.some(k=>bundle!.values[k]===null)) {
+    if(!bundle || needsStatementFallback(bundle)) {
      if(secUnavailable)failures.push(secUnavailable);
      else try {
       const sec=await fetchSECFinancials(job.ticker);
@@ -43,10 +44,10 @@ export async function runFinancialBackfill(limit=8) {
     const accepted=bundle;
     const count=FINANCIAL_FIELDS.filter(k=>accepted.values[k]!==null).length;
     const age=(Date.now()-Date.parse(bundle.periodEnd))/86400000;
-    const status=age>(bundle.periodType==='QUARTER'?200:550)?'STALE':count===FINANCIAL_FIELDS.length?'COMPLETE':'PARTIAL';
-    const reason=[...failures,...Object.entries(bundle.missingReasons).map(([k,v])=>`${k}: ${v}`)].join('; ')||null;
+    const status=age>(bundle.periodType==='QUARTER'?200:550)?'STALE':bundle.statementProfile==='FINANCIAL_INSTITUTION'?'SECTOR_REVIEW':count===FINANCIAL_FIELDS.length?'COMPLETE':'PARTIAL';
+    const reason=[...failures,...Object.entries(bundle.missingReasons).filter(([k])=>coverageAssessment(accepted).missing.includes(k as typeof FINANCIAL_FIELDS[number])).map(([k,v])=>`${k}: ${v}`)].join('; ')||null;
     await prisma.$transaction([
-     prisma.financialJob.update({where:{ticker:job.ticker},data:{status,lastSuccessAt:new Date(),reason,nextAttemptAt:new Date(Date.now()+(status==='COMPLETE'?7:2)*86400000)}}),
+     prisma.financialJob.update({where:{ticker:job.ticker},data:{status,lastSuccessAt:new Date(),reason,nextAttemptAt:new Date(Date.now()+(status==='COMPLETE'||status==='SECTOR_REVIEW'?7:2)*86400000)}}),
      prisma.stock.updateMany({where:{ticker:job.ticker},data:nonMissing({netIncome:bundle.values.netIncome,totalDebt:bundle.values.totalDebt,cashAndEquivalents:bundle.values.cashAndEquivalents,freeCashFlow:bundle.values.freeCashFlow})}),
     ]);
     results.push({ticker:job.ticker,status,reason,source:bundle.source,fields:count});
@@ -61,6 +62,7 @@ export async function runFinancialBackfill(limit=8) {
  }finally{await prisma.financialWorkerLease.deleteMany({where:{id:'financial-backfill',owner}});}
 }
 async function persistBundle(ticker:string,bundle:FinancialBundle) {
+ const recordSource=bundle.mappingVersion ? `${bundle.source}:${bundle.mappingVersion}` : bundle.source;
  const payload=bundle as unknown as Prisma.InputJsonValue;
- await prisma.financialRecord.upsert({where:{ticker_source_periodEnd:{ticker,source:bundle.source,periodEnd:bundle.periodEnd}},create:{ticker,source:bundle.source,periodEnd:bundle.periodEnd,periodType:bundle.periodType,currency:bundle.currency,payload,fetchedAt:new Date(bundle.retrievedAt ?? Date.now())},update:{payload,fetchedAt:new Date(bundle.retrievedAt ?? Date.now())}});
+ await prisma.financialRecord.upsert({where:{ticker_source_periodEnd:{ticker,source:recordSource,periodEnd:bundle.periodEnd}},create:{ticker,source:recordSource,periodEnd:bundle.periodEnd,periodType:bundle.periodType,currency:bundle.currency,payload,fetchedAt:new Date(bundle.retrievedAt ?? Date.now())},update:{payload,fetchedAt:new Date(bundle.retrievedAt ?? Date.now())}});
 }

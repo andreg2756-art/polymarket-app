@@ -8,7 +8,7 @@ const {loadStoredFundamentals,hydrateFinancialData}=require('../lib/stocks/finan
 const {fetchBQFinancials}=require('../lib/stocks/financial-data/bq-client.ts');
 test('saved financial inputs are loaded for every ticker, independent of shortlist',async()=>{
  const now=new Date(),end=new Date(now.getTime()-100*86400000).toISOString().slice(0,10);
- records=['A','B'].map(ticker=>({ticker,fetchedAt:now,payload:{version:'FINANCIAL_DATA_V1',periodEnd:end,periodType:'QUARTER',currency:'USD',source:'BUSINESS_QUANT',values:{...emptyValues(),freeCashFlow:25}}}));
+ records=['A','B'].map(ticker=>({ticker,periodEnd:end,fetchedAt:now,payload:{version:'FINANCIAL_DATA_V1',periodEnd:end,periodType:'QUARTER',currency:'USD',source:'BUSINESS_QUANT',values:{...emptyValues(),freeCashFlow:25}}}));
  const loaded=await loadStoredFundamentals(['A','B']);assert.equal(loaded.get('A').freeCashFlow,25);assert.equal(loaded.get('B').freeCashFlow,25);
  const views=await hydrateFinancialData([{ticker:'A',qualityDataStatus:'COMPLETE'}]);assert.equal(views[0].qualityDataStatus,'UNVERIFIED');
 });

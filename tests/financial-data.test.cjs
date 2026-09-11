@@ -28,3 +28,29 @@ test('BQ never combines statements from different quarter ends',()=>{const b=par
 test('BQ missing currency does not enter scoring',()=>{const r=bq('X','Cash & Equivalents (Quarter)',25);delete r.metadata.currency;assert.equal(parseBQStatements('X',{BS:r},now),null);});
 test('momentum refresh never writes financial or metadata placeholders',()=>{const {momentumUpdate}=require('../lib/stocks/financial-data/model.ts');const patch=momentumUpdate({ticker:'X',name:'X',marketCap:0,price:10,change1M:0,change3M:1,relativeVolume:2,bullishScore:20,rank:1,sector:'',float:null,analystRating:'N/A'},undefined);for(const key of ['sector','float','analystRating','marketCap','revenueGrowth','cashAndEquivalents'])assert.equal(key in patch,false);assert.equal(patch.change1M,0);});
 test('same quarter last year produces YoY growth, not prior-quarter growth',()=>{const r=bq('X','Revenue (Quarter)',120);const vals=r.data.nested.sections['Revenue (Quarter)'].values;vals.push({date:'2025-06-30',periodType:'Quarter',reportedValue:{raw:100}},{date:'2026-03-31',periodType:'Quarter',reportedValue:{raw:60}});const parsed=parseBQStatements('X',{IS:r},now);assert.equal(parsed.revenueGrowthYoY,20);assert.equal(parsed.values.prevRevenue,60);});
+test('reviewed zero debt applies only to the exact company, currency and quarter',()=>{
+ const {applyReviewedFacts}=require('../lib/stocks/financial-data/reviewed-facts.ts');const {emptyValues}=require('../lib/stocks/financial-data/model.ts');
+ const b={version:'FINANCIAL_DATA_V1',source:'BUSINESS_QUANT',cik:'0001828791',currency:'USD',periodType:'QUARTER',periodEnd:'2026-06-30',values:emptyValues(),evidence:{},missingReasons:{totalDebt:'Missing'}};
+ const corrected=applyReviewedFacts('DSP',b);assert.equal(corrected.values.totalDebt,0);assert.ok(corrected.evidence.totalDebt[0].sourceUrl);assert.equal(corrected.missingReasons.totalDebt,undefined);
+ for(const changes of [{periodEnd:'2026-09-30'},{cik:'0000000001'},{currency:'EUR'},{periodType:'ANNUAL'}])assert.equal(applyReviewedFacts('DSP',{...b,...changes}).values.totalDebt,null);
+ assert.equal(applyReviewedFacts('OTHER',b).values.totalDebt,null);
+ assert.equal(applyReviewedFacts('DSP',{...b,values:{...b.values,totalDebt:200}}).values.totalDebt,200);
+});
+test('financial template exposes net interest separately and never calls it revenue',()=>{
+ const r=bq('X','Interest Income - Net (Quarter)',15);r.metadata.template='banks_capitalmarkets';
+ const bs=bq('X','Cash & Equivalents (Quarter)',25);bs.metadata.template='banks_capitalmarkets';
+ const b=parseBQStatements('X',{IS:r,BS:bs},now);assert.equal(b.statementProfile,'FINANCIAL_INSTITUTION');assert.equal(b.sectorMetrics.netInterestIncome,15);assert.equal(b.values.revenue,null);
+ const {coverageAssessment}=require('../lib/stocks/financial-data/applicability.ts');const a=coverageAssessment(b);assert.ok(a.notApplicableToGenericScore.includes('grossProfit'));assert.ok(!a.missing.includes('grossProfit'));assert.ok(a.missing.includes('netIncome'));
+});
+test('financial institutions get no generic cash-runway or margin score bonus',()=>{
+ const {qualityFinalScore}=require('../lib/stocks/qualityScore.ts');const {emptyValues}=require('../lib/stocks/financial-data/model.ts');
+ const f={...emptyValues(),statementProfile:'FINANCIAL_INSTITUTION',revenue:100,operatingIncome:60,totalDebt:0,cashAndEquivalents:100,freeCashFlow:100};
+ assert.equal(qualityFinalScore(20,f),20);assert.equal(turnaroundFinalScore(20,f),20);
+ assert.ok(qualityFinalScore(20,{...f,statementProfile:'OPERATING_COMPANY'})>20);
+});
+test('cash-flow net income can fill missing consolidated income without using common-shareholder profit',()=>{
+ const cf=bq('X','Net Income (Quarter)',12);const is=bq('X','Net Income towards Common Stockholders (Quarter)',7);
+ const bs=bq('X','Cash & Equivalents (Quarter)',20);
+ assert.equal(parseBQStatements('X',{CF:cf,IS:is,BS:bs},now).values.netIncome,12);
+ assert.equal(parseBQStatements('X',{IS:is,BS:bs},now).values.netIncome,null);
+});

@@ -1,11 +1,16 @@
+import type { StatementProfile, SectorMetrics } from "./applicability";
 export const FINANCIAL_FIELDS = ['netIncome', 'revenue', 'grossProfit', 'operatingIncome', 'totalDebt', 'cashAndEquivalents', 'freeCashFlow', 'prevRevenue', 'prevOperatingIncome', 'prevFreeCashFlow'] as const;
 export type FinancialField = typeof FINANCIAL_FIELDS[number];
 export type Values = Record<FinancialField, number | null>;
 export const emptyValues = (): Values => Object.fromEntries(FINANCIAL_FIELDS.map(k => [k, null])) as Values;
 export interface FactEvidence {
+  sourceUrl?: string; reviewedAt?: string; rationale?: string;
   tag: string; unit: string; start: string | null; end: string; filed: string | null; accession: string | null; value: number;
 }
 export interface FinancialBundle {
+  mappingVersion?: string;
+  statementProfile?: StatementProfile;
+  sectorMetrics?: SectorMetrics;
   retrievedAt?: string;
   revenueGrowthYoY?: number | null;
   version: 'FINANCIAL_DATA_V1'; source: 'SEC' | 'BUSINESS_QUANT'; cik: string; periodEnd: string;

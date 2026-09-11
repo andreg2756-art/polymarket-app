@@ -8,6 +8,7 @@ import DataWarningBanner from "@/components/stocks/DataWarningBanner";
 import RankChangeBadge from "@/components/stocks/RankChangeBadge";
 
 interface Stock {
+  financialApplicability?: { requiresSectorModel: boolean; note: string | null } | null;
   valueDataStatus?: string;
   financialPeriodType?: string | null;
   id: string;
@@ -39,6 +40,7 @@ export default function ValueTurnaroundPage() {
   }
 
   function runway(s: Stock): string {
+    if (s.financialApplicability?.requiresSectorModel) return "Not applicable";
     if (!s.financialPeriodType || s.freeCashFlow === null) return "—";
     if (s.freeCashFlow >= 0) return "Self-sustaining";
     if (s.cashAndEquivalents === null) return "—";
@@ -112,9 +114,9 @@ export default function ValueTurnaroundPage() {
                       {s.turnaroundScore ?? "—"}
                     </span>
                     {missingFundamentals(s) && (
-                      <span title="Some score inputs are missing, stale, or have no verified reporting period. This is an incomplete score."
+                      <span title={s.financialApplicability?.requiresSectorModel ? s.financialApplicability.note ?? "Financial-sector assessment required" : "Some score inputs are missing, stale, or have no verified reporting period. This is an incomplete score."}
                         className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-yellow-900/50 text-yellow-400 border border-yellow-800 cursor-help">
-                        Partial
+                        {s.financialApplicability?.requiresSectorModel ? "Sector review" : "Partial"}
                       </span>
                     )}
                   </td>

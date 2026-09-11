@@ -21,6 +21,9 @@ export function qualityFirstPass(quote: ScreenerQuote, revenueGrowthPct: number 
 }
 
 export function qualityFinalScore(firstPass: number, f: Fundamentals): number {
+  // No operating-company margin, debt/cash or runway bonuses for financial institutions.
+  // Retain the provisional first pass; do not manufacture a sector replacement score.
+  if (f.statementProfile === "FINANCIAL_INSTITUTION") return firstPass;
   let margin = 0;
   if (f.operatingIncome !== null && f.revenue !== null && f.revenue > 0) {
     const marginPct = (f.operatingIncome / f.revenue) * 100;

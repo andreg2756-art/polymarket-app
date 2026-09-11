@@ -19,6 +19,7 @@ interface StockDetail {
     qualityScore: number | null; qualityRank: number | null;
     turnaroundScore: number | null; turnaroundRank: number | null;
     netIncome: number | null; totalDebt: number | null;
+    financialApplicability?: {requiresSectorModel:boolean} | null;
     financialPeriodType?: string | null;
     cashAndEquivalents: number | null; freeCashFlow: number | null;
     trailingPE: number | null; priceToBook: number | null;
@@ -80,7 +81,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
     // banner on those tabs), so a stock like that shouldn't fall through to
     // "no signals detected" just because it has no momentum data.
     stock.netIncome !== null && stock.netIncome > 0 && `Profitable (net income $${fmtNum(stock.netIncome / 1e6)}M)`,
-    stock.freeCashFlow !== null && stock.freeCashFlow >= 0 && "Self-sustaining free cash flow",
+    !stock.financialApplicability?.requiresSectorModel && stock.freeCashFlow !== null && stock.freeCashFlow >= 0 && "Self-sustaining free cash flow",
     stock.totalDebt !== null && stock.cashAndEquivalents !== null && stock.totalDebt <= stock.cashAndEquivalents &&
       "Cash on hand covers total debt",
     stock.priceToBook !== null && stock.priceToBook > 0 && stock.priceToBook < 1 &&
@@ -96,7 +97,7 @@ export default function StockDetailPage({ params }: { params: Promise<{ ticker: 
     hasSpeculativeData && stock.change1M < -10 && `Weak price action (${stock.change1M.toFixed(1)}% last month)`,
     totalAnalysts > 0 && totalSell > totalBuy && `More sell ratings than buy ratings`,
     stock.netIncome !== null && stock.netIncome < 0 && `Unprofitable (net loss $${fmtNum(Math.abs(stock.netIncome) / 1e6)}M)`,
-    stock.financialPeriodType && stock.freeCashFlow !== null && stock.freeCashFlow < 0 && stock.cashAndEquivalents !== null &&
+    !stock.financialApplicability?.requiresSectorModel && stock.financialPeriodType && stock.freeCashFlow !== null && stock.freeCashFlow < 0 && stock.cashAndEquivalents !== null &&
       `Burning cash — ${(stock.cashAndEquivalents / (Math.abs(stock.freeCashFlow) * (stock.financialPeriodType === "QUARTER" ? 4 : 1))).toFixed(1)}y runway at current rate`,
     stock.totalDebt !== null && stock.cashAndEquivalents !== null && stock.totalDebt > stock.cashAndEquivalents * 4 &&
       "High debt relative to cash reserves",
