@@ -121,9 +121,9 @@ export default function QualityScreenPage() {
                       {s.qualityScore ?? "—"}
                     </span>
                     {missingFundamentals(s) && (
-                      <span title={s.financialApplicability?.requiresSectorModel ? s.financialApplicability.note ?? "Financial-sector assessment required" : "Some score inputs are missing, stale, or have no verified reporting period. This is an incomplete score."}
+                      <span title={s.qualityDataStatus === "STALE" ? "The displayed statement is old and is excluded from new scores. Waiting for a newer verified statement." : s.financialApplicability?.requiresSectorModel ? s.financialApplicability.note ?? "Financial-sector assessment required" : "Some score inputs are missing, stale, or have no verified reporting period. This is an incomplete score."}
                         className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-yellow-900/50 text-yellow-400 border border-yellow-800 cursor-help">
-                        {s.financialApplicability?.requiresSectorModel ? "Sector review" : "Partial"}
+                        {s.qualityDataStatus === "STALE" ? "Stale" : s.financialApplicability?.requiresSectorModel ? "Sector review" : s.qualityDataStatus === "UNVERIFIED" ? "Unverified" : "Partial"}
                       </span>
                     )}
                   </td>

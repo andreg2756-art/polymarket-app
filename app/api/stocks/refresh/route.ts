@@ -1,3 +1,4 @@
+import { syncFinancialQueue } from "@/lib/stocks/financial-data/queue";
 import { nonMissing, momentumUpdate } from "@/lib/stocks/financial-data/model";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -273,6 +274,9 @@ export async function POST() {
           .map((s) => ({ ticker: s.ticker, lens: "turnaround", turnaroundScore: s.turnaroundScore, price: s.price, marketCap: s.marketCap })),
       ],
     });
+
+    // Register newly discovered stocks immediately, without consuming provider quota.
+    await syncFinancialQueue();
 
     try {
       await checkWatchlistAlerts();

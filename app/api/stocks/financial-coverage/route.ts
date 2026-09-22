@@ -11,7 +11,7 @@ export async function GET(request:Request) {
  const tickers=stocks.map(s=>s.ticker);
  const [jobs,stored,budget]=await Promise.all([
   prisma.financialJob.findMany({where:{ticker:{in:tickers}},select:{ticker:true,status:true,reason:true,lastAttemptAt:true,lastSuccessAt:true,nextAttemptAt:true}}),
-  loadStoredFundamentals(tickers),getBQBudget(),
+  loadStoredFundamentals(tickers,{includeStale:true}),getBQBudget(),
  ]);
  const byTicker=new Map(jobs.map(j=>[j.ticker,j]));
  const rows=tickers.map(ticker=>{
