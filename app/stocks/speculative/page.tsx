@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { mapSettled } from "@/lib/mapSettled";
+import { hasRecentEarningsPeriod } from "@/lib/stocks/earningsCoverage";
 import { SHARES_OUTSTANDING } from "@/lib/small-cap-universe";
 import { generateRiskFlags, type RiskFlag, type RiskFlagResult } from "@/lib/stockHelpers";
 import { TableSkeleton } from "@/components/Skeleton";
@@ -29,6 +31,7 @@ interface Stock {
   relativeVolume: number;
   revenueGrowth: number;
   lastEarningsDate: string | null;
+  earningsPeriodEnd: string | null;
   insiderBuying: number;
   shortInterest: number | null;
   analystRating: string | null;
@@ -303,11 +306,11 @@ export default function StocksPage() {
       setStocks(filtered);
       if (data[0]?.updatedAt) setUpdatedAt(data[0].updatedAt);
 
-      // Fetch supplemental data in background for all stocks.
+      setLoading(false);
+      // Fetch supplemental data in bounded batches after showing the table.
       // Used for: avgVolume30D (all stocks) + revenue growth string (stocks with DB value 0).
-      const suppResults = await Promise.allSettled(
-        filtered.map((s) =>
-          fetch(`/api/stocks/supplemental/${s.ticker}`)
+      const suppResults = await mapSettled(filtered, 4, (s) =>
+          fetch(`/api/stocks/supplemental/${s.ticker}`, { signal: AbortSignal.timeout(20000) })
             .then((r) => r.json())
             .then((d) => ({
               ticker:          s.ticker,
@@ -318,7 +321,6 @@ export default function StocksPage() {
               nextEarningsRaw: d?.nextEarnings?.value  as string | null ?? null,
             }))
             .catch(() => ({ ticker: s.ticker, revGrowth: null, avgVolRaw: null, cashRaw: null, debtRaw: null, nextEarningsRaw: null }))
-        )
       );
 
       const revMap: RevGrowthMap = {};
@@ -400,9 +402,10 @@ export default function StocksPage() {
 
       {!loading && (
         <DataWarningBanner
-          incompleteCount={stocks.filter((s) => s.lastEarningsDate === null).length}
+          incompleteCount={stocks.filter((s) => !hasRecentEarningsPeriod(s.earningsPeriodEnd)).length}
           totalCount={stocks.length}
-          label="Earnings data"
+          label="Recent earnings reporting periods"
+          description="This checks for reported earnings within the last 200 days. Announcement dates, consensus estimates, and revenue-beat data are separate; a missing announcement date does not mean all earnings data is missing."
         />
       )}
 
@@ -463,10 +466,10 @@ export default function StocksPage() {
                   <td className="px-3 py-3 pt-4">
                     <div className="space-y-1">
                       <ScoreBadge score={s.bullishScore} stock={s} />
-                      {s.lastEarningsDate === null && (
-                        <span title="Earnings data unavailable (likely FMP plan restriction) — score doesn't include earnings/revenue-beat signal"
+                      {!hasRecentEarningsPeriod(s.earningsPeriodEnd) && (
+                        <span title="No recent earnings reporting period is saved. This does not measure the availability of momentum inputs or consensus estimates."
                           className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-900/50 text-yellow-400 border border-yellow-800 cursor-help inline-block">
-                          Partial
+                          Earnings period missing
                         </span>
                       )}
                       <ScoreBreakdown

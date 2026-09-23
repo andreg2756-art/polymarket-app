@@ -68,7 +68,7 @@ function Row({
 export default function ResearchChecklist(props: Props) {
   const {
     ticker, name, price, change1M, change3M, relativeVolume,
-    marketCap, bullishScore, lastEarningsDate, insiderBuying,
+    marketCap, bullishScore, insiderBuying,
     shortInterest, revenueGrowth,
   } = props;
 
@@ -285,10 +285,10 @@ export default function ResearchChecklist(props: Props) {
               <section>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Earnings</h3>
                 <Row
-                  label="Last Earnings"
-                  value={lastEarningsDate ?? val(supp?.lastEarnings)}
+                  label="Latest Earnings Results (period end)"
+                  value={val(supp?.lastEarnings)}
                   status="neutral"
-                  source={!lastEarningsDate ? sourceTag(supp?.lastEarnings) : undefined}
+                  source={sourceTag(supp?.lastEarnings)}
                 />
                 <Row
                   label="Next Earnings"

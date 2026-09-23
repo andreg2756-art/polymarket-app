@@ -141,6 +141,7 @@ interface PolygonSIRecord {
   short_interest_percent?:    number;
   days_to_cover?:             number;
   average_daily_volume?:      number;
+  avg_daily_volume?:          number;
   settlement_date?:           string;
   report_date?:               string;
   [key: string]: unknown;
@@ -169,7 +170,7 @@ export async function fetchShortInterest(ticker: string): Promise<PolygonShortIn
   const sharesShort        = typeof r.shares_short        === "number" ? r.shares_short        : typeof r.short_interest === "number" ? r.short_interest : null;
   const shortInterestPct   = typeof r.short_interest_percent === "number" ? r.short_interest_percent : null;
   const daysToCover        = typeof r.days_to_cover       === "number" ? r.days_to_cover        : null;
-  const averageDailyVolume = typeof r.average_daily_volume === "number" ? r.average_daily_volume : null;
+  const averageDailyVolume = typeof r.avg_daily_volume === "number" ? r.avg_daily_volume : typeof r.average_daily_volume === "number" ? r.average_daily_volume : null;
   const settlementDate     = r.settlement_date ?? r.report_date ?? null;
 
   return { ticker, sharesShort, shortInterestPct, daysToCover, averageDailyVolume, settlementDate, planLimited: false };

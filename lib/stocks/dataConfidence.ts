@@ -29,7 +29,7 @@ interface Category {
 function isAvailable(value: unknown): boolean {
   if (value === null || value === undefined) return false;
   if (typeof value === "string" && (value === "N/A" || value === "" || value.startsWith("N/A"))) return false;
-  if (typeof value === "number" && value === 0) return false;
+  if (typeof value === "number") return Number.isFinite(value);
   return true;
 }
 
@@ -38,6 +38,7 @@ export function computeDataConfidence(
   shortInterest: ShortInterestResult | null,
   marketCap: number | null,
   suppAvailable?: {
+    float?: boolean;
     cash?: boolean;
     totalDebt?: boolean;
     insiderOwnership?: boolean;
@@ -48,7 +49,7 @@ export function computeDataConfidence(
     // Price / Volume (20%) — available whenever we have a score
     {
       name:      "Price / Volume",
-      available: isAvailable(score.volumeScore?.score) && isAvailable(marketCap),
+      available: isAvailable(score.volumeScore?.score) && typeof marketCap === "number" && Number.isFinite(marketCap) && marketCap > 0,
       weight:    20,
     },
     // Revenue (15%)
@@ -78,7 +79,7 @@ export function computeDataConfidence(
     // Float (10%)
     {
       name:      "Float",
-      available: isAvailable(score.riskQualityScore?.score),
+      available: suppAvailable?.float === true,
       weight:    10,
     },
     // News (10%)

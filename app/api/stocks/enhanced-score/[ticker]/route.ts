@@ -38,11 +38,12 @@ export async function GET(
     // All fetches in parallel — each has its own null fallback
     const [enhancedScore, shortInterest, suppData] = await Promise.all([
       computeEnhancedScore(ticker, change1M, change3M, relativeVolume, revenueGrowth, floatTurnover, revRaw.ttm, revRaw.qtrYoY),
-      getShortInterest(ticker).catch(() => null),
+      getShortInterest(ticker, techMetrics?.floatShares).catch(() => null),
       getSupplementalStockData(ticker).catch(() => null),
     ]);
 
     const suppAvailable = {
+      float: typeof techMetrics?.floatShares === "number" && Number.isFinite(techMetrics.floatShares) && techMetrics.floatShares > 0,
       cash:                   suppData?.cash?.value !== null && suppData?.cash?.value !== undefined,
       totalDebt:              suppData?.totalDebt?.value !== null && suppData?.totalDebt?.value !== undefined,
       insiderOwnership:       suppData?.insiderOwnership?.value !== null && suppData?.insiderOwnership?.value !== undefined,

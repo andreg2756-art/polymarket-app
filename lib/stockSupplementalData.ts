@@ -59,6 +59,7 @@ async function getYahooCrumb(): Promise<{ cookie: string; crumb: string } | null
   }
   try {
     const cookieRes = await fetch("https://fc.yahoo.com", {
+      signal: AbortSignal.timeout(10000),
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -70,7 +71,7 @@ async function getYahooCrumb(): Promise<{ cookie: string; crumb: string } | null
 
     const crumbRes = await fetch(
       "https://query1.finance.yahoo.com/v1/test/getcrumb",
-      { headers: { "User-Agent": "Mozilla/5.0", Cookie: cookie } }
+      { signal: AbortSignal.timeout(10000), headers: { "User-Agent": "Mozilla/5.0", Cookie: cookie } }
     );
     const crumb = await crumbRes.text();
     if (!crumb || crumb.includes("Unauthorized") || crumb.includes("{")) return null;
@@ -102,6 +103,7 @@ async function fetchYahooQuoteSummary(symbol: string): Promise<Record<string, un
   try {
     const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${QUOTE_MODULES}&crumb=${encodeURIComponent(session.crumb)}`;
     const res = await fetch(url, {
+      signal: AbortSignal.timeout(12000),
       headers: { "User-Agent": "Mozilla/5.0", Cookie: session.cookie },
       next: { revalidate: 3600 },
     });
@@ -124,6 +126,7 @@ function getYahooChartUrl(symbol: string) {
 async function fetchJson<T>(url: string): Promise<T | null> {
   try {
     const res = await fetch(url, {
+      signal: AbortSignal.timeout(12000),
       next: { revalidate: 3600 },
       headers: { "User-Agent": "Mozilla/5.0" },
     });
@@ -187,7 +190,7 @@ function fmtDate(ts: unknown): string | null {
   if (n === null) return fmt(ts);
   const d = new Date(n * 1000);
   if (isNaN(d.getTime())) return null;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
 // ── Revenue Growth ─────────────────────────────────────────────────────────
@@ -360,13 +363,20 @@ function calcDebtRisk(qs: Record<string, unknown> | null): SupplementalMetric {
 
 // ── Earnings ───────────────────────────────────────────────────────────────
 
-function calcLastEarnings(qs: Record<string, unknown> | null): SupplementalMetric {
+export function calcLastEarnings(qs: Record<string, unknown> | null): SupplementalMetric {
   try {
     const history: unknown[] =
       (qs?.earningsHistory as Record<string, unknown> | undefined)?.history as unknown[] ?? [];
     if (!history.length) return missing("Earnings history unavailable");
 
-    const h = history[0] as Record<string, unknown>;
+    const h = history
+      .map((item) => item as Record<string, unknown>)
+      .filter((item) => {
+        const timestamp = raw(item.quarter);
+        return timestamp !== null && timestamp * 1000 <= Date.now() && raw(item.epsActual) !== null;
+      })
+      .sort((a, b) => raw(b.quarter)! - raw(a.quarter)!)[0];
+    if (!h) return missing("No reported earnings period available");
     const date    = fmtDate(h.quarter) ?? fmt(h.quarter);
     const actual  = raw(h.epsActual);
     const est     = raw(h.epsEstimate);
@@ -374,7 +384,8 @@ function calcLastEarnings(qs: Record<string, unknown> | null): SupplementalMetri
 
     if (!date) return missing("Earnings date format unrecognised");
 
-    let display = date;
+    const stale = Date.now() - raw(h.quarter)! * 1000 > 200 * 86400000;
+    let display = `Period ended ${date}${stale ? " (stale)" : ""}`;
     if (actual !== null) display += ` — EPS $${actual.toFixed(2)}`;
     if (est !== null)    display += ` vs est. $${est.toFixed(2)}`;
     if (surprise !== null) {
